@@ -1,0 +1,30 @@
+# this doesn't work yet
+services:
+  # backend:
+  #   build:
+  #     context: ../backend
+  #     dockerfile: Dockerfile
+  #   container_name: backend
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ../backend:/app
+  #     - ../common:/app/common
+  #   command: uvicorn main:app --host 0.0.0.0 --reload
+
+  mobile:
+    build:
+      context: .
+      dockerfile: app-mobile/Dockerfile
+    container_name: mobile
+    working_dir: /workspace
+    volumes:
+      - ./app-mobile:/workspace/app-mobile
+      - ./common:/workspace/common
+    # ports:
+    #   - "19000:19000"  # Expo Dev Server
+    #   - "19001:19001"  # Expo Webpack
+    #   - "19002:19002"  # Expo Metro Notifications
+    network_mode: "host"
+    stdin_open: true
+    tty: true
