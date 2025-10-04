@@ -9,6 +9,7 @@ export default function RootLayout()
 			<StatusBar style="light" backgroundColor="#000000" />
 			<SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
 				<Stack screenOptions={{ headerShown: false}}>
+					
 					<Stack.Screen name="login" />
 					<Stack.Screen name="(tabs)" />
 				</Stack>

@@ -1,9 +1,8 @@
-// app/login.tsx
 import * as React from "react";
 import { StyleSheet, View, Text, Pressable, Image, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-
+// Everything is imported from Figma
 export default function Login() {
   const router = useRouter();
   const [username, setUsername] = React.useState("");

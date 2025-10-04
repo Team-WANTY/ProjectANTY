@@ -1,7 +1,7 @@
-// app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+// Configuration of  the bottom nav bar and its tabs
 export default function TabsLayout() {
     return (
         <Tabs
