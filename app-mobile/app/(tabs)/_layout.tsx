@@ -15,10 +15,10 @@ export default function RootLayout() {
         }}
         tabBar={({ navigation }) => <BottomNavBar navigation={navigation} />}
       >
-        {/* <Tabs.Screen name="home" />
+        <Tabs.Screen name="home" />
         <Tabs.Screen name="tasks" />
-        <Tabs.Screen name="social" />
-        <Tabs.Screen name="profile" /> */}
+        {/* <Tabs.Screen name="social" /> */}
+        {/* <Tabs.Screen name="profile" /> */}
       </Tabs>
     </ThemeProvider>
   );
