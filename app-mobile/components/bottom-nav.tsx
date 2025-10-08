@@ -9,10 +9,10 @@ const { width } = Dimensions.get("window");
 
 // Define your menu items (matching your tab names)
 const menuItems = [
-    { name: 'home', icon: 'home', label: 'Home' },
-    { name: 'tasks', icon: 'book-outline', label: 'Tasks' },
-    { name: 'social', icon: 'people-outline', label: 'Social' },
-    { name: 'profile', icon: 'person-outline', label: 'Profile' },
+    { name: 'home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+    { name: 'tasks', icon: 'reader-outline', activeIcon: 'reader', label: 'Tasks' },
+    { name: 'social', icon: 'people-outline', activeIcon: 'people', label: 'Social' },
+    { name: 'profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' },
 ];
 
 export default function BottomNavBar() {
@@ -29,13 +29,14 @@ export default function BottomNavBar() {
             <View style={[styles.menuBar, { backgroundColor: theme.border }]}>
                 {menuItems.map((item) => {
                     const isActive = item.name === activeSegment;
+                    const iconName = isActive? item.activeIcon : item.icon;
                     const iconColor = isActive ? theme.background : theme.secondaryText;
 
                     return (
                         <Link key={item.name} href={`/${item.name}`} asChild>
                             <TouchableOpacity style={styles.menuItem}>
                                 <Ionicons
-                                    name={isActive ? item.icon : `${item.icon}`}
+                                    name={iconName}
                                     size={26}
                                     color={iconColor}
                                 />
@@ -70,6 +71,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 4.65,
         elevation: 8,
+        
     },
     menuItem: {
         padding: 5,
