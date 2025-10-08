@@ -33,7 +33,7 @@ export default function LoginScreen() {
 
             <View style={styles.card}>
                 <Image
-                    source={require("../assets/images/react-logo.png")}
+                    source={require("../assets/images/logo.png")}
                     style={styles.logo}
                     resizeMode="contain"
                 />
@@ -82,7 +82,7 @@ export default function LoginScreen() {
                 </Pressable>
             </View>
         </View>
-    );
+    ); 
 }
 
 function getStyles(theme) {
