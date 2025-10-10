@@ -11,13 +11,13 @@ const { width } = Dimensions.get("window");
 
 // --- Mock Data ---
 const taskList = [
-    { id: 1, title: "Buy work clothes", subtitle: "9/17/2025", completed: false },
-    { id: 2, title: "Distributed Network HW", subtitle: "9/17/2025 at 5:00 PM", completed: false },
-    { id: 3, title: "Exercise", subtitle: "Daily", completed: false },
-    { id: 4, title: "Research Paper Draft", subtitle: "Tomorrow", completed: false },
-    { id: 5, title: "Groceries", subtitle: "This Weekend", completed: false },
-    { id: 6, title: "Coding Challenge", subtitle: "Daily", completed: false },
-    { id: 7, title: "Meal Prep", subtitle: "Saturday Morning", completed: false },
+    { id: 1, title: "Buy work clothes", subtitle: "9/17/2025", category: "Work",completed: false },
+    { id: 2, title: "Distributed Network HW", subtitle: "9/17/2025 at 5:00 PM", category: "School", completed: false },
+    { id: 3, title: "Exercise", subtitle: "Daily", category: "Routine", completed: false },
+    { id: 4, title: "Research Paper Draft", subtitle: "Tomorrow", category: "School", completed: false },
+    { id: 5, title: "Groceries", subtitle: "This Weekend", category: "Personal", completed: false },
+    { id: 6, title: "Coding Challenge", subtitle: "Daily", category: "Routine", completed: false },
+    { id: 7, title: "Meal Prep", subtitle: "Saturday Morning", category: "Errands", completed: false },
 ];
 
 const categories = ["Personal", "School", "Routine", "Work", "Errands"];
@@ -41,7 +41,7 @@ const TaskItem = ({ task, theme, onToggle }) => (
 );
 
 // --- Category Tag Component ---
-const CategoryTag = ({ category, theme, isActive }) => {
+const CategoryTag = ({ category, theme, isActive, onPress }) => {
     const tagStyle = {
         backgroundColor: isActive ? theme.primary : theme.border,
         borderColor: theme.primary,
@@ -51,7 +51,7 @@ const CategoryTag = ({ category, theme, isActive }) => {
     };
 
     return (
-        <TouchableOpacity style={[styles.categoryTag, tagStyle]}>
+        <TouchableOpacity style={[styles.categoryTag, tagStyle]} onPress={onPress}>
             <Text style={[styles.categoryText, textStyle]}>{category}</Text>
         </TouchableOpacity>
     );
@@ -63,7 +63,12 @@ export default function TasksScreen() {
     const insets = useSafeAreaInsets();
     const [tasks, setTasks] = useState(taskList);
     const router = useRouter();
-    const [selectedCategory, setSelectedCategory] = useState("Personal");
+
+    // state: no category selected by default
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    // filtering logic: show all when no category selected
+    const filtered = selectedCategory ? tasks.filter(t => t.category == selectedCategory) : tasks;
 
     const handleToggleTask = (id) => {
         setTasks(prevTasks =>
@@ -81,7 +86,7 @@ export default function TasksScreen() {
 
             {/* 1. Top Navigation Bar */}
             <HeaderBar
-                title="Home"
+                title="Tasks"
                 showTitle={false}
                 onNotificationPress={() => { /* navigation.navigate('Notifications') */ }}
                 onSettingsPress={() => { router.push("../settings") }}
@@ -128,6 +133,7 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
+                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
                         />
                     ))}
                 </ScrollView>
@@ -142,7 +148,7 @@ export default function TasksScreen() {
 
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
-                    {tasks.map((task) => (
+                    {filtered.map((task) => (
                         <TaskItem
                             key={task.id}
                             task={task}
