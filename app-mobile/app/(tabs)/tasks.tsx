@@ -11,13 +11,13 @@ const { width } = Dimensions.get("window");
 
 // --- Mock Data ---
 const taskList = [
-    { id: 1, title: "Buy work clothes", subtitle: "9/17/2025", category: "Work",completed: false },
-    { id: 2, title: "Distributed Network HW", subtitle: "9/17/2025 at 5:00 PM", category: "School", completed: false },
-    { id: 3, title: "Exercise", subtitle: "Daily", category: "Routine", completed: false },
-    { id: 4, title: "Research Paper Draft", subtitle: "Tomorrow", category: "School", completed: false },
-    { id: 5, title: "Groceries", subtitle: "This Weekend", category: "Personal", completed: false },
-    { id: 6, title: "Coding Challenge", subtitle: "Daily", category: "Routine", completed: false },
-    { id: 7, title: "Meal Prep", subtitle: "Saturday Morning", category: "Errands", completed: false },
+    { id: 1, title: "Buy work clothes", dueDate: "9/17/2025", category: "Work",completed: false },
+    { id: 2, title: "Distributed Network HW", dueDate: "9/17/2025 ", category: "School", completed: false },
+    { id: 3, title: "Exercise", dueDate: "9/17/2025", category: "Routine", completed: false },
+    { id: 4, title: "Research Paper Draft", dueDate: "9/17/2025", category: "School", completed: false },
+    { id: 5, title: "Groceries", dueDate: "9/17/2025", category: "Personal", completed: false },
+    { id: 6, title: "Coding Challenge", dueDate: "9/17/2025", category: "Routine", completed: false },
+    { id: 7, title: "Meal Prep", dueDate: "9/17/2025", category: "Errands", completed: false },
 ];
 
 const categories = ["Personal", "School", "Routine", "Work", "Errands"];
@@ -27,7 +27,7 @@ const TaskItem = ({ task, theme, onToggle }) => (
     <View style={[styles.taskCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
         <View style={styles.taskTextContent}>
             <Text style={[styles.taskTitle, { color: theme.textSecondary }]}>{task.title}</Text>
-            <Text style={[styles.taskSubtitle, { color: theme.secondaryText }]}>{task.subtitle}</Text>
+            <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>{task.dueDate}</Text>
         </View>
         <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
             <View style={[
@@ -64,6 +64,13 @@ export default function TasksScreen() {
     const [tasks, setTasks] = useState(taskList);
     const router = useRouter();
 
+    
+
+    // date state
+    const [date, setDate] = useState(new Date(2025, 9, 17)); // 0 indexed month so 0 - Jan, 1 - Feb... 
+
+    const formatDate = (d: Date) => `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+
     // state: no category selected by default
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -97,20 +104,20 @@ export default function TasksScreen() {
 
                 {/* 2. Date Selector */}
                 <View style={styles.dateSelectorSection}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()-1))}>
                         <Ionicons name="chevron-back" size={30} color={theme.text} />
                     </TouchableOpacity>
 
                     <View style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}>
-                        <Text style={[styles.dateText, { color: theme.background }]}>9/17/2025</Text>
+                        <Text style={[styles.dateText, { color: theme.textSecondary }]}>{formatDate(date)}</Text>
                     </View>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()+1))}>
                         <Ionicons name="chevron-forward" size={30} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.tasksCompletedText, { color: theme.secondaryText }]}>
+                <Text style={[styles.tasksCompletedText, { color: theme.cardBackground }]}>
                     {completedCount} Tasks Completed
                 </Text>
 
@@ -273,7 +280,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-    taskSubtitle: {
+    taskDueDate: {
         fontSize: 10,
         fontWeight: '600',
         marginTop: 2,
