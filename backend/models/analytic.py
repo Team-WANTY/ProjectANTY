@@ -1,10 +1,13 @@
-from pydantic import BaseModel, UUID4
 from typing import Literal
+
+from pydantic import UUID4, BaseModel
+
 
 class AnalyticVisualization(BaseModel):
     type: Literal["bar", "line", "pie", "number", "heatmap"]
     label: str
     description: str
+
 
 class Analytic(BaseModel):
     id: UUID4
