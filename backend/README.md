@@ -9,6 +9,7 @@
     uv run ty check
 
 # Test Cases
+    uv run pytest
 
 # Generating encryption keys (applicable for Linux)
 ## Token Key Pair

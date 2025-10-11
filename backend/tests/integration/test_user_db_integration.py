@@ -175,24 +175,6 @@ class TestUsersDBOperations:
         assert result.email != sample_user_in_db.email
         mock_cosmos_container.read_item.assert_called_once()
 
-    # Pydantic's EmailStr already makes invalid emails not possible!
-    # @pytest.mark.asyncio
-    # @pytest.mark.parametrize("invalid_email", [
-    #     "",              # empty
-    #     "user@email .com"     # contains space
-    #     #TODO add more rules once implemented
-    # ])
-
-    # async def test_update_user_invalid_email(self, mock_cosmos_container, sample_user, invalid_email):
-    #     sample_user_update_invalid_email = UserUpdate(
-    #         id = sample_user.id,
-    #         email=invalid_email
-    #     )
-
-    #     with pytest.raises(UserUpdateInvalidEmailError):
-    #         await UsersDB(container=mock_cosmos_container).update_user(sample_user_update_invalid_email)
-    #     mock_cosmos_container.patch_item.assert_called_once()
-
     @pytest.mark.asyncio
     async def test_update_user_username(
         self, mock_cosmos_container, sample_user_in_db, sample_user
