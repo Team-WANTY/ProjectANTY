@@ -5,7 +5,6 @@ build-backend = "hatchling.build"
 [project]
 name = "auth_service"
 version = "0.1.0"
-readme = "README.md"
 description = "FastAPI microservice for user authentication."
 requires-python = ">=3.12,<4.0"
 dependencies = [

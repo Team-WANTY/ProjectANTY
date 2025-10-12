@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     cosmosdb_database_name: str
     cosmosdb_user_container_name: str
 
-    token_private_key: str
-    token_public_key: str
+    token_private_key: str | None = None
+    token_public_key: str | None = None
     token_algorithm: str
     access_token_expiration_minutes: int
     refresh_token_expiration_days: int

@@ -1,4 +1,4 @@
-name: Repository CI Pipelines
+name: Hello Backend Pipelines
 
 on:
   push:
@@ -8,17 +8,17 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  lint:
-    name: Lint with ruff.
+  auth-backend:
+    name: Lint, Typecheck.
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code.
         uses: actions/checkout@v2
     
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Run format
+      - name: Hello world - run format and typecheck.
         run: |
-          cd backend/auth ; uv sync --dev ; uv run ruff check ; uv run ty check
+          cd backend/hello-world ; uv sync --dev ; uv run ruff check ; uv run ty check

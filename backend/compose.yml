@@ -1,20 +1,14 @@
 services:
-  # --------- Reverse Proxy (Traefik) ----------
   traefik:
     image: traefik:v3.1
     container_name: traefik
-    command:
-      - "--configFile=/etc/traefik/traefik.yaml"
+    restart: always
     ports:
-      - "80:80"        # HTTP
-      - "8080:8080"    # Traefik dashboard
+      - "80:80"
+      - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./traefik/traefik.yaml:/etc/traefik/traefik.yaml:ro"
-      # - "./letsencrypt:/letsencrypt"
-    restart: unless-stopped
 
-  # --------- Hello Service ----------
   hello-service:
     build:
       context: ./hello-world/
@@ -25,13 +19,26 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.hello.rule=Host(`hello.localhost`)"
-      - "traefik.http.routers.hello.entrypoints=web"
-      # - "traefik.http.routers.hello.entrypoints=websecure"
-      # - "traefik.http.routers.hello.tls.certresolver=letsencrypt"
       - "traefik.http.services.hello.loadbalancer.server.port=8000"
     depends_on:
       - traefik
     restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./auth/
+      dockerfile: Dockerfile.dev
+    container_name: auth-service
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+    depends_on:
+      - traefik
+    restart: unless-stopped
+
 
 networks:
   default:

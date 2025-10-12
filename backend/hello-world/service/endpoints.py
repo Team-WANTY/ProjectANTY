@@ -1,6 +1,7 @@
 
 from typing import Annotated
-from fastapi import FastAPI, Depends, HTTPException, status
+
+from fastapi import Depends, FastAPI, HTTPException, status
 
 from .models import Message
 from .service import say_hello, set_new_msg

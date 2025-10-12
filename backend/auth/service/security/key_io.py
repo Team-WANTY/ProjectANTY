@@ -18,6 +18,10 @@ class KeyIO:
         # write to environment labels
         os.environ[key_name.upper()] = key
 
+        # ensure .env exists
+        if not os.path.exists(".env"):
+            open(".env", "w").close()
+
         # write to .env file
         lines = []
         updated = False
@@ -30,7 +34,7 @@ class KeyIO:
                     lines.append(line)
 
         if not updated:
-            if not lines[-1].endswith("\n"):
+            if len(lines) > 0 and not lines[-1].endswith("\n"):
                 lines[-1] += "\n"
             lines.append(f"{key_name.upper()}='{key}'\n")
 
