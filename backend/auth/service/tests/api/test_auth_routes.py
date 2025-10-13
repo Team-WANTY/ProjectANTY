@@ -123,7 +123,7 @@ class TestAuthRoutes:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "inactive" in response.json()["detail"].lower()
 
-    @patch("backend.routers.auth.decode_token")
+    @patch("service.routers.auth.decode_token")
     async def test_refresh_token_success(
         self, mock_decode, async_client, sample_user, mock_users_service
     ):
@@ -152,7 +152,7 @@ class TestAuthRoutes:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "no refresh token" in response.json()["detail"].lower()
 
-    @patch("backend.routers.auth.decode_token")
+    @patch("service.routers.auth.decode_token")
     async def test_refresh_token_wrong_type(self, mock_decode, async_client):
         """Test refresh with access token instead of refresh token"""
         mock_token = Mock()
@@ -166,7 +166,7 @@ class TestAuthRoutes:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert "invalid token type" in response.json()["detail"].lower()
 
-    @patch("backend.routers.auth.decode_token")
+    @patch("service.routers.auth.decode_token")
     async def test_refresh_token_inactive_user(
         self, mock_decode, async_client, sample_user, mock_users_service
     ):

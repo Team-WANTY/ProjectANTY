@@ -35,7 +35,7 @@ class TestAuthService:
         """Test authentication fails with wrong password"""
         mock_user_db.get_user_by_username.return_value = sample_user_in_db
 
-        with patch("services.services.auth.verify_password", return_value=False):
+        with patch("service.services.auth.verify_password", return_value=False):
             with pytest.raises(AuthIncorrectPasswordError):
                 await AuthService(mock_user_db).authenticate_user_by_username(
                     sample_user.username, "wrong_password"
@@ -63,7 +63,7 @@ class TestAuthService:
         """Test successful authentication by email"""
         mock_user_db.get_user_by_email.return_value = sample_user_in_db
 
-        with patch("services.services.auth.verify_password", return_value=True):
+        with patch("service.services.auth.verify_password", return_value=True):
             result = await AuthService(mock_user_db).authenticate_user_by_email(
                 sample_user.email, "correct_password"
             )
@@ -82,7 +82,7 @@ class TestAuthService:
         """Test authentication fails with wrong password (email)"""
         mock_user_db.get_user_by_email.return_value = sample_user_in_db
 
-        with patch("services.services.auth.verify_password", return_value=False):
+        with patch("service.services.auth.verify_password", return_value=False):
             with pytest.raises(AuthIncorrectPasswordError):
                 await AuthService(mock_user_db).authenticate_user_by_email(
                     sample_user.email, "wrong_password"
@@ -111,7 +111,7 @@ class TestAuthService:
         mock_user_db.get_user_by_username.return_value = sample_user_in_db
 
         with patch(
-            "services.services.auth.verify_password", return_type=True
+            "service.services.auth.verify_password", return_type=True
         ) as mock_verify:
             await AuthService(mock_user_db).authenticate_user_by_username(
                 sample_user.username, "test_password"
