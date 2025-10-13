@@ -7,7 +7,6 @@ from service.security.key_io import key_io
 
 load_dotenv()
 
-
 class Settings(BaseSettings):
     cosmosdb_endpoint: str
     cosmosdb_key: str

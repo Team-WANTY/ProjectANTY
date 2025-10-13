@@ -2,11 +2,6 @@ from unittest.mock import patch
 
 import pytest
 
-from service.exceptions.auth import AuthIncorrectPasswordError
-from service.exceptions.user import UserNotFoundError
-from service.models.user import User
-from service.services.auth import AuthService
-
 
 class TestAuthService:
     @pytest.mark.asyncio

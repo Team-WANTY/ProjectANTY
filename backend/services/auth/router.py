@@ -1,53 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAU
 
-from service.config import settings
-from service.dependencies import get_auth_service, get_users_service
-from service.exceptions.auth import AuthError, AuthIncorrectPasswordError
-from service.exceptions.user import (
-    UserCreationError,
-    UserEmailExistsError,
-    UserInvalidCreationInputError,
-    UserUsernameExistsError,
-)
-from service.models.user import User, UserCreate
-from service.security.token import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-)
-from service.services.auth import AuthService
-from service.services.user import UsersService
+from .models import AuthBase, AuthCreate
+from .service import AuthService
+from .main import get_auth_service
+from .exceptions import AuthExistsError, AuthError, AuthCreationError, AuthCreationInvalidPasswordError, AuthIncorrectPasswordError
 
 auth_router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-@auth_router.post("/register", response_model=User)
+@auth_router.post("/register", response_model=AuthBase)
 async def register(
     response: Response,
-    user_create: UserCreate,
-    users_service: UsersService = Depends(get_users_service),
+    auth_create: AuthCreate,
+    auth_service: AuthService = Depends(get_auth_service),
 ):
-    """Register a new user"""
     try:
-        created_user = await users_service.create_user(user_create)
-        if created_user is None:
-            raise UserInvalidCreationInputError()
+        created_auth = await auth_service.create_auth(auth_create)
         response.status_code = status.HTTP_201_CREATED
-        return created_user
-    except UserUsernameExistsError:
+        return created_auth
+    except AuthExistsError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User's authentication information already exists"
         )
-    except UserEmailExistsError:
+    except AuthCreationInvalidPasswordError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Password did not meet requirements"
         )
-    except UserInvalidCreationInputError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input"
-        )
-    except UserCreationError:
+    except AuthCreationError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal creation error",
@@ -57,13 +37,13 @@ async def register(
 @auth_router.post("/login")
 async def login(
     response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    form_data: OAuth2PasswordRequestForm = Depends(), #accepts username or email in 'username' field
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    """Login and get access token"""
     try:
-        user = await auth_service.authenticate_user_by_username(
-            form_data.username, form_data.password
+        user_id = "" #TODO resolve username/email with user service, get back user_id
+        auth = await auth_service.authenticate_user(
+            user_id, form_data.password
         )
     except AuthIncorrectPasswordError:
         raise HTTPException(
@@ -74,13 +54,13 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal auth error",
         )
-    if not isinstance(user, User):
+    if not isinstance(auth, AuthBase):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal auth Error",
+            detail="Internal auth error",
         )
 
-    if not user.is_active:
+    if not auth.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User is set to inactive"
         )
@@ -99,7 +79,7 @@ async def login(
 
 @auth_router.post("/refresh")
 async def refresh_token(
-    request: Request, users_service: UsersService = Depends(get_users_service)
+    request: Request, auth_service: UsersService = Depends(get_auth_service)
 ):
     refresh_token = request.cookies.get("refresh_token")
     print("COOKIES!:", request.cookies)
@@ -116,7 +96,7 @@ async def refresh_token(
             detail="Server received invalid token type",
         )
 
-    user = await users_service.get_user_by_id(str(decoded_token.sub))
+    user = await auth_service.get_user_by_id(str(decoded_token.sub))
     if not isinstance(user, User):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

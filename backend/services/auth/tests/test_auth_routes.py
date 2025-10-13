@@ -3,9 +3,6 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import status
 
-from service.exceptions.auth import AuthIncorrectPasswordError
-from service.exceptions.user import UserEmailExistsError, UserUsernameExistsError
-
 
 class TestAuthRoutes:
     @pytest.mark.asyncio

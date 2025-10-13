@@ -10,5 +10,3 @@ def get_users_service():
     return UsersService(users_db)
 
 
-def get_auth_service():
-    return AuthService(users_db)

@@ -1,6 +1,3 @@
-from service.security.password import get_password_hash, verify_password
-
-
 class TestPasswordSecurity:
     def test_hash_password(self, sample_user_create):
         """Test password hashing"""
