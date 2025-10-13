@@ -16,6 +16,10 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+<<<<<<< HEAD
+    "axios": "^1.12.2",
+=======
+>>>>>>> 53cc001 (fixed tasks category visual and filter tasks based on selected category)
     "expo": "54.0.13",
     "expo-constants": "~18.0.9",
     "expo-font": "~14.0.9",
@@ -23,6 +27,10 @@
     "expo-image": "~3.0.8",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.11",
+<<<<<<< HEAD
+    "expo-secure-store": "~15.0.7",
+=======
+>>>>>>> 53cc001 (fixed tasks category visual and filter tasks based on selected category)
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
     "expo-symbols": "~1.0.7",

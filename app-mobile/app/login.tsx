@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Checkbox } from "react-native-paper";
-import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable } from "react-native";
+import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-
+import { loginUser, getCurrentUser } from "../../services/auth";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function LoginScreen() {
@@ -19,6 +19,60 @@ export default function LoginScreen() {
 
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    
+    const handleLogin = async () => {
+        if (!username.trim() && !password) {
+            setErrorMsg("Please enter your username and password");
+            return;
+        }
+        if (!username.trim()) {
+            setErrorMsg("Please enter your username");
+            return;
+        }
+        if(!password) {
+            setErrorMsg("Please enter your password");
+            return;
+        }
+
+        // clear previous errors
+        setErrorMsg(null);
+        setLoading(true);
+
+        try {
+            const result = await loginUser(username.trim(), password);
+            
+            if (!result.ok) {
+                const friendlymsg =
+                    result.status === 401 ? "Incorrect username or password" :
+                    result.error || "Login failed";
+                setErrorMsg(friendlymsg);
+                return;
+            }
+
+            // Validate log in
+            try {
+                await getCurrentUser();
+                router.replace("/home");
+            } 
+            catch (error: any) {
+                const status = error?.response?.status;
+                setErrorMsg(
+                    status === 401
+                    ? "Login succeeded but token is invalid/expired."
+                    : "Could not validate session."
+                );
+                return;
+            }
+        } 
+        catch (error: any) {
+            setErrorMsg(error?.message || "Network error. Please try again.");
+            console.error("Login error:", error?.response?.data || error);
+        } 
+        finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -170,12 +224,12 @@ function getStyles(theme) {
             marginBottom: 12,
         },
         loginText: {
-            fontSize: 12,
-            fontWeight: "500",
+            fontSize: 14,
+            fontWeight: "600",
             color: theme.background,
         },
         link: {
-            fontSize: 10,
+            fontSize: 14,
             color: theme.border,
             textDecorationLine: "underline",
             marginTop: 4,

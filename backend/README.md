@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # To Run
 
 For dev, use `docker compose -f compose.yml -f compose.dev.yml up --build`. If setting up for the first time, follow the instructions under Dev Notes.
@@ -16,3 +17,5 @@ Installing mkcert:
 `mkdir -p certs` 
 `mv localhost+x-key.pem certs/key.pem` 
 `mv localhost+x.pem certs/cert.pem` 
+=======
+>>>>>>> fdfede1 (fixed tasks category visual and filter tasks based on selected category)

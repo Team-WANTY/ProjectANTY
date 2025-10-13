@@ -12,7 +12,7 @@ export default function RootLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
         <Stack.Screen name="forgot-pass" />
-        {/*<Stack.Screen name="settings" /> */}
+        <Stack.Screen name="settings" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
