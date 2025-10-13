@@ -44,7 +44,7 @@ jobs:
           echo REFRESH_TOKEN_EXPIRATION_DAYS=${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }} >> auth/.env
 
           docker compose -f compose.yml -f compose.dev.yml up --build -d
-          sleep 1
+          sleep 5
           response=$(curl -k -s -w "%{http_code}" -X 'GET' https://hello.localhost/message -H 'accept: application/json')
           code="${response: -3}"
           body="${response::-3}"
