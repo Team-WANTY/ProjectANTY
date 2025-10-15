@@ -3,7 +3,7 @@ import { Checkbox } from "react-native-paper";
 import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-import { loginUser, getCurrentUser } from "../../services/auth";
+import { loginUser, getCurrentUser } from "../services/auth";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function LoginScreen() {
@@ -12,7 +12,7 @@ export default function LoginScreen() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
-
+    const [loading, setLoading] = useState(false)
     // Message states for displaying error feedback
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
@@ -22,6 +22,7 @@ export default function LoginScreen() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const handleLogin = async () => {
+        /*
         if (!username.trim() && !password) {
             setErrorMsg("Please enter your username and password");
             return;
@@ -34,7 +35,7 @@ export default function LoginScreen() {
             setErrorMsg("Please enter your password");
             return;
         }
-
+        */
         // clear previous errors
         setErrorMsg(null);
         setLoading(true);
@@ -71,7 +72,7 @@ export default function LoginScreen() {
         } 
         finally {
             setLoading(false);
-        }
+       }
     };
 
     return (
@@ -131,19 +132,22 @@ export default function LoginScreen() {
                 ) : null}
 
                 <Pressable
-                    style={styles.loginButton}
+                    style={[styles.loginButton, loading && { opacity: 0.6 }]}
+                    disabled={loading}
                     onPress={() => {
                         if (!username || !password) {
                             setIsError(true);
                             setMessage("Please fill out all fields.");
                         } else {
-                            setIsError(false);
-                            setMessage("");
-                            router.replace("./(tabs)/home");
+                            handleLogin();
+                            
+                            //setIsError(false);
+                            //setMessage("");
+                            //router.replace("./(tabs)/home");
                         }
                     }}
                 >
-                    <Text style={styles.loginText}>Log In</Text>
+                    {loading ? <ActivityIndicator /> : <Text style={styles.loginText}>Log In</Text>}
                 </Pressable>
 
                 <Pressable onPress={() => router.push("./register")}>

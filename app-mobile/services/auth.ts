@@ -1,4 +1,4 @@
-import { api } from "../common/api/client";
+import { api } from "./client";
 import * as SecureStore from "expo-secure-store"; // to store access token
 
 export type CallResult<T = any> = {

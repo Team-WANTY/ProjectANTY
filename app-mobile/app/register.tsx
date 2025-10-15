@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {registerUser} from "../../services/auth";
+import {registerUser} from "../services/auth";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 
