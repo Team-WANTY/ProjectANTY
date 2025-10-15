@@ -140,10 +140,6 @@ export default function LoginScreen() {
                             setMessage("Please fill out all fields.");
                         } else {
                             handleLogin();
-                            
-                            //setIsError(false);
-                            //setMessage("");
-                            //router.replace("./(tabs)/home");
                         }
                     }}
                 >
