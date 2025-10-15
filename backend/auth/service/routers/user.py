@@ -125,7 +125,7 @@ async def update_user(
         )
 
 
-@user_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@user_router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 async def delete_user(
     user_id: str,
     current_user: User = Depends(get_current_user),
@@ -138,6 +138,7 @@ async def delete_user(
         )
     try:
         await users_service.delete_user(user_id)
+        return {"message": "User has been deleted"}
     except UserNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

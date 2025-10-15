@@ -1,26 +1,69 @@
 // app/register.tsx
-import React, { useState } from "react";
-import { View, Text, TextInput, Dimensions, TouchableOpacity, Pressable, StyleSheet } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, TextInput, Dimensions, TouchableOpacity, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import {registerUser} from "../services/auth";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
+
 
 export default function Register() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
     const [passwordConfirm, setPasswordConfirm] = useState("");
     const { theme } = useTheme(); // get theme values
     const router = useRouter();
     const fontSize = 20; // Base font size for the back arrow
     const { width: screenWidth } = Dimensions.get("window");
     const insets = useSafeAreaInsets();
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const redirectTimer = useRef<NodeJS.Timeout | null>(null);
 
-    const handleRegister = () => {
-        // TODO: registration logic
-        router.replace("/login");
+    // cleanup timer on unmount/cancel
+    useEffect(() => {
+    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current)};
+    }, []);
+
+    const handleRegister = async () => { 
+        if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
+            setErrorMsg("Please enter in all fields");
+            return;
+        }
+        if (password !== passwordConfirm) {
+            setErrorMsg("Passwords do not match");
+            return;
+        }
+
+        setSuccessMsg(null);
+        setErrorMsg(null);
+        setLoading(true);
+
+        try {    
+            const result = await registerUser(username.trim(), password, email.trim());
+            if (!result.ok) {
+                setErrorMsg(result.error || "Registration failed");
+                return;
+            }
+            
+            if (redirectTimer.current) clearTimeout(redirectTimer.current);
+            setSuccessMsg("Account registered successfully! Redirecting to login page…");
+            redirectTimer.current = setTimeout(() => {
+                router.replace("/login");
+            }, 2000);
+        
+        } 
+        catch (error: any) {
+            console.error(error.response?.data || error.message);
+            setErrorMsg(error?.message || "Unexpected error");
+        }
+        finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -37,10 +80,10 @@ export default function Register() {
             >
                 <DecorativeSwoosh color={theme.primary} width={screenWidth} height={screenWidth * 0.495} />
                 {/* Back Arrow */}
-                <TouchableOpacity style={[styles.backButton, { top: insets.top + 15 }]}>
-                    <Ionicons name="arrow-back"
-                        size={24} color={theme.background}
-                        onPress={() => router.back()}
+                <TouchableOpacity style={[styles.backButton, { top: insets.top + 15 }]}
+                    onPress={() => router.back()}
+                >
+                    <Ionicons name="arrow-back" size={24} color={theme.background}
                         style={[
                             styles.backButton,
                             {
@@ -56,10 +99,17 @@ export default function Register() {
             <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
 
             <TextInput
-                style={[
-                    styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text },
-                ]}
+                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                placeholder="Email Address"
+                placeholderTextColor={theme.primary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+            />
+
+            <TextInput
+                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
                 placeholder="Username"
                 placeholderTextColor={theme.primary}
                 value={username}
@@ -67,10 +117,7 @@ export default function Register() {
             />
 
             <TextInput
-                style={[
-                    styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text },
-                ]}
+                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
                 placeholder="Password"
                 placeholderTextColor={theme.primary}
                 secureTextEntry
@@ -79,10 +126,7 @@ export default function Register() {
             />
 
             <TextInput
-                style={[
-                    styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text },
-                ]}
+                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
                 placeholder="Confirm Password"
                 placeholderTextColor={theme.primary}
                 secureTextEntry
@@ -90,11 +134,13 @@ export default function Register() {
                 onChangeText={setPasswordConfirm}
             />
 
+            {errorMsg   ? (<Text style={{color: "#ff6b6b", fontSize: 12, textAlign: "center" }}> {errorMsg} </Text>) : null}
+            {successMsg ? (<Text style={{color: "#22c55e", fontSize: 12, textAlign: "center" }}> {successMsg} </Text>) : null}
+            
             <Pressable
-                style={[styles.button, { backgroundColor: theme.primary }]}
-                onPress={handleRegister}
-            >
-                <Text style={[styles.buttonText, { color: theme.background }]}>Register</Text>
+                style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
+                onPress={handleRegister} disabled={loading} >
+                {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme.text }]}>Register</Text>}
             </Pressable>
         </View>
     );

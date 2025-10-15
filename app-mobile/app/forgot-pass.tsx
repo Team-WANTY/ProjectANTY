@@ -91,7 +91,7 @@ export default function ForgotPassword() {
                     style={[styles.button, { backgroundColor: theme.primary }]}
                     onPress={handleRecover}
                 >
-                    <Text style={[styles.buttonText, { color: theme.background }]}>Send Link</Text>
+                    <Text style={[styles.buttonText, { color: theme.text }]}>Send Link</Text>
                 </Pressable>
             </View>
         </View>
