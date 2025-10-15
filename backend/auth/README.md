@@ -19,4 +19,4 @@
 openssl genpkey -algorithm RSA -out token_private_key.pem -pkeyopt rsa_keygen_bits:2048 && openssl rsa -pubout -in token_private_key.pem -out token_public_key.pem
 
 # Running the program
-uv run uvicorn backend.main:app --reload
+uv run uvicorn service.main:app --reload
