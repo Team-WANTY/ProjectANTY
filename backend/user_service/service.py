@@ -1,7 +1,8 @@
 from pydantic import EmailStr
+from httpx import AsyncClient
 
-from service.db.user import UsersDB
-from service.exceptions.user import (
+from .database import UsersDB
+from .exceptions import (
     UserCreationError,
     UserEmailExistsError,
     UserGeneralQueryError,
@@ -9,14 +10,16 @@ from service.exceptions.user import (
     UserUpdateError,
     UserUsernameExistsError,
 )
-from service.models.user import User, UserCreate, UserInDB, UserUpdate
+from ..shared.user_models import UserBase, UserCreate, UserInDB
+from .models import UserUpdate
 
 
 class UsersService:
-    def __init__(self, user_db: UsersDB):
+    def __init__(self, user_db: UsersDB, auth_http_client:AsyncClient):
         self.user_db = user_db
+        self.auth_client = auth_http_client
 
-    async def create_user(self, user_create: UserCreate) -> User:
+    async def create_user(self, user_create: UserCreate) -> UserInDB:
         """Create a new user"""
         # Check if username or email already exists
         try:

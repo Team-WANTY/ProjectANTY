@@ -1,18 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from service.dependencies import get_users_service
-from service.exceptions.token import JWTTokenError, JWTTokenExpiredError
-from service.exceptions.user import (
+from .main import get_users_service
+from .exceptions import (
     UserDeletionError,
     UserGeneralQueryError,
     UserNotFoundError,
     UserUpdateError,
     UserUpdateInvalidPasswordError,
 )
-from service.models.user import User, UserUpdate
-from service.security.token import decode_token
-from service.services.user import UsersService
+from .models import User, UserUpdate
+from .service import UsersService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -23,7 +21,7 @@ async def get_current_user(
 ) -> User:
     """Get current authenticated and active user from JWT token"""
     try:
-        decoded_token = decode_token(token)
+        decoded_token = await users_service.verify_token(token)
     except JWTTokenExpiredError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired token"
