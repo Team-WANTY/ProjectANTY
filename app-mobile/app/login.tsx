@@ -13,6 +13,10 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
+    // Message states for displaying error feedback
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(false);
+
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
 
@@ -33,7 +37,7 @@ export default function LoginScreen() {
 
             <View style={styles.card}>
                 <Image
-                    source={require("../assets/images/react-logo.png")}
+                    source={require("../assets/images/logo.png")}
                     style={styles.logo}
                     resizeMode="contain"
                 />
@@ -65,24 +69,38 @@ export default function LoginScreen() {
                     <Text style={styles.checkboxLabel}>Keep me logged in</Text>
                 </View>
 
+                {/* Message placeholder for errors */}
+                {message ? (
+                    <Text style={[styles.message, isError ? styles.errorText : styles.successText]}>
+                        {message}
+                    </Text>
+                ) : null}
+
                 <Pressable
                     style={styles.loginButton}
-                    onPress={() => router.replace("./(tabs)/home")}
+                    onPress={() => {
+                        if (!username || !password) {
+                            setIsError(true);
+                            setMessage("Please fill out all fields.");
+                        } else {
+                            setIsError(false);
+                            setMessage("");
+                            router.replace("./(tabs)/home");
+                        }
+                    }}
                 >
                     <Text style={styles.loginText}>Log In</Text>
                 </Pressable>
 
-                <Pressable
-                    onPress={() => router.push("./register")}>
+                <Pressable onPress={() => router.push("./register")}>
                     <Text style={styles.link}>Create an account!</Text>
                 </Pressable>
-                <Pressable
-                    onPress={() => router.push("./forgot-pass")}>
+                <Pressable onPress={() => router.push("./forgot-pass")}>
                     <Text style={styles.link}>Forgot Password?</Text>
                 </Pressable>
             </View>
         </View>
-    );
+    ); 
 }
 
 function getStyles(theme) {
@@ -131,6 +149,18 @@ function getStyles(theme) {
             color: theme.text,
             fontSize: 12,
             marginLeft: 8,
+        },
+        // Message styles
+        message: {
+            marginBottom: 8,
+            fontSize: 12,
+            textAlign: "center",
+        },
+        errorText: {
+            color: "red",
+        },
+        successText: {
+            color: "green",
         },
         loginButton: {
             backgroundColor: theme.border,
