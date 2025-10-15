@@ -8,7 +8,6 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-
 from service.dependencies import get_auth_service, get_users_service
 from service.main import app
 from service.models.user import User, UserCreate, UserInDB

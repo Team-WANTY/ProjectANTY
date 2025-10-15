@@ -1,19 +1,19 @@
 from datetime import UTC, datetime
-from pydantic import EmailStr
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
+from passlib.hash import argon2  # ty: ignore
+from pydantic import EmailStr
 
-from .exceptions import (
-    UserNotFoundError,
+from auth_service.exceptions import (
+    AuthDBError,
     AuthUpdateError,
     AuthUpdateInvalidPasswordError,
-    AuthDBError
+    UserNotFoundError,
 )
+from auth_service.models import UserAuthInfo, UserAuthUpdate
+from shared.models.users import UserInDB
 
-from .models import UserAuthUpdate, UserAuthInfo, UserInDB
-from ..shared.user_models import UserCreate
-from passlib.hash import argon2 #ty: ignore
 
 class AuthDB:
     def __init__(self, container: ContainerProxy):
@@ -40,7 +40,7 @@ class AuthDB:
             ):
                 return UserAuthInfo.model_validate(
                     item, strict=True, extra="ignore"
-                )# Return first match immediately
+                )  # Return first match immediately
             raise UserNotFoundError()
         except exceptions.CosmosResourceNotFoundError:
             raise UserNotFoundError()
@@ -66,7 +66,9 @@ class AuthDB:
         except Exception as e:
             raise AuthDBError(e)
 
-    async def update_auth(self, old_user_db_record: UserInDB, auth_update_info: UserAuthUpdate) -> UserAuthInfo:
+    async def update_auth(
+        self, old_user_db_record: UserInDB, auth_update_info: UserAuthUpdate
+    ) -> UserAuthInfo:
         try:
             patch_operations = []
 
@@ -80,24 +82,20 @@ class AuthDB:
 
                 # TODO validate password meets requirements
 
-                hashed_pw = argon2.hash(
-                    auth_update_info.plain_text_password
-                )
+                hashed_pw = argon2.hash(auth_update_info.plain_text_password)
                 patch_operations.append(
                     {"op": "replace", "path": "/hashed_password", "value": hashed_pw}
                 )
 
             if auth_update_info.is_active is not None:
-                pass #TODO check if updater_id is of a super user
+                pass  # TODO check if updater_id is of a super user
 
             if auth_update_info.is_superuser is not None:
-                pass #TODO check if updater_id is of a super user
+                pass  # TODO check if updater_id is of a super user
 
             if len(patch_operations) == 0:
                 return UserAuthInfo.from_in_db(old_user_db_record)
-
-            print("operations:", patch_operations)
-
+                
             # Always update updated_at timestamp
             patch_operations.append(
                 {
@@ -108,7 +106,7 @@ class AuthDB:
             )
 
             # Perform patch update
-            item:CosmosDict = await self.container.patch_item(
+            item: CosmosDict = await self.container.patch_item(
                 item=auth_update_info.id,
                 partition_key=auth_update_info.id,
                 patch_operations=patch_operations,

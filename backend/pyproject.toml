@@ -1,24 +1,35 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "auth_service"
+name = "backend"
 version = "0.1.0"
-description = "FastAPI microservice for authentication"
+description = "ProjectANTY backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "azure-cosmos>=4.9.0",
-    "dotenv>=0.9.9",
-    "fastapi",
-    "pydantic>=2.12.0",
-    "pydantic-settings>=2.11.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.14.0",
     "ty>=0.0.1a22",
+    "uvicorn>=0.37.0",
 ]
+
+[dependency-groups]
+auth_service = [
+    "aiohttp>=3.13.0",
+    "azure-cosmos>=4.14.0",
+    "email-validator>=2.3.0",
+    "fastapi>=0.119.0",
+    "httpx>=0.28.1",
+    "passlib>=1.7.4",
+    "pydantic-settings>=2.11.0",
+    "pyjwt>=2.10.1",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "python-multipart>=0.0.20",
+    "ruff>=0.14.0",
+    "ty>=0.0.1a21",
+]
+
+users_service = []
 
 [tool.ty.src]
 include = ["service", "tests"]
@@ -47,10 +58,11 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "W191",  # indentation contains tabs
     "B904",  # allow raising exceptions without 'from e' for HTTPException
+    "E402",
 ]
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
 
-[tool.hatch.build.targets.wheel]
-packages = ["auth_service"]
+[tool.to.environment]
+python = ".venv/bin/python"

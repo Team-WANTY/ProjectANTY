@@ -1,33 +1,38 @@
-from passlib.hash import argon2  # ty: ignore
-from pydantic import EmailStr
-from httpx import AsyncClient, HTTPError
-import jwt
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
-from .database import AuthDB
-from .exceptions import AuthIncorrectPasswordError, TokenExpiredError, AuthInterserviceError
-from .models import UserInDB, UserAuthInfo, UserAuthUpdate, Token
-from .main import settings
-from ..shared.user_models import UserCreate
+import jwt
+from httpx import AsyncClient, HTTPError
+from pydantic import EmailStr
+
+from auth_service.database import AuthDB
+from auth_service.exceptions import (
+    AuthIncorrectPasswordError,
+    AuthInterserviceError,
+    TokenExpiredError,
+)
+from auth_service.models import UserAuthInfo, UserAuthUpdate, UserInDB
+from auth_service.settings import settings
+from shared.models.token import Token
+from shared.models.users import UserCreate
+
 
 class AuthService:
     def __init__(self, auth_db: AuthDB, user_service_http_client: AsyncClient):
         self.db = auth_db
         self.user_client = user_service_http_client
 
-    async def register_user(
-        self, user_create:UserCreate
-    ) -> UserAuthInfo:
+    async def register_user(self, user_create: UserCreate) -> UserAuthInfo:
         try:
             response = await self.user_client.post(
-                "/interservice/create_user",
-                json=user_create.model_dump()
+                "/users/interservice/create_user", json=user_create.model_dump()
             )
-            response.raise_for_status() #TODO catch specific errors for existing, password failed requirements
+            response.raise_for_status()  # TODO catch specific errors for existing, password failed requirements
             json_data = response.json()
-        except HTTPError:
-            raise AuthInterserviceError()
-        user_auth_info = UserAuthInfo.model_validate(json_data, strict=True, extra="ignore")
+        except HTTPError as e:
+            raise AuthInterserviceError(e)
+        user_auth_info = UserAuthInfo.model_validate(
+            json_data, strict=True, extra="ignore"
+        )
         return user_auth_info
 
     async def authenticate_user_by_id(
@@ -42,7 +47,9 @@ class AuthService:
             json_data = response.json()
         except HTTPError:
             raise AuthInterserviceError()
-        user_auth_info = UserAuthInfo.model_validate(json_data, strict=True, extra="ignore")
+        user_auth_info = UserAuthInfo.model_validate(
+            json_data, strict=True, extra="ignore"
+        )
         if not self.verify_password(password, user_auth_info.hashed_password):
             raise AuthIncorrectPasswordError()
         return user_auth_info
@@ -59,7 +66,9 @@ class AuthService:
             json_data = response.json()
         except HTTPError:
             raise AuthInterserviceError()
-        user_auth_info = UserAuthInfo.model_validate(json_data, strict=True, extra="ignore")
+        user_auth_info = UserAuthInfo.model_validate(
+            json_data, strict=True, extra="ignore"
+        )
         if not self.verify_password(password, user_auth_info.hashed_password):
             raise AuthIncorrectPasswordError()
         return user_auth_info
@@ -76,7 +85,9 @@ class AuthService:
             json_data = response.json()
         except HTTPError:
             raise AuthInterserviceError()
-        user_auth_info = UserAuthInfo.model_validate(json_data, strict=True, extra="ignore")
+        user_auth_info = UserAuthInfo.model_validate(
+            json_data, strict=True, extra="ignore"
+        )
         if not self.verify_password(password, user_auth_info.hashed_password):
             raise AuthIncorrectPasswordError()
         return user_auth_info
@@ -91,10 +102,14 @@ class AuthService:
             json_data = response.json()
         except HTTPError:
             raise AuthInterserviceError()
-        user_auth_info = UserAuthInfo.model_validate(json_data, strict=True, extra="ignore")
+        user_auth_info = UserAuthInfo.model_validate(
+            json_data, strict=True, extra="ignore"
+        )
         return user_auth_info
 
-    async def update_user_auth_superuser(self, auth_update_info:UserAuthUpdate) -> UserAuthInfo:
+    async def update_user_auth_superuser(
+        self, auth_update_info: UserAuthUpdate
+    ) -> UserAuthInfo:
         try:
             response = await self.client.post(
                 "/interservice/resolve",
@@ -108,7 +123,9 @@ class AuthService:
         new_user_auth_info = await self.db.update_auth(user_in_db, auth_update_info)
         return new_user_auth_info
 
-    async def update_user_auth_owner(self, auth_update_info:UserAuthUpdate) -> UserAuthInfo:
+    async def update_user_auth_owner(
+        self, auth_update_info: UserAuthUpdate
+    ) -> UserAuthInfo:
         try:
             response = await self.client.post(
                 "/interservice/resolve",
@@ -143,7 +160,9 @@ class AuthService:
         expiration = datetime.now(UTC) + timedelta(
             days=settings.refresh_token_expiration_days
         )
-        token = Token(sub=user_id, exp=int(expiration.timestamp()), token_type="refresh")
+        token = Token(
+            sub=user_id, exp=int(expiration.timestamp()), token_type="refresh"
+        )
         payload = token.model_dump()
         return jwt.encode(
             payload=payload,

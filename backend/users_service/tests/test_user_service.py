@@ -1,5 +1,4 @@
 import pytest
-
 from service.exceptions.user import (
     UserCreationError,
     UserEmailExistsError,

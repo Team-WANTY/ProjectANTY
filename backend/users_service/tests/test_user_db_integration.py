@@ -1,6 +1,5 @@
 import pytest
 from azure.cosmos import exceptions
-
 from service.db.user import UsersDB
 from service.exceptions.user import (
     UserExistsError,

@@ -48,10 +48,6 @@ class UserUpdateError(UserError):
     pass
 
 
-class UserUpdateInvalidPasswordError(UserUpdateError):
-    pass
-
-
 class UserUpdateInvalidEmailError(UserUpdateError):
     pass
 
@@ -63,4 +59,12 @@ class UserUpdateInvalidUsernameError(UserUpdateError):
 class UserDeletionError(UserError):
     """General error while deleting user"""
 
+    pass
+
+
+class UserTokenError(UserError):
+    pass
+
+
+class UserInterserviceError(UserError):
     pass

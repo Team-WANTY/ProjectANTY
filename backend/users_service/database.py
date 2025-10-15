@@ -4,17 +4,17 @@ from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pydantic import EmailStr
 
-from service.exceptions.user import (
+from shared.models.users import UserCreate, UserInDB
+from users_service.models import UserUpdate
+
+from users_service.exceptions import (
     UserCreationError,
     UserDeletionError,
     UserExistsError,
     UserGeneralQueryError,
     UserNotFoundError,
     UserUpdateError,
-    UserUpdateInvalidPasswordError,
 )
-from service.models.user import UserCreate, UserInDB, UserUpdate
-from service.security.password import get_password_hash, verify_password
 
 
 class UsersDB:
@@ -57,8 +57,12 @@ class UsersDB:
                     item, strict=True, extra="ignore"
                 )  # Return first match immediately
             raise UserNotFoundError()
+        except UserNotFoundError as e:
+            raise e
         except exceptions.CosmosResourceNotFoundError:
             raise UserNotFoundError()
+        except Exception as e:
+            raise UserGeneralQueryError(e)
 
     async def get_user_by_email(self, email: EmailStr) -> UserInDB:
         """Get user by email"""
@@ -77,7 +81,6 @@ class UsersDB:
         except exceptions.CosmosResourceNotFoundError:
             raise UserNotFoundError()
         except Exception as e:
-            print(f"ERROR: {e}")
             raise UserGeneralQueryError(e)
 
     async def update_user(self, user_update: UserUpdate) -> UserInDB:
@@ -90,24 +93,6 @@ class UsersDB:
                 )
 
             patch_operations = []
-
-            if user_update.is_active is not None:
-                patch_operations.append(
-                    {
-                        "op": "replace",
-                        "path": "/is_active",
-                        "value": user_update.is_active,
-                    }
-                )
-
-            if user_update.is_superuser is not None:
-                patch_operations.append(
-                    {
-                        "op": "replace",
-                        "path": "/is_superuser",
-                        "value": user_update.is_superuser,
-                    }
-                )
 
             if user_update.email is not None:
                 # TODO: validate email if needed
@@ -125,25 +110,8 @@ class UsersDB:
                     }
                 )
 
-            if user_update.plain_text_password is not None:
-                # Check if new password matches old password
-                if verify_password(
-                    user_update.plain_text_password,
-                    user_in_db.hashed_password,
-                ):
-                    raise UserUpdateInvalidPasswordError()
-
-                # TODO validate password meets requirements
-
-                hashed_pw = get_password_hash(user_update.plain_text_password)
-                patch_operations.append(
-                    {"op": "replace", "path": "/hashed_password", "value": hashed_pw}
-                )
-
             if len(patch_operations) == 0:
                 return user_in_db
-
-            print("operations:", patch_operations)
 
             # Always update updated_at timestamp
             patch_operations.append(
@@ -165,10 +133,7 @@ class UsersDB:
 
         except exceptions.CosmosResourceNotFoundError:
             raise UserNotFoundError()
-        except UserUpdateInvalidPasswordError:
-            raise UserUpdateInvalidPasswordError()
         except Exception as e:
-            print(e)
             raise UserUpdateError(e)
 
     async def delete_user(self, user_id: str) -> None:
