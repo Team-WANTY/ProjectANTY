@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from .models import Message
 from .service import say_hello, set_new_msg
 
-app = FastAPI()
+app = FastAPI(root_path="/hello")
 
 @app.post("/set_msg")
 async def change_message(

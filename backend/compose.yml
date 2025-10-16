@@ -18,7 +18,7 @@ services:
       - "8000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.hello.rule=Host(`hello.localhost`)"
+      - "traefik.http.routers.hello.rule=PathPrefix(`/hello`)"
       - "traefik.http.services.hello.loadbalancer.server.port=8000"
     depends_on:
       - traefik
@@ -33,12 +33,11 @@ services:
       - "8000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
       - "traefik.http.services.auth.loadbalancer.server.port=8000"
     depends_on:
       - traefik
     restart: unless-stopped
-
 
 networks:
   default:
