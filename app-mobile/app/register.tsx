@@ -139,7 +139,23 @@ export default function Register() {
             
             <Pressable
                 style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
-                onPress={handleRegister} disabled={loading} >
+                disabled={loading}
+                onPress={() => {
+                    // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
+                    if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
+                        setErrorMsg("Please enter in all fields");
+                        return;
+                    }
+                    if (password !== passwordConfirm) {
+                        setErrorMsg("Passwords do not match");
+                        return;
+                    }
+
+                    // Clear client-side error and proceed
+                    setErrorMsg(null);
+                    handleRegister();
+                }}
+            >
                 {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme.text }]}>Register</Text>}
             </Pressable>
         </View>
