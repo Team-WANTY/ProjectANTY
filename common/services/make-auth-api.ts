@@ -6,14 +6,12 @@ import type { TokenStore } from "../auth/token-store";
 // Endpoints for authentication
 export type AuthPaths = {
     login: string;        // POST
-    logout?: string;      // POST
     register: string;     // POST
     // refresh?: string;     // POST 
 };
 
 const defaultPaths: AuthPaths = {
     login: "/auth/login",
-    logout: "/auth/logout",
     // refresh: "/auth/refresh",
     register: "/auth/register"
 };  
@@ -52,17 +50,10 @@ export function makeAuthApi(http: HttpClient, tokens: TokenStore, paths: AuthPat
         }
         },
         
-        // POST /auth/logout
+        // log out
         async logout(): Promise<ApiResult<void>> {
-        await tokens.clear();
-        if (paths.logout) {
-            try {
-                await http.post(paths.logout, {});
-            } catch {
-            // ignore server failure; local logout already happened
-            }
-        }
-        return { ok: true, status: 200, data: undefined };
+            await tokens.clear();
+            return { ok: true, status: 200, data: undefined };
         },
 
         //POST /auth/register
