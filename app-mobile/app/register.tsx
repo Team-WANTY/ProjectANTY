@@ -30,16 +30,6 @@ export default function Register() {
 
     const handleRegister = async () => { 
         setMessage("");
-        
-
-        if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
-            setMessage("Please enter in all fields");
-            return;
-        }
-        if (password !== passwordConfirm) {
-            setMessage("Passwords do not match");
-            return;
-        }
         setLoading(true);
         try {    
             const result = await authApi.register(
@@ -149,7 +139,12 @@ export default function Register() {
                 onPress={() => {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
                     if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
-                        setErrorMsg("Please enter in all fields");
+                        setMessage("Please enter in all fields");
+                        return;
+                    }
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(email)) {
+                        setMessage("Please enter a valid email address");
                         return;
                     }
                     const emailTrimmed = email.trim();
@@ -159,12 +154,10 @@ export default function Register() {
                         return;
                     }
                     if (password !== passwordConfirm) {
-                        setErrorMsg("Passwords do not match");
+                        setMessage("Passwords do not match");
                         return;
                     }
-
                     // Clear client-side error and proceed
-                    setErrorMsg(null);
                     handleRegister();
                 }}
             >
