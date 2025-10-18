@@ -30,7 +30,7 @@ export default function Register() {
 
     const handleRegister = async () => { 
         setMessage("");
-        setLoading(true);
+        
 
         if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
             setMessage("Please enter in all fields");
@@ -40,7 +40,7 @@ export default function Register() {
             setMessage("Passwords do not match");
             return;
         }
-
+        setLoading(true);
         try {    
             const result = await authApi.register(
                 email.trim().toLowerCase(),

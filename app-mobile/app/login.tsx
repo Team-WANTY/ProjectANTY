@@ -15,7 +15,7 @@ export default function LoginScreen() {
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState("");
-    const [isError, setIsError] = useState(false);
+    const [isError, setIsError] = useState(true);
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
     
@@ -178,12 +178,16 @@ function getStyles(theme) {
         // Message styles (centered and consistent)
         message: {
 <<<<<<< HEAD
+<<<<<<< HEAD
             width: "100%",
             marginTop: 0,
             marginBottom: 0,
             fontSize: 12,
 =======
             marginTop: 10,
+=======
+            marginBottom: 20,
+>>>>>>> f40503e (fixed error message spacing)
             fontSize: 14,
 >>>>>>> 7b9d460 (restructure & decoupled auth & user API)
             textAlign: "center",
