@@ -9,6 +9,7 @@ from service.exceptions.user import (
     UserEmailExistsError,
     UserInvalidCreationInputError,
     UserUsernameExistsError,
+    UserNotFoundError
 )
 from service.models.user import User, UserCreate
 from service.security.token import (
@@ -65,7 +66,7 @@ async def login(
         user = await auth_service.authenticate_user_by_username(
             form_data.username, form_data.password
         )
-    except AuthIncorrectPasswordError:
+    except (UserNotFoundError,AuthIncorrectPasswordError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials"
         )
