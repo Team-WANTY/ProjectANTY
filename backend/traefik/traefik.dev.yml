@@ -1,8 +1,19 @@
-entryPoints:
-  web:
-    address: ":80"
+tls:
+  certificates:
+    - certFile: /certs/cert.pem
+      keyFile: /certs/key.pem
 
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
+http:
+  routers:
+    dev-router:
+      rule: "Host(`localhost`)"
+      service: dev-service
+      tls: true
+      entrypoints:
+        - websecure
+  
+  services:
+    dev-service:
+      loadBalancer:
+        servers:
+          - url: http://localhost:80 

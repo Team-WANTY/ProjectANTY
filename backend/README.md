@@ -11,7 +11,7 @@ Installing mkcert:
 
 `mkcert -install` 
 
-`mkcert localhost 127.0.0.1 ::1 "*.localhost"` 
+`mkcert localhost 127.0.0.1 localhost` 
 
 `mkdir -p certs` 
 `mv localhost+x-key.pem certs/key.pem` 
