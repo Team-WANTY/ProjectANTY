@@ -197,18 +197,23 @@ function getStyles(theme) {
         checkboxRow: {
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 16,
+            marginBottom: 12,
         },
         checkboxLabel: {
             color: theme.text,
             fontSize: 12,
             marginLeft: 8,
         },
-        // Message styles
+        // Message styles (centered and consistent)
         message: {
-            marginBottom: 8,
+            width: "100%",
+            marginTop: 0,
+            marginBottom: 0,
             fontSize: 12,
             textAlign: "center",
+            paddingHorizontal: 4,
+            alignSelf: 'center',
+            minHeight: 20,
         },
         errorText: {
             color: "red",
@@ -219,6 +224,7 @@ function getStyles(theme) {
         loginButton: {
             backgroundColor: theme.border,
             borderRadius: 5,
+            marginTop: 12,
             paddingVertical: 8,
             paddingHorizontal: 24,
             marginBottom: 12,

@@ -120,9 +120,19 @@ export default function ForgotPassword() {
                         if (!email) {
                             setIsError(true);
                             setMessage("Please fill out the email field.");
-                        } else {
-                            handleRecover();
+                            return;
                         }
+                        const emailTrimmed = email.trim();
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(emailTrimmed)) {
+                            setIsError(true);
+                            setMessage("Please enter a valid email address.");
+                            return;
+                        }
+                        // valid
+                        setIsError(false);
+                        setMessage("");
+                        handleRecover();
                     }}
                 >
                     {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme.text }]}>Send Link</Text>}
@@ -180,9 +190,9 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     errorText: {
-        color: "#ff6b6b",
+        color: "red",
     },
     successText: {
-        color: "#22c55e",
+        color: "green",
     },
 });

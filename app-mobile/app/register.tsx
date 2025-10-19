@@ -134,8 +134,8 @@ export default function Register() {
                 onChangeText={setPasswordConfirm}
             />
 
-            {errorMsg   ? (<Text style={{color: "#ff6b6b", fontSize: 12, textAlign: "center" }}> {errorMsg} </Text>) : null}
-            {successMsg ? (<Text style={{color: "#22c55e", fontSize: 12, textAlign: "center" }}> {successMsg} </Text>) : null}
+            {errorMsg   ? (<Text style={[styles.message, styles.errorText]}> {errorMsg} </Text>) : null}
+            {successMsg ? (<Text style={[styles.message, styles.successText]}> {successMsg} </Text>) : null}
             
             <Pressable
                 style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
@@ -144,6 +144,12 @@ export default function Register() {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
                     if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
                         setErrorMsg("Please enter in all fields");
+                        return;
+                    }
+                    const emailTrimmed = email.trim();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(emailTrimmed)) {
+                        setErrorMsg("Please enter a valid email address");
                         return;
                     }
                     if (password !== passwordConfirm) {
@@ -196,5 +202,21 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 14,
         fontWeight: "500",
+    },
+    message: {
+        width: "100%",
+        marginTop: 0,
+        marginBottom: 0,
+        fontSize: 12,
+        textAlign: "center",
+        paddingHorizontal: 4,
+        alignSelf: 'center',
+        minHeight: 20,
+    },
+    errorText: {
+        color: "red",
+    },
+    successText: {
+        color: "green",
     },
 });
