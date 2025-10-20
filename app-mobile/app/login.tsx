@@ -177,19 +177,10 @@ function getStyles(theme) {
         },
         // Message styles (centered and consistent)
         message: {
-<<<<<<< HEAD
-<<<<<<< HEAD
             width: "100%",
             marginTop: 0,
             marginBottom: 0,
             fontSize: 12,
-=======
-            marginTop: 10,
-=======
-            marginBottom: 20,
->>>>>>> f40503e (fixed error message spacing)
-            fontSize: 14,
->>>>>>> 7b9d460 (restructure & decoupled auth & user API)
             textAlign: "center",
             paddingHorizontal: 4,
             alignSelf: 'center',

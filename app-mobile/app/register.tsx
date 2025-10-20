@@ -126,12 +126,7 @@ export default function Register() {
                 onChangeText={setPasswordConfirm}
             />
 
-<<<<<<< HEAD
-            {errorMsg   ? (<Text style={[styles.message, styles.errorText]}> {errorMsg} </Text>) : null}
-            {successMsg ? (<Text style={[styles.message, styles.successText]}> {successMsg} </Text>) : null}
-=======
             {message ? (<Text style={[styles.message, isError ? styles.errorText : styles.successText]}>{message}</Text>) : null}
->>>>>>> 7b9d460 (restructure & decoupled auth & user API)
             
             <Pressable
                 style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
@@ -142,21 +137,17 @@ export default function Register() {
                         setMessage("Please enter in all fields");
                         return;
                     }
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(email)) {
-                        setMessage("Please enter a valid email address");
-                        return;
-                    }
                     const emailTrimmed = email.trim();
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(emailTrimmed)) {
-                        setErrorMsg("Please enter a valid email address");
+                        setMessage("Please enter a valid email address");
                         return;
                     }
                     if (password !== passwordConfirm) {
                         setMessage("Passwords do not match");
                         return;
                     }
+
                     // Clear client-side error and proceed
                     handleRegister();
                 }}
@@ -203,7 +194,6 @@ const styles = StyleSheet.create({
         fontWeight: "500",
     },
     message: {
-<<<<<<< HEAD
         width: "100%",
         marginTop: 0,
         marginBottom: 0,
@@ -212,11 +202,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
         alignSelf: 'center',
         minHeight: 20,
-=======
-        marginTop: 10,
-        fontSize: 14,
-        textAlign: "center",
->>>>>>> 7b9d460 (restructure & decoupled auth & user API)
     },
     errorText: {
         color: "red",
