@@ -1,17 +1,6 @@
 import os
 
 
-def find_key(key_name: str):
-    key = None
-    with open(key_name + ".pem", "rb") as pemf:
-        key = pemf.read().decode(encoding="utf-8")
-    if not key:
-        raise FileNotFoundError(
-            f"ERROR: {key_name}.pem does not exist or could not be read"
-        )
-    return key
-
-
 def set_key_to_environment(key_name: str, key: str):
     # write to environment labels
     os.environ[key_name.upper()] = key

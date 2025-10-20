@@ -1,87 +1,71 @@
-from azure.cosmos.exceptions import ResourceExistsError
-from httpx import AsyncClient, HTTPStatusError
-from httpx import codes as httpcodes
-from pydantic import EmailStr
+import logging
 
-from shared.models.token import Token
-from shared.models.users import UserCreate, UserInDB
-from users_service.database import UsersDB
-from users_service.exceptions import (
-    UserCreationError,
-    UserEmailExistsError,
-    UserInterserviceError,
-    UserNotFoundError,
-    UserTokenError,
-    UserUsernameExistsError,
-)
-from users_service.models import UserUpdate
+from httpx import AsyncClient, HTTPStatusError, codes
+from pydantic import EmailStr, ValidationError
 
+from backend.shared.exceptions.interservice import InterserviceError
+from backend.shared.exceptions.token import TokenError, TokenExpiredError
+from backend.shared.models.token import Token
+from backend.shared.models.users import UserInDB
+
+from .database import UsersDB
+from .models import UserUpdate
+from .settings import settings
+
+logger = logging.getLogger("users_service")
 
 class UsersService:
     def __init__(self, user_db: UsersDB, auth_http_client: AsyncClient):
         self.user_db = user_db
         self.auth_client = auth_http_client
-
-    async def create_user(self, user_create: UserCreate) -> UserInDB:
-        """Create a new user"""
-        # Check if username or email already exists
-        try:
-            user = await self.user_db.get_user_by_username(user_create.username)
-            if user:
-                raise UserUsernameExistsError()
-        except UserNotFoundError:
-            pass
-        try:
-            user = await self.user_db.get_user_by_email(user_create.email)
-            if user:
-                raise UserEmailExistsError()
-        except UserNotFoundError:
-            pass
-        try:
-            created_user_in_db = await self.user_db.create_user(user_create)
-            return created_user_in_db
-        except ResourceExistsError:
-            raise UserCreationError()
+        logger.debug("Made new UserService")
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
         """Get user by ID"""
+        logger.debug(f"Getting user with ID '{user_id}'")
         user_in_db = await self.user_db.get_user_by_id(user_id)
+        logger.debug(f"Successfully got user with ID '{user_id}'")
         return user_in_db
 
     async def get_user_by_username(self, username: str) -> UserInDB:
         """Get user by username"""
+        logger.debug(f"Getting user with username '{username}'")
         user_in_db = await self.user_db.get_user_by_username(username)
+        logger.debug(f"Successfully got user with username '{username}'")
         return user_in_db
 
     async def get_user_by_email(self, email: EmailStr) -> UserInDB:
-        """Get user by username"""
+        """Get user by email"""
+        logger.debug(f"Getting user with email '{email}'")
         user_in_db = await self.user_db.get_user_by_email(email)
+        logger.debug(f"Successfully got user with email '{email}'")
         return user_in_db
 
-    async def update_user(self, user_update: UserUpdate) -> UserInDB:
+    async def update_user(self, user_update: UserUpdate, updater_is_super:bool) -> UserInDB:
         """Update user"""
-        updated_user_in_db = await self.user_db.update_user(user_update)
-        return updated_user_in_db.to_user()
+        logger.debug(f"Updating user with ID '{user_update.id}'")
+        old_user_in_db = await self.get_user_by_id(user_update.id)
+        updated_user_in_db = await self.user_db.update_user(old_user_in_db, user_update, updater_is_super)
+        logger.debug(f"Successfully updated user with ID '{user_update.id}'")
+        return updated_user_in_db
 
     async def delete_user(self, user_id: str) -> None:
         """Delete user"""
+        logger.debug(f"Deleting user with ID '{user_id}'")
         await self.user_db.delete_user(user_id)
+        logger.debug(f"Successfully deleted user with ID '{user_id}'")
 
-    async def verify_token(self, token: str) -> str:
+    async def verify_token(self, token:str) -> Token:
         try:
-            response = await self.auth_client.post("/auth/verify")
-            response.raise_for_status()
-            json_data = response.json()
+            logger.debug(f"Verifying token: {token}")
+            response = await self.auth_client.get(f"{settings.auth_service_endpoint}/verify?token={token}")
+            token = Token.model_validate(response.json(), extra="ignore")
+            logger.debug(f"Verified token: {token}, {token.model_dump()}")
+            return token
         except HTTPStatusError as e:
-            if e.response.status_code == httpcodes.UNAUTHORIZED:
-                raise UserTokenError()
+            if e.response.status_code == codes.UNAUTHORIZED:
+                raise TokenExpiredError()
             else:
-                raise UserInterserviceError()
-        token = Token.model_validate(json_data, strict=True, extra="ignore`")
-        return token.sub
-
-    # @staticmethod
-    # def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
-    #     """List all users"""
-    #     users_in_db = list_users(skip, limit)
-    #     return [user_in_db.to_user() for user_in_db in users_in_db]
+                raise InterserviceError()
+        except ValidationError:
+            raise TokenError()

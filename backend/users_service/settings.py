@@ -1,11 +1,13 @@
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
+load_dotenv()
 
 class Settings(BaseSettings):
     cosmosdb_endpoint: str
     cosmosdb_key: str
     cosmosdb_database_name: str
-    cosmosdb_user_container_name: str
+    cosmosdb_users_container_name: str
 
     auth_service_endpoint: str
 

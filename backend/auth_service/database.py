@@ -3,17 +3,18 @@ from datetime import UTC, datetime
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
-from backend.shared.models.users import UserCreate, UserInDB
 from pwdlib import PasswordHash
 from pydantic import EmailStr
 
-from .exceptions import (
-    AuthDBError,
-    AuthUpdateError,
-    AuthUpdateInvalidPasswordError,
-    UserExistsError,
-    UserNotFoundError,
+from backend.shared.exceptions.db import (
+    GeneralQueryError,
+    RecordAlreadyExistsError,
+    RecordCreationError,
+    RecordNotFoundError,
+    RecordUpdateError,
 )
+from backend.shared.models.users import UserCreate, UserInDB
+
 from .models import UserAuthInfo, UserAuthUpdate
 
 logger = logging.getLogger("auth_service")
@@ -37,10 +38,10 @@ class AuthDB:
             return user_auth_info
         except exceptions.CosmosHttpResponseError:
             logger.warning(f"Error while creating user: {user_create.model_dump()}, already exists")
-            raise UserExistsError()
+            raise RecordAlreadyExistsError()
         except Exception as e:
             logger.error(f"Error while creating user: {user_create.model_dump()}, unexpected: {e}")
-            raise AuthDBError(e)
+            raise RecordCreationError()
 
     async def get_user_auth_by_id(self, user_id: str) -> UserAuthInfo:
         try:
@@ -53,10 +54,10 @@ class AuthDB:
             return user_auth_info
         except exceptions.CosmosResourceNotFoundError:
             logger.debug(f"User with id '{user_id}' not found")
-            raise UserNotFoundError()
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise AuthDBError()
+            raise GeneralQueryError()
 
     async def get_user_auth_by_username(self, username: str) -> UserInDB:
         """Get user by username"""
@@ -70,16 +71,16 @@ class AuthDB:
                 user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")  # Return first match immediately
                 logger.debug(f"Got from username '{username}: {user_auth_info.model_dump()}'")
                 return user_auth_info
-            raise UserNotFoundError()
-        except UserNotFoundError as e:
+            raise RecordNotFoundError()
+        except RecordNotFoundError as e:
             logger.debug(f"User with username '{username}' not found")
             raise e
         except exceptions.CosmosResourceNotFoundError:
             logger.debug(f"User with username '{username}' not found")
-            raise UserNotFoundError()
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise AuthDBError()
+            raise GeneralQueryError()
 
     async def get_user_auth_by_email(self, email: EmailStr) -> UserInDB:
         """Get user by email"""
@@ -92,33 +93,33 @@ class AuthDB:
             ):
                 user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")  # Return first match immediately
                 logger.debug(f"Got from email {email}: {user_auth_info.model_dump()}")
-            raise UserNotFoundError()
-        except UserNotFoundError as e:
+            raise RecordNotFoundError()
+        except RecordNotFoundError as e:
             logger.debug(f"User with email '{email}' not found")
             raise e
         except exceptions.CosmosResourceNotFoundError:
             logger.debug(f"User with email '{email}' not found")
-            raise UserNotFoundError()
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise AuthDBError()
+            raise GeneralQueryError()
 
     async def update_auth(
-        self, old_user_db_record: UserInDB, auth_update_info: UserAuthUpdate, updater_is_super:bool
+        self, old_user_auth_info: UserAuthInfo, auth_update_info: UserAuthUpdate, updater_is_super:bool
     ) -> UserAuthInfo:
         try:
             patch_operations = []
 
-            logger.debug(f"Trying to update user with id '{auth_update_info.id}' as {"superuser" if updater_is_super else "owner"}, old record:{old_user_db_record.model_dump()} | update information: {auth_update_info.model_dump()}")
+            logger.debug(f"Trying to update user with id '{auth_update_info.id}' as {"superuser" if updater_is_super else "owner"}, old record:{old_user_auth_info.model_dump()} | update information: {auth_update_info.model_dump()}")
             if auth_update_info.plain_text_password is not None:
                 logger.debug(f"Trying to update password for user '{auth_update_info.id}'")
                 # Check if new password matches old password
                 if pwdhasher.verify(
                     auth_update_info.plain_text_password,
-                    old_user_db_record.hashed_password,
+                    old_user_auth_info.hashed_password,
                 ):
                     logger.warning(f"Failed to update password for user '{auth_update_info.id}' but old password matches new password, must be different")
-                    raise AuthUpdateInvalidPasswordError()
+                    raise RecordUpdateError()
 
                 # TODO validate password meets requirements
                 # logger.warning(f"Failed to update password for user '{auth_update_info.id}' but new password did not meet requirements")
@@ -133,7 +134,7 @@ class AuthDB:
                     patch_operations.append({"op": "replace", "path":"/is_active", "value":auth_update_info.is_active})
                     logger.debug(f"Successfully added active status update operation for user '{auth_update_info.id}'")
                 else:
-                    logger.debug(f"Failed to update active status for user '{old_user_db_record}' but updater is not superuser")
+                    logger.debug(f"Failed to update active status for user '{auth_update_info.id}' but updater is not superuser")
 
             if auth_update_info.is_superuser is not None:
                 logger.debug(f"Trying to update user '{auth_update_info.id}' superuser status")
@@ -141,11 +142,11 @@ class AuthDB:
                     patch_operations.append({"op": "replace", "path":"/is_superuser", "value":auth_update_info.is_superuser})
                     logger.debug(f"Successfully added superuser status update operation for user '{auth_update_info.id}'")
                 else:
-                    logger.debug(f"Failed to update superuser status for user '{old_user_db_record}' but updater is not superuser")
+                    logger.debug(f"Failed to update superuser status for user '{auth_update_info.id}' but updater is not superuser")
 
             if len(patch_operations) == 0:
                 logger.debug(f"No update operations pending for user '{auth_update_info.id}'")
-                return UserAuthInfo.from_in_db(old_user_db_record)
+                return old_user_auth_info
 
             # Always update updated_at timestamp
             patch_operations.append(
@@ -170,10 +171,10 @@ class AuthDB:
 
         except exceptions.CosmosResourceNotFoundError:
             logger.debug(f"User with id {auth_update_info.id} not found")
-            raise UserNotFoundError()
-        except AuthUpdateInvalidPasswordError as e:
+            raise RecordNotFoundError()
+        except RecordUpdateError as e:
             #no logging needed, already covered above
             raise e
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            raise AuthUpdateError()
+            raise RecordUpdateError()

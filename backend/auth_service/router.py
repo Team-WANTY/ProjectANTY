@@ -1,14 +1,15 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Header
+from email_validator import EmailNotValidError
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
+
+from backend.shared.exceptions.token import TokenExpiredError
 from backend.shared.models.users import UserCreate
 
 from .exceptions import (
     AuthIncorrectPasswordError,
-    TokenExpiredError,
 )
-from email_validator import EmailNotValidError
 from .main import get_auth_service
 from .models import UserBase
 from .service import AuthService
@@ -56,14 +57,13 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     #TRY USERNAME
     if email_failed:
         try:
-            logger.debug("Trying username")
             user_auth_info = await auth_service.authenticate_user_by_username(
                 form_data.username, form_data.password
             )
@@ -72,7 +72,7 @@ async def login(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        except Exception as e:
+        except Exception:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -105,6 +105,7 @@ async def verify_token(
 ):
     try:
         if x_interservice_key != settings.interservice_key:
+            logger.error(f"Invalid interservice key: {x_interservice_key}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid key")
         decoded_token = await auth_service.decode_token(token)
         if decoded_token.token_type != "access":
