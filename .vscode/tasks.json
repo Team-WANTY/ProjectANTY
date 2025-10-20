@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+	{
+		"label": "Run Authentication Service",
+		"type": "shell",
+		"command": "cd backend/auth_service && uv run --extra auth_service fastapi dev main.py --port 8000",
+		"problemMatcher": []
+	},
+	{
+		"label": "Run Users Service",
+		"type": "shell",
+		"command": "cd backend/users_service && uv run --extra users_service fastapi dev main.py --port 8001",
+		"problemMatcher": []
+	},
+	{
+		"label": "Run All Services",
+		"dependsOn": [
+			"Run Authentication Service",
+			"Run Users Service"
+		],
+		"dependsOrder": "parallel",
+		"problemMatcher": [
+			"$python"
+		]
+	}
+]
+}

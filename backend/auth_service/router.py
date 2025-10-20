@@ -2,19 +2,64 @@ import logging
 
 from email_validator import EmailNotValidError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 
-from backend.shared.exceptions.token import TokenExpiredError
+from backend.shared.exceptions.token import TokenExpiredError, TokenError
+from backend.shared.exceptions.db import RecordUpdateError, RecordNotFoundError, GeneralQueryError
 
 from .exceptions import (
     AuthIncorrectPasswordError,
 )
 from .main import get_auth_service
-from .models import UserBase, UserCreate
+from .models import UserBase, UserCreate, UserAuthUpdate, UserAuthInfo
 from .service import AuthService
 from .settings import settings
 
 logger = logging.getLogger("auth_service")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+async def get_current_user_auth(
+    token: str = Depends(oauth2_scheme),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> UserBase:
+    """Get current authenticated and active user from JWT token"""
+    try:
+        decoded_token = await auth_service.decode_token(token)
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Token error",
+        )
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Expired token"
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error",
+        )
+    try:
+        user_auth_info = await auth_service.get_user_auth_by_id(str(decoded_token.sub))
+    except RecordNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Current user not found"
+        )
+    except GeneralQueryError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal query error",
+        )
+
+    # Check if user is active
+    if not user_auth_info.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not active"
+        )
+
+    return user_auth_info
 
 auth_router = APIRouter()
 
@@ -148,15 +193,15 @@ async def refresh_token(
     except HTTPException as e:
         raise e
 
-    user = await auth_service.get_user_by_id(decoded_token.sub)
+    user_auth_info = await auth_service.get_user_auth_by_id(decoded_token.sub)
 
-    if not user.is_active:
+    if not user_auth_info.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User is set to inactive"
         )
 
     return {
-        "access_token": await auth_service.create_access_token(user.id),
+        "access_token": await auth_service.create_access_token(user_auth_info.id),
         "token_type": "bearer",
     }
 
@@ -167,3 +212,16 @@ async def logout(response: Response):
     response.delete_cookie(
         key="refresh_token", httponly=True, secure=True, samesite="lax"
     )
+
+@auth_router.patch("/", response_model=UserBase, tags=["authentication"])
+async def update_auth(
+    auth_update: UserAuthUpdate,
+    auth_service: AuthService = Depends(get_auth_service),
+    current_user_auth: UserAuthInfo = Depends(get_current_user_auth)
+):
+    if current_user_auth.id != auth_update.id and not current_user_auth.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
+    new_auth_info = await auth_service.update_user_auth(auth_update, current_user_auth.is_superuser)
+    return new_auth_info.to_base()

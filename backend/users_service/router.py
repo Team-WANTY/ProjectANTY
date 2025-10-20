@@ -1,3 +1,6 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
 from backend.shared.exceptions.db import (
     GeneralQueryError,
     RecordDeletionError,
@@ -7,8 +10,6 @@ from backend.shared.exceptions.db import (
 from backend.shared.exceptions.interservice import InterserviceError
 from backend.shared.exceptions.token import TokenError, TokenExpiredError
 from backend.shared.models.users import UserBase, UserInDB
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 
 from .main import get_users_service, settings
 from .models import UserUpdate

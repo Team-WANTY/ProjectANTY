@@ -7,13 +7,12 @@ from pwdlib import PasswordHash
 
 from backend.shared.exceptions.token import TokenError, TokenExpiredError
 from backend.shared.models.token import Token
-from backend.shared.models.users import UserCreate
 
 from .database import AuthDB
 from .exceptions import (
     AuthIncorrectPasswordError,
 )
-from .models import UserAuthInfo, UserAuthUpdate
+from .models import UserAuthInfo, UserAuthUpdate, UserCreate
 from .settings import settings
 
 logger = logging.getLogger("auth_service")
@@ -66,18 +65,18 @@ class AuthService:
         logger.debug(f"Successfully authenticated user with email '{email}': {user_auth_info.model_dump()}")
         return user_auth_info
 
-    async def get_user_by_id(self, user_id:str) -> UserAuthInfo:
+    async def get_user_auth_by_id(self, user_id:str) -> UserAuthInfo:
         logger.debug(f"Trying to resolve and get user record with ID '{user_id}'")
-        user_auth_info = self.get_user_auth_by_id(user_id)
+        user_auth_info = await self.db.get_user_auth_by_id(user_id)
         logger.debug(f"Successfully got user with ID '{user_id}': {user_auth_info.model_dump()}")
         return user_auth_info
 
     async def update_user_auth(
-        self, auth_update_info: UserAuthUpdate, updater_is_superuser:bool=False
+        self, auth_update_info: UserAuthUpdate, updater_is_superuser:bool
     ) -> UserAuthInfo:
         logger.debug(f"Trying to resolve and get user record with ID '{auth_update_info.id}'")
-        old_user_auth_info = self.get_user_auth_by_id(auth_update_info.id)
-        logger.debug(f"Trying to update user with ID '{auth_update_info.id}' (updated {"is" if updater_is_superuser else "is not"} a superuser)")#TODO for logging, get updater info
+        old_user_auth_info = await self.get_user_auth_by_id(auth_update_info.id)
+        logger.debug(f"Trying to update user with ID '{auth_update_info.id}'")#TODO for logging, get updater info
         new_user_auth_info = await self.db.update_auth(old_user_auth_info, auth_update_info, updater_is_superuser)
         return new_user_auth_info
 
