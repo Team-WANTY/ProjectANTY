@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import {authApi} from '@/services/auth-api'
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 
@@ -258,12 +258,14 @@ export default function SettingsScreen() {
                 {/* 6. Log Out Button */}
                 <TouchableOpacity
                     style={styles.logoutButton}
-                    onPress={() => router.replace("./login")}>
+                    onPress={async () => {
+                        await authApi.logout();        
+                        router.replace("/login");      
+                    }}
+                >
                     <Text style={[styles.logoutText, { color: theme.text }]}>Log Out</Text>
                 </TouchableOpacity>
-
             </ScrollView>
-
         </View>
     );
 }

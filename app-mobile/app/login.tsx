@@ -3,7 +3,8 @@ import { Checkbox } from "react-native-paper";
 import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-import { loginUser, getCurrentUser } from "../services/auth";
+import { authApi } from "@/services/auth-api";
+import { usersApi } from "@/services/users-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function LoginScreen() {
@@ -13,61 +14,31 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
     const [loading, setLoading] = useState(false)
-    // Message states for displaying error feedback
     const [message, setMessage] = useState("");
-    const [isError, setIsError] = useState(false);
-
+    const [isError, setIsError] = useState(true);
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const handleLogin = async () => {
-        /*
-        if (!username.trim() && !password) {
-            setErrorMsg("Please enter your username and password");
-            return;
-        }
-        if (!username.trim()) {
-            setErrorMsg("Please enter your username");
-            return;
-        }
-        if(!password) {
-            setErrorMsg("Please enter your password");
-            return;
-        }
-        */
-        // clear previous errors
-        setErrorMsg(null);
+        setMessage("");
         setLoading(true);
 
         try {
-            const result = await loginUser(username.trim(), password);
-            
-            if (!result.ok) {
-                const friendlymsg =
-                    result.status === 401 ? "Incorrect username or password" :
-                    result.error || "Login failed";
-                setErrorMsg(friendlymsg);
+            const res = await authApi.login(username.trim(), password);
+            if (!res.ok) {
+                setMessage(res.message);
                 return;
             }
 
-            // Validate log in
-            try {
-                await getCurrentUser();
-                router.replace("/home");
-            } 
-            catch (error: any) {
-                const status = error?.response?.status;
-                setErrorMsg(
-                    status === 401
-                    ? "Login succeeded but token is invalid/expired."
-                    : "Could not validate session."
-                );
-                return;
+            const me = await usersApi.me();
+                if (!me.ok) {
+                setMessage(me.message);
+            return;
             }
+            router.replace("/home");
         } 
         catch (error: any) {
-            setErrorMsg(error?.message || "Network error. Please try again.");
+            setMessage(error?.message || "Network error. Please try again.");
             console.error("Login error:", error?.response?.data || error);
         } 
         finally {

@@ -5,9 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {registerUser} from "../services/auth";
+import { authApi } from "@/services/auth-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
-
 
 export default function Register() {
     const [username, setUsername] = useState("");
@@ -19,8 +18,8 @@ export default function Register() {
     const fontSize = 20; // Base font size for the back arrow
     const { width: screenWidth } = Dimensions.get("window");
     const insets = useSafeAreaInsets();
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(true);
     const [loading, setLoading] = useState(false);
     const redirectTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -30,36 +29,29 @@ export default function Register() {
     }, []);
 
     const handleRegister = async () => { 
-        if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
-            setErrorMsg("Please enter in all fields");
-            return;
-        }
-        if (password !== passwordConfirm) {
-            setErrorMsg("Passwords do not match");
-            return;
-        }
-
-        setSuccessMsg(null);
-        setErrorMsg(null);
+        setMessage("");
         setLoading(true);
-
         try {    
-            const result = await registerUser(username.trim(), password, email.trim());
-            if (!result.ok) {
-                setErrorMsg(result.error || "Registration failed");
+            const result = await authApi.register(
+                email.trim().toLowerCase(),
+                username.trim(),
+                password
+            );
+            if(!result.ok) {
+                setMessage(result.message || "Registration failed");
+                setLoading(false);
                 return;
             }
-            
+            setIsError(false);
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
-            setSuccessMsg("Account registered successfully! Redirecting to login page…");
+            setMessage("Account registered successfully! Redirecting to login page…");
             redirectTimer.current = setTimeout(() => {
                 router.replace("/login");
             }, 2000);
-        
         } 
         catch (error: any) {
             console.error(error.response?.data || error.message);
-            setErrorMsg(error?.message || "Unexpected error");
+            setMessage(error?.message || "Unexpected error");
         }
         finally {
             setLoading(false);
@@ -134,8 +126,7 @@ export default function Register() {
                 onChangeText={setPasswordConfirm}
             />
 
-            {errorMsg   ? (<Text style={[styles.message, styles.errorText]}> {errorMsg} </Text>) : null}
-            {successMsg ? (<Text style={[styles.message, styles.successText]}> {successMsg} </Text>) : null}
+            {message ? (<Text style={[styles.message, isError ? styles.errorText : styles.successText]}>{message}</Text>) : null}
             
             <Pressable
                 style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
@@ -143,22 +134,21 @@ export default function Register() {
                 onPress={() => {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
                     if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
-                        setErrorMsg("Please enter in all fields");
+                        setMessage("Please enter in all fields");
                         return;
                     }
                     const emailTrimmed = email.trim();
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(emailTrimmed)) {
-                        setErrorMsg("Please enter a valid email address");
+                        setMessage("Please enter a valid email address");
                         return;
                     }
                     if (password !== passwordConfirm) {
-                        setErrorMsg("Passwords do not match");
+                        setMessage("Passwords do not match");
                         return;
                     }
 
                     // Clear client-side error and proceed
-                    setErrorMsg(null);
                     handleRegister();
                 }}
             >
