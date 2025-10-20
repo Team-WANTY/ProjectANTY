@@ -8,8 +8,8 @@ from service.exceptions.user import (
     UserCreationError,
     UserEmailExistsError,
     UserInvalidCreationInputError,
+    UserNotFoundError,
     UserUsernameExistsError,
-    UserNotFoundError
 )
 from service.models.user import User, UserCreate
 from service.security.token import (
