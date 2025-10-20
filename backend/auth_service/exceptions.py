@@ -9,6 +9,8 @@ class AuthIncorrectPasswordError(AuthError):
 class AuthDBError(Exception):
     pass
 
+class UserExistsError(AuthDBError):
+    pass
 
 class UserNotFoundError(AuthDBError):
     pass

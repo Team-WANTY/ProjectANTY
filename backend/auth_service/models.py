@@ -1,9 +1,8 @@
 from pydantic import BaseModel, EmailStr
 
-from shared.models.users import UserBase, UserInDB
+from backend.shared.models.users import UserBase, UserInDB
 
 """Slightly different from standard set of User models, only what is needed for auth-related read & updates"""
-
 
 class UserAuthInfo(UserBase):
     username: str

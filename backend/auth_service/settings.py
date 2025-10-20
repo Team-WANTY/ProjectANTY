@@ -1,9 +1,11 @@
 from typing import Any
 
-from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from shared.key_io import find_key, set_key_to_environment
+from backend.shared.key_io import find_key, set_key_to_environment
 
+load_dotenv()
 
 class Settings(BaseSettings):
     cosmosdb_endpoint: str
@@ -19,6 +21,8 @@ class Settings(BaseSettings):
     token_algorithm: str
     access_token_expiration_minutes: int
     refresh_token_expiration_days: int
+
+    model_config = SettingsConfigDict(env_file=".env")
 
     def model_post_init(self, __context: dict[str, Any]):
         if not self.token_private_key:

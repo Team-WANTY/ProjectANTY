@@ -5,35 +5,28 @@ description = "ProjectANTY backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi[standard]>=0.119.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "python-dotenv>=1.1.1",
     "ruff>=0.14.0",
     "ty>=0.0.1a22",
-    "uvicorn>=0.37.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 auth_service = [
     "aiohttp>=3.13.0",
     "azure-cosmos>=4.14.0",
     "email-validator>=2.3.0",
     "fastapi>=0.119.0",
     "httpx>=0.28.1",
-    "passlib>=1.7.4",
+    "pwdlib[argon2]>=0.2.1",
     "pydantic-settings>=2.11.0",
-    "pyjwt>=2.10.1",
-    "pytest>=8.4.2",
-    "pytest-asyncio>=1.2.0",
+    "pyjwt[crypto]>=2.10.1",
     "python-multipart>=0.0.20",
-    "ruff>=0.14.0",
-    "ty>=0.0.1a21",
 ]
 
 users_service = []
-
-[tool.ty.src]
-include = ["service", "tests"]
-exclude = ["venv", ".venv"]
 
 [tool.ty.terminal]
 output-format = "full"
@@ -63,6 +56,3 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
-
-[tool.to.environment]
-python = ".venv/bin/python"

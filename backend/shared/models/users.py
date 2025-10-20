@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from passlib.hash import argon2  # ty: ignore
+from pwdlib import PasswordHash  # ty: ignore
 from pydantic import BaseModel, EmailStr
 
 
@@ -9,6 +9,7 @@ def generate_id() -> str:
     """Generate a unique ID for records."""
     return uuid4().hex
 
+pwd_hasher = PasswordHash.recommended()
 
 class UserBase(BaseModel):
     """Info passed usually out of program, "base" due to containing minimum info and no sensitive data"""
@@ -37,7 +38,7 @@ class UserInDB(UserBase):
             id=generate_id(),
             username=user_create.username,
             email=user_create.email,
-            hashed_password=argon2.hash(user_create.plain_text_password),
+            hashed_password=pwd_hasher.hash(user_create.plain_text_password),
             created_at=int(datetime.now(UTC).timestamp()),
             updated_at=int(datetime.now(UTC).timestamp()),
             is_active=True,  # assume the user is being created this shouldn't be inactive
