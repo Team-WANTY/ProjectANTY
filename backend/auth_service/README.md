@@ -1,4 +1,3 @@
-# Generating encryption keys
-## Linux
-### Token Key Pair
-    openssl genpkey -algorithm RSA -out token_private_key.pem -pkeyopt rsa_keygen_bits:2048 && openssl rsa -pubout -in token_private_key.pem -out token_public_key.pem
+# Running the program
+    uv sync --extra auth_service
+    uv run --extra auth_service fastapi dev main.py --port 8000 

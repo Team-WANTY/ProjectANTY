@@ -13,9 +13,9 @@ from backend.shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from backend.shared.models.users import UserCreate, UserInDB
+from backend.shared.models.users import UserInDB
 
-from .models import UserAuthInfo, UserAuthUpdate
+from .models import UserAuthInfo, UserAuthUpdate, UserCreate
 
 logger = logging.getLogger("auth_service")
 
@@ -29,7 +29,7 @@ class AuthDB:
     async def create_user(self, user_create: UserCreate) -> UserInDB:
         try:
             logger.debug(f"Trying to create user: {user_create.model_dump()}")
-            user_in_db = UserInDB.from_user_create(user_create=user_create)
+            user_in_db = user_create.to_user_in_db()
             item: CosmosDict = await self.container.create_item(
                 body=user_in_db.model_dump()
             )

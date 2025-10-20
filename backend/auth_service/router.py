@@ -5,13 +5,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 
 from backend.shared.exceptions.token import TokenExpiredError
-from backend.shared.models.users import UserCreate
 
 from .exceptions import (
     AuthIncorrectPasswordError,
 )
 from .main import get_auth_service
-from .models import UserBase
+from .models import UserBase, UserCreate
 from .service import AuthService
 from .settings import settings
 

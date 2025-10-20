@@ -232,24 +232,34 @@ auth-service = [
     { name = "aiohttp" },
     { name = "azure-cosmos" },
     { name = "email-validator" },
-    { name = "fastapi" },
     { name = "httpx" },
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "python-multipart" },
 ]
+users-service = [
+    { name = "aiohttp" },
+    { name = "azure-cosmos" },
+    { name = "email-validator" },
+    { name = "httpx" },
+    { name = "pydantic-settings" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", marker = "extra == 'auth-service'", specifier = ">=3.13.0" },
+    { name = "aiohttp", marker = "extra == 'users-service'", specifier = ">=3.13.0" },
     { name = "azure-cosmos", marker = "extra == 'auth-service'", specifier = ">=4.14.0" },
+    { name = "azure-cosmos", marker = "extra == 'users-service'", specifier = ">=4.14.0" },
     { name = "email-validator", marker = "extra == 'auth-service'", specifier = ">=2.3.0" },
-    { name = "fastapi", marker = "extra == 'auth-service'", specifier = ">=0.119.0" },
+    { name = "email-validator", marker = "extra == 'users-service'", specifier = ">=2.3.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.119.0" },
     { name = "httpx", marker = "extra == 'auth-service'", specifier = ">=0.28.1" },
+    { name = "httpx", marker = "extra == 'users-service'", specifier = ">=0.28.1" },
     { name = "pwdlib", extras = ["argon2"], marker = "extra == 'auth-service'", specifier = ">=0.2.1" },
     { name = "pydantic-settings", marker = "extra == 'auth-service'", specifier = ">=2.11.0" },
+    { name = "pydantic-settings", marker = "extra == 'users-service'", specifier = ">=2.11.0" },
     { name = "pyjwt", extras = ["crypto"], marker = "extra == 'auth-service'", specifier = ">=2.10.1" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
