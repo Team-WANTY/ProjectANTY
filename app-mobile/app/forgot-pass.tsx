@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         textAlign: "center",
         marginBottom: 20,
-        paddingHorizontal: 10,
+        paddingHorizontal: 50,
     },
     backButton: {
         position: "absolute",
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     input: {
-        width: "100%",
+        width: "70%",
         height: 45,
         borderWidth: 1,
         borderRadius: 5,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     // Message styles (used for inline feedback)
     message: {
         marginBottom: 8,
-        fontSize: 12,
+        fontSize: 13,
         textAlign: "center",
     },
     errorText: {
