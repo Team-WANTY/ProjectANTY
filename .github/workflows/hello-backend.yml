@@ -21,4 +21,4 @@ jobs:
 
       - name: Hello world - run format and typecheck.
         run: |
-          cd backend/hello-world ; uv sync --dev ; uv run ruff check ; uv run ty check
+          cd backend/auth ; uv sync --dev ; uv run ruff check ; uv run ty check

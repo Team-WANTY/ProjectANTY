@@ -1,7 +1,0 @@
-**/.env
-**/__pycache__
-**/*.pyc
-**/*.pem
-**/.pytest_cache
-**/.ruff_cache
-**/.venv
