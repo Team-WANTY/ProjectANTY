@@ -18,10 +18,11 @@ export default function Register() {
     const fontSize = 20; // Base font size for the back arrow
     const { width: screenWidth } = Dimensions.get("window");
     const insets = useSafeAreaInsets();
-    const [message, setMessage] = useState("");
-    const [isError, setIsError] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; username?: boolean; password?: boolean; passwordConfirm?: boolean; }>({});
     const [loading, setLoading] = useState(false);
-    const redirectTimer = useRef<NodeJS.Timeout | null>(null);
+    const redirectTimer = useRef<any>(null);
 
     // cleanup timer on unmount/cancel
     useEffect(() => {
@@ -90,40 +91,56 @@ export default function Register() {
 
             <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
 
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Email</Text>
             <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                style={[
+                    styles.input,
+                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.email ? 'red' : theme.border, color: theme.text },
+                ]}
                 placeholder="Email Address"
                 placeholderTextColor={theme.primary}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => { setEmail(text); if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: false })); }}
             />
 
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Username</Text>
             <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                style={[
+                    styles.input,
+                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.username ? 'red' : theme.border, color: theme.text },
+                ]}
                 placeholder="Username"
                 placeholderTextColor={theme.primary}
                 value={username}
-                onChangeText={setUsername}
+                onChangeText={(text) => { setUsername(text); if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: false })); }}
             />
 
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Password</Text>
             <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                style={[
+                    styles.input,
+                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.password ? 'red' : theme.border, color: theme.text },
+                ]}
                 placeholder="Password"
                 placeholderTextColor={theme.primary}
                 secureTextEntry
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => { setPassword(text); if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: false })); }}
             />
 
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Confirm Password</Text>
             <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                style={[
+                    styles.input,
+                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.passwordConfirm ? 'red' : theme.border, color: theme.text },
+                ]}
                 placeholder="Confirm Password"
                 placeholderTextColor={theme.primary}
                 secureTextEntry
                 value={passwordConfirm}
-                onChangeText={setPasswordConfirm}
+                onChangeText={(text) => { setPasswordConfirm(text); if (fieldErrors.passwordConfirm) setFieldErrors(prev => ({ ...prev, passwordConfirm: false })); }}
             />
 
             {message ? (<Text style={[styles.message, isError ? styles.errorText : styles.successText]}>{message}</Text>) : null}
@@ -133,6 +150,7 @@ export default function Register() {
                 disabled={loading}
                 onPress={() => {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
+<<<<<<< HEAD
                     if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
                         setMessage("Please enter in all fields");
                         return;
@@ -145,10 +163,39 @@ export default function Register() {
                     }
                     if (password !== passwordConfirm) {
                         setMessage("Passwords do not match");
+=======
+                    const newFieldErrors: any = {};
+                    if (!username.trim()) newFieldErrors.username = true;
+                    if (!password) newFieldErrors.password = true;
+                    if (!email.trim()) newFieldErrors.email = true;
+                    if (!passwordConfirm) newFieldErrors.passwordConfirm = true;
+
+                    const emailTrimmed = email.trim();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (email.trim() && !emailRegex.test(emailTrimmed)) {
+                        setErrorMsg("Please enter a valid email address");
+                        newFieldErrors.email = true;
+                    }
+
+                    if (password && passwordConfirm && password !== passwordConfirm) {
+                        setErrorMsg("Passwords do not match");
+                        newFieldErrors.password = true;
+                        newFieldErrors.passwordConfirm = true;
+                    }
+
+                    if (Object.keys(newFieldErrors).length > 0) {
+                        setFieldErrors(newFieldErrors);
+                        if (!errorMsg) setErrorMsg("Please enter in all fields");
+>>>>>>> fbeec3b (save stuff)
                         return;
                     }
 
                     // Clear client-side error and proceed
+<<<<<<< HEAD
+=======
+                    setFieldErrors({});
+                    setErrorMsg(null);
+>>>>>>> fbeec3b (save stuff)
                     handleRegister();
                 }}
             >
@@ -176,12 +223,18 @@ const styles = StyleSheet.create({
         marginBottom: 30,
     },
     input: {
-        width: "100%",
-        height: 45,
+        width: "70%",
+        height: 40,
         borderWidth: 1,
         borderRadius: 5,
-        paddingHorizontal: 10,
-        marginBottom: 15,
+        paddingHorizontal: 8,
+        marginBottom: 16,
+    },
+    inputLabel: {
+        width: "70%",
+        marginBottom: 6,
+        fontSize: 12,
+        fontWeight: '600',
     },
     button: {
         paddingVertical: 10,
@@ -197,7 +250,7 @@ const styles = StyleSheet.create({
         width: "100%",
         marginTop: 0,
         marginBottom: 0,
-        fontSize: 12,
+        fontSize: 13,
         textAlign: "center",
         paddingHorizontal: 4,
         alignSelf: 'center',

@@ -138,7 +138,7 @@ function getStyles(theme) {
         },
         card: {
             width: 220,
-            padding: 20,
+            padding: 0,
             backgroundColor: theme.background,
             borderRadius: 5,
             alignItems: "center",
@@ -168,19 +168,21 @@ function getStyles(theme) {
         checkboxRow: {
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 12,
+            marginBottom: 25,
+            marginLeft: -14,
+            width: "100%", // make the row full width so contents can align to the left edge
+            justifyContent: 'flex-start',
         },
         checkboxLabel: {
             color: theme.text,
             fontSize: 12,
-            marginLeft: 8,
         },
         // Message styles (centered and consistent)
         message: {
             width: "100%",
             marginTop: 0,
             marginBottom: 0,
-            fontSize: 12,
+            fontSize: 13,
             textAlign: "center",
             paddingHorizontal: 4,
             alignSelf: 'center',
