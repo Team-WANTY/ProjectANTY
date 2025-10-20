@@ -33,7 +33,7 @@ const analyticsData = {
     badgesEarned: "3/10",
 };
 
-// Mock badge images (replace with your actual local imports if needed)
+// Mock badge images
 const badgeImages = {
     badge1: '../../assets/images/icon.png', // Gold
     badge2: '../../assets/images/icon.png', // Silver

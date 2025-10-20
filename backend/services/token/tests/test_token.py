@@ -3,6 +3,10 @@ from uuid import uuid4
 
 import jwt
 import pytest
+<<<<<<<< HEAD:backend/services/token/tests/test_token.py
+========
+
+>>>>>>>> main:backend/auth/service/tests/unit/test_token.py
 from service.config import settings
 from service.exceptions.token import JWTTokenExpiredError
 from service.models.token import Token

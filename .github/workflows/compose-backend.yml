@@ -1,0 +1,53 @@
+name: Compose Backend Pipelines
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # Make sure code abides by the ruff format.
+  auth-backend:
+    name: Docker Build and Run Test.
+    runs-on: ubuntu-latest
+    environment: "ANTY Auth Backend"
+
+    steps:
+      - name: Checkout code.
+        uses: actions/checkout@v2
+    
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # Currently doesn't test the API of auth, just makes sure compose can bring everything up.
+      - name: Test compose up.
+        env:
+          COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
+          COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
+          COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
+          COSMOSDB_USER_CONTAINER_NAME: ${{ secrets.COSMOSDB_USER_CONTAINER_NAME }}
+          TOKEN_ALGORITHM: ${{ secrets.TOKEN_ALGORITHM }}
+          ACCESS_TOKEN_EXPIRATION_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRATION_MINUTES }}
+          REFRESH_TOKEN_EXPIRATION_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }}
+        run: |
+          cd backend/
+          openssl genpkey -algorithm RSA -out auth/token_private_key.pem -pkeyopt rsa_keygen_bits:2048
+          openssl rsa -pubout -in auth/token_private_key.pem -out auth/token_public_key.pem
+          touch auth/.env
+          echo COSMOSDB_ENDPOINT=${{ secrets.COSMOSDB_ENDPOINT }} >> auth/.env
+          echo COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }} >> auth/.env
+          echo COSMOSDB_DATABASE_NAME=${{ secrets.COSMOSDB_DATABASE_NAME }} >> auth/.env
+          echo COSMOSDB_USER_CONTAINER_NAME=${{ secrets.COSMOSDB_USER_CONTAINER_NAME }} >> auth/.env
+          echo TOKEN_ALGORITHM=${{ secrets.TOKEN_ALGORITHM }} >> auth/.env
+          echo ACCESS_TOKEN_EXPIRATION_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRATION_MINUTES }} >> auth/.env
+          echo REFRESH_TOKEN_EXPIRATION_DAYS=${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }} >> auth/.env
+
+          docker compose -f compose.yml -f compose.dev.yml up --build -d
+          sleep 5
+          response=$(curl -k -s -w "%{http_code}" -X 'GET' https://hello.localhost/message -H 'accept: application/json')
+          code="${response: -3}"
+          body="${response::-3}"
+          echo "Received: $body"
+          docker compose down
+          [ "$code" -eq 200 ] && exit 0 || exit 1

@@ -2,16 +2,19 @@ import logging
 
 from email_validator import EmailNotValidError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from backend.shared.exceptions.token import TokenExpiredError, TokenError
-from backend.shared.exceptions.db import RecordUpdateError, RecordNotFoundError, GeneralQueryError
+from backend.shared.exceptions.db import (
+    GeneralQueryError,
+    RecordNotFoundError,
+)
+from backend.shared.exceptions.token import TokenError, TokenExpiredError
 
 from .exceptions import (
     AuthIncorrectPasswordError,
 )
 from .main import get_auth_service
-from .models import UserBase, UserCreate, UserAuthUpdate, UserAuthInfo
+from .models import UserAuthInfo, UserAuthUpdate, UserBase, UserCreate
 from .service import AuthService
 from .settings import settings
 

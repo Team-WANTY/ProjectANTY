@@ -204,8 +204,8 @@ const styles = StyleSheet.create({
         position: 'relative',
         // Note: The last card will have extra margin, which is fine for a carousel
     },
-    dashboardText: { alignItems: 'flex-start' },
-    dashboardProgressText: { fontSize: 30, fontWeight: "300", lineHeight: 35, },
+    dashboardText: { alignItems: 'flex-start', flexShrink: 1, },
+    dashboardProgressText: { fontSize: Math.min(30, width * 0.07), fontWeight: "300", lineHeight: 35, },
     circularProgressRing: { width: 80, height: 80, borderRadius: 40, borderWidth: 8, position: 'absolute', opacity: 0.3, },
     circularProgressRingInner: { width: 80, height: 80, borderRadius: 40, borderWidth: 8, position: 'absolute', },
     progressText: { fontSize: 18, fontWeight: 'bold', },

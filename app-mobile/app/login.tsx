@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Checkbox } from "react-native-paper";
-import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable } from "react-native";
+import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-
+import { authApi } from "@/services/auth-api";
+import { usersApi } from "@/services/users-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function LoginScreen() {
@@ -12,9 +13,38 @@ export default function LoginScreen() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
-
+    const [loading, setLoading] = useState(false)
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(true);
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
+    
+    const handleLogin = async () => {
+        setMessage("");
+        setLoading(true);
+
+        try {
+            const res = await authApi.login(username.trim(), password);
+            if (!res.ok) {
+                setMessage(res.message);
+                return;
+            }
+
+            const me = await usersApi.me();
+                if (!me.ok) {
+                setMessage(me.message);
+            return;
+            }
+            router.replace("/home");
+        } 
+        catch (error: any) {
+            setMessage(error?.message || "Network error. Please try again.");
+            console.error("Login error:", error?.response?.data || error);
+        } 
+        finally {
+            setLoading(false);
+       }
+    };
 
     return (
         <View style={styles.container}>
@@ -33,7 +63,7 @@ export default function LoginScreen() {
 
             <View style={styles.card}>
                 <Image
-                    source={require("../assets/images/react-logo.png")}
+                    source={require("../assets/images/logo.png")}
                     style={styles.logo}
                     resizeMode="contain"
                 />
@@ -65,24 +95,37 @@ export default function LoginScreen() {
                     <Text style={styles.checkboxLabel}>Keep me logged in</Text>
                 </View>
 
-                <Pressable
-                    style={styles.loginButton}
-                    onPress={() => router.replace("./(tabs)/home")}
-                >
-                    <Text style={styles.loginText}>Log In</Text>
-                </Pressable>
+                {/* Message placeholder for errors */}
+                {message ? (
+                    <Text style={[styles.message, isError ? styles.errorText : styles.successText]}>
+                        {message}
+                    </Text>
+                ) : null}
 
                 <Pressable
-                    onPress={() => router.push("./register")}>
+                    style={[styles.loginButton, loading && { opacity: 0.6 }]}
+                    disabled={loading}
+                    onPress={() => {
+                        if (!username || !password) {
+                            setIsError(true);
+                            setMessage("Please fill out all fields.");
+                        } else {
+                            handleLogin();
+                        }
+                    }}
+                >
+                    {loading ? <ActivityIndicator /> : <Text style={styles.loginText}>Log In</Text>}
+                </Pressable>
+
+                <Pressable onPress={() => router.push("./register")}>
                     <Text style={styles.link}>Create an account!</Text>
                 </Pressable>
-                <Pressable
-                    onPress={() => router.push("./forgot-pass")}>
+                <Pressable onPress={() => router.push("./forgot-pass")}>
                     <Text style={styles.link}>Forgot Password?</Text>
                 </Pressable>
             </View>
         </View>
-    );
+    ); 
 }
 
 function getStyles(theme) {
@@ -125,27 +168,45 @@ function getStyles(theme) {
         checkboxRow: {
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 16,
+            marginBottom: 12,
         },
         checkboxLabel: {
             color: theme.text,
             fontSize: 12,
             marginLeft: 8,
         },
+        // Message styles (centered and consistent)
+        message: {
+            width: "100%",
+            marginTop: 0,
+            marginBottom: 0,
+            fontSize: 12,
+            textAlign: "center",
+            paddingHorizontal: 4,
+            alignSelf: 'center',
+            minHeight: 20,
+        },
+        errorText: {
+            color: "red",
+        },
+        successText: {
+            color: "green",
+        },
         loginButton: {
             backgroundColor: theme.border,
             borderRadius: 5,
+            marginTop: 12,
             paddingVertical: 8,
             paddingHorizontal: 24,
             marginBottom: 12,
         },
         loginText: {
-            fontSize: 12,
-            fontWeight: "500",
+            fontSize: 14,
+            fontWeight: "600",
             color: theme.background,
         },
         link: {
-            fontSize: 10,
+            fontSize: 14,
             color: theme.border,
             textDecorationLine: "underline",
             marginTop: 4,

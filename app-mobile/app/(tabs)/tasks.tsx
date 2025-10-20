@@ -11,37 +11,49 @@ const { width } = Dimensions.get("window");
 
 // --- Mock Data ---
 const taskList = [
-    { id: 1, title: "Buy work clothes", subtitle: "9/17/2025", completed: false },
-    { id: 2, title: "Distributed Network HW", subtitle: "9/17/2025 at 5:00 PM", completed: false },
-    { id: 3, title: "Exercise", subtitle: "Daily", completed: false },
-    { id: 4, title: "Research Paper Draft", subtitle: "Tomorrow", completed: false },
-    { id: 5, title: "Groceries", subtitle: "This Weekend", completed: false },
-    { id: 6, title: "Coding Challenge", subtitle: "Daily", completed: false },
-    { id: 7, title: "Meal Prep", subtitle: "Saturday Morning", completed: false },
+    { id: 1, title: "Buy work clothes",       dueDate: "9/17/2025",     category: "Work",       completed: false , dateISO: "2025-09-17"},
+    { id: 2, title: "Distributed Network HW", dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
+    { id: 3, title: "Exercise",               dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
+    { id: 4, title: "Research Paper Draft",   dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
+    { id: 5, title: "Groceries",              dueDate: "9/17/2025",     category: "Personal",   completed: false , dateISO: "2025-09-17"},
+    { id: 6, title: "Coding Challenge",       dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
+    { id: 7, title: "Meal Prep",              dueDate: "9/17/2025",     category: "Errands",    completed: false , dateISO: "2025-09-17"},
+    { id: 8, title: "Go Buy some meat",       dueDate: "9/18/2025",     category: "Errands",    completed: false , dateISO: "2025-09-18"},
 ];
 
+// Mock Categories
 const categories = ["Personal", "School", "Routine", "Work", "Errands"];
 
-// --- Task Item Component ---
+// pad helper
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// date function
+const formatDate = (d: Date) => {
+    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; // for task filtering, ex 2025-09-18
+    const display = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`; // UI display, ex 9/17/2025
+    return { iso, display };
+};
+
+// --- Task Item Component --
 const TaskItem = ({ task, theme, onToggle }) => (
     <View style={[styles.taskCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
         <View style={styles.taskTextContent}>
             <Text style={[styles.taskTitle, { color: theme.textSecondary }]}>{task.title}</Text>
-            <Text style={[styles.taskSubtitle, { color: theme.secondaryText }]}>{task.subtitle}</Text>
+            <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>{task.dueDate}</Text>
         </View>
         <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
             <View style={[
                 styles.checkboxBox,
                 { borderColor: theme.textSecondary, backgroundColor: task.completed ? theme.primary : 'transparent' }
             ]}>
-                {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.background} />}
+                {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.text} />}
             </View>
         </TouchableOpacity>
     </View>
 );
 
 // --- Category Tag Component ---
-const CategoryTag = ({ category, theme, isActive }) => {
+const CategoryTag = ({ category, theme, isActive, onPress }) => {
     const tagStyle = {
         backgroundColor: isActive ? theme.primary : theme.border,
         borderColor: theme.primary,
@@ -51,7 +63,7 @@ const CategoryTag = ({ category, theme, isActive }) => {
     };
 
     return (
-        <TouchableOpacity style={[styles.categoryTag, tagStyle]}>
+        <TouchableOpacity style={[styles.categoryTag, tagStyle]} onPress={onPress}>
             <Text style={[styles.categoryText, textStyle]}>{category}</Text>
         </TouchableOpacity>
     );
@@ -63,7 +75,20 @@ export default function TasksScreen() {
     const insets = useSafeAreaInsets();
     const [tasks, setTasks] = useState(taskList);
     const router = useRouter();
-    const [selectedCategory, setSelectedCategory] = useState("Personal");
+    
+    // date state
+    const [date, setDate] = useState(new Date(2025, 8, 17)); // 0 indexed month so 0 - Jan, 1 - Feb... 
+    const { iso: selectedDate, display } = formatDate(date);
+
+    // state: no category selected by default, show all tasks when no category selected
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    // task filtering logic: filter by date, then filter by category
+    const filtered = tasks.filter(t => {
+        const dateMatch = t.dateISO === selectedDate;
+        const categoryMatch = !selectedCategory || t.category === selectedCategory; 
+        return dateMatch && categoryMatch;
+    });
 
     const handleToggleTask = (id) => {
         setTasks(prevTasks =>
@@ -81,7 +106,7 @@ export default function TasksScreen() {
 
             {/* 1. Top Navigation Bar */}
             <HeaderBar
-                title="Home"
+                title="Tasks"
                 showTitle={false}
                 onNotificationPress={() => { /* navigation.navigate('Notifications') */ }}
                 onSettingsPress={() => { router.push("../settings") }}
@@ -92,20 +117,20 @@ export default function TasksScreen() {
 
                 {/* 2. Date Selector */}
                 <View style={styles.dateSelectorSection}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()-1))}>
                         <Ionicons name="chevron-back" size={30} color={theme.text} />
                     </TouchableOpacity>
 
                     <View style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}>
-                        <Text style={[styles.dateText, { color: theme.background }]}>9/17/2025</Text>
+                        <Text style={[styles.dateText, { color: theme.textSecondary }]}>{display}</Text>
                     </View>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()+1))}>
                         <Ionicons name="chevron-forward" size={30} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.tasksCompletedText, { color: theme.secondaryText }]}>
+                <Text style={[styles.tasksCompletedText, { color: theme.cardBackground }]}>
                     {completedCount} Tasks Completed
                 </Text>
 
@@ -128,6 +153,7 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
+                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
                         />
                     ))}
                 </ScrollView>
@@ -142,7 +168,7 @@ export default function TasksScreen() {
 
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
-                    {tasks.map((task) => (
+                    {filtered.map((task) => (
                         <TaskItem
                             key={task.id}
                             task={task}
@@ -267,7 +293,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-    taskSubtitle: {
+    taskDueDate: {
         fontSize: 10,
         fontWeight: '600',
         marginTop: 2,

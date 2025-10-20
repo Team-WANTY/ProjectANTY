@@ -9,7 +9,8 @@ import {
     Dimensions,
     Platform,
     StatusBar,
-    TouchableOpacity
+    TouchableOpacity,
+    ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -20,6 +21,9 @@ import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(false);
+    const [loading, setLoading] = useState(false);
     const { theme } = useTheme();
     const router = useRouter();
 
@@ -29,9 +33,24 @@ export default function ForgotPassword() {
 
     const insets = useSafeAreaInsets();
 
-    const handleRecover = () => {
-        console.log("Recover password for:", email);
-        router.replace("/login");
+    const handleRecover = async () => {
+        setMessage("");
+        setIsError(false);
+        setLoading(true);
+        try {
+            // Placeholder for real recover logic; keep console for now
+            console.log("Recover password for:", email);
+            // Simulate success and navigate back to login
+            router.replace("/login");
+        }
+        catch (err) {
+            console.error(err);
+            setIsError(true);
+            setMessage("Unable to send recovery link. Please try again.");
+        }
+        finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -87,11 +106,36 @@ export default function ForgotPassword() {
                     onChangeText={setEmail}
                 />
 
+                {/* Inline message like login.tsx */}
+                {message ? (
+                    <Text style={[styles.message, isError ? styles.errorText : styles.successText]}>
+                        {message}
+                    </Text>
+                ) : null}
+
                 <Pressable
-                    style={[styles.button, { backgroundColor: theme.primary }]}
-                    onPress={handleRecover}
+                    style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
+                    disabled={loading}
+                    onPress={() => {
+                        if (!email) {
+                            setIsError(true);
+                            setMessage("Please fill out the email field.");
+                            return;
+                        }
+                        const emailTrimmed = email.trim();
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(emailTrimmed)) {
+                            setIsError(true);
+                            setMessage("Please enter a valid email address.");
+                            return;
+                        }
+                        // valid
+                        setIsError(false);
+                        setMessage("");
+                        handleRecover();
+                    }}
                 >
-                    <Text style={[styles.buttonText, { color: theme.background }]}>Send Link</Text>
+                    {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme.text }]}>Send Link</Text>}
                 </Pressable>
             </View>
         </View>
@@ -138,5 +182,17 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 14,
         fontWeight: "500",
+    },
+    // Message styles (used for inline feedback)
+    message: {
+        marginBottom: 8,
+        fontSize: 12,
+        textAlign: "center",
+    },
+    errorText: {
+        color: "red",
+    },
+    successText: {
+        color: "green",
     },
 });
