@@ -18,8 +18,8 @@ export default function Register() {
     const fontSize = 20; // Base font size for the back arrow
     const { width: screenWidth } = Dimensions.get("window");
     const insets = useSafeAreaInsets();
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; username?: boolean; password?: boolean; passwordConfirm?: boolean; }>({});
     const [loading, setLoading] = useState(false);
     const redirectTimer = useRef<any>(null);
@@ -150,20 +150,6 @@ export default function Register() {
                 disabled={loading}
                 onPress={() => {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
-<<<<<<< HEAD
-                    if (!username.trim() || !password || !email.trim() || !passwordConfirm) {
-                        setMessage("Please enter in all fields");
-                        return;
-                    }
-                    const emailTrimmed = email.trim();
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(emailTrimmed)) {
-                        setMessage("Please enter a valid email address");
-                        return;
-                    }
-                    if (password !== passwordConfirm) {
-                        setMessage("Passwords do not match");
-=======
                     const newFieldErrors: any = {};
                     if (!username.trim()) newFieldErrors.username = true;
                     if (!password) newFieldErrors.password = true;
@@ -173,29 +159,28 @@ export default function Register() {
                     const emailTrimmed = email.trim();
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (email.trim() && !emailRegex.test(emailTrimmed)) {
-                        setErrorMsg("Please enter a valid email address");
+                        setMessage("Please enter a valid email address");
+                        setIsError(true);
                         newFieldErrors.email = true;
                     }
 
                     if (password && passwordConfirm && password !== passwordConfirm) {
-                        setErrorMsg("Passwords do not match");
+                        setMessage("Passwords do not match");
+                        setIsError(true);
                         newFieldErrors.password = true;
                         newFieldErrors.passwordConfirm = true;
                     }
 
                     if (Object.keys(newFieldErrors).length > 0) {
                         setFieldErrors(newFieldErrors);
-                        if (!errorMsg) setErrorMsg("Please enter in all fields");
->>>>>>> fbeec3b (save stuff)
+                        if (!message) { setMessage("Please enter in all fields"); setIsError(true); }
                         return;
                     }
 
                     // Clear client-side error and proceed
-<<<<<<< HEAD
-=======
                     setFieldErrors({});
-                    setErrorMsg(null);
->>>>>>> fbeec3b (save stuff)
+                    setMessage("");
+                    setIsError(false);
                     handleRegister();
                 }}
             >
