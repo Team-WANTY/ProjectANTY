@@ -1,0 +1,2 @@
+class InterserviceError(Exception):
+    pass

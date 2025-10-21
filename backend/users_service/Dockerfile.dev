@@ -8,9 +8,9 @@ WORKDIR /app
 COPY ./shared ./shared
 
 # Copy service code
-COPY ./auth_service ./auth_service
+COPY ./users_service ./users_service
 
-WORKDIR /app/auth_service
+WORKDIR /app/users_service
 
 # Install both with uv
 # RUN cd /app/shared && uv sync

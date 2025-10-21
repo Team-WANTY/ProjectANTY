@@ -3,28 +3,44 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "NAME HERE"
+name = "auth_service"
 version = "0.1.0"
-description = "DESCRIPTION HERE"
-readme = "README.md"
-requires-python = ">=3.12"
+description = "FastAPI microservice for user authentication."
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi[standard]>=0.119.0",
     "python-dotenv>=1.1.1",
     "uvicorn[standard]>=0.37.0,<0.50.0",
+
+    "aiohttp>=3.13.0",
+    "azure-cosmos>=4.14.0",
+    "email-validator>=2.3.0",
+    "httpx>=0.28.1",
+    "pwdlib[argon2]>=0.2.1",
+    "pydantic-settings>=2.11.0",
+    "pyjwt[crypto]>=2.10.1",
+    "python-multipart>=0.0.20",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-subtests>=0.14.2",
     "ruff>=0.14.0",
     "ty>=0.0.1a21",
 ]
 
 [tool.ty.src]
-include = ["service", "tests"]
+include = ["src", "tests"]
 exclude = ["venv", ".venv"]
+
+[tool.ty.environment]
+extra-paths = ["../shared"]
 
 [tool.ty.terminal]
 output-format = "full"
