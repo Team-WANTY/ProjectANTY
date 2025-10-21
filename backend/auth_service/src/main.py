@@ -3,7 +3,6 @@ from fastapi import FastAPI
 
 from src.router import auth_router
 
-
 # Setup endpoints
 app = FastAPI(title="Auth Service with CosmosDB",
               docs_url="/auth/docs",
