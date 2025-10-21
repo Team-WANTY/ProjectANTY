@@ -17,10 +17,10 @@ jobs:
       - name: Checkout code.
         uses: actions/checkout@v2
     
-      - name: Install uv
+      - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Auth - run format and typecheck.
+      - name: Auth checks.
         env:
           COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
           COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
@@ -29,6 +29,8 @@ jobs:
           
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
 
+          TOKEN_PUBLIC_KEY: ''
+          TOKEN_PRIVATE_KEY: ''
           TOKEN_ALGORITHM: ${{ secrets.TOKEN_ALGORITHM }}
           ACCESS_TOKEN_EXPIRATION_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRATION_MINUTES }}
           REFRESH_TOKEN_EXPIRATION_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }}
