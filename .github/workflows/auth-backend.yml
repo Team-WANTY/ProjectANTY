@@ -34,6 +34,10 @@ jobs:
           TOKEN_ALGORITHM: ${{ secrets.TOKEN_ALGORITHM }}
           ACCESS_TOKEN_EXPIRATION_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRATION_MINUTES }}
           REFRESH_TOKEN_EXPIRATION_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }}
+
+          FRONTEND_URL: ''
+          SMTP_USER: ''
+          SMTP_PASSWORD: ''
         run: |
           cd backend/auth_service
           uv sync --dev && uv pip install -e ../shared

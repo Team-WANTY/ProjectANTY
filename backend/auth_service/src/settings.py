@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     access_token_expiration_minutes: int
     refresh_token_expiration_days: int
 
+    frontend_url: str
+    smtp_user: str
+    smtp_password: str
+
     model_config = SettingsConfigDict(env_file=".env")
 
     def model_post_init(self, __context: dict[str, Any]):

@@ -1,7 +1,15 @@
 import logging
 
 from email_validator import EmailNotValidError
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from shared.exceptions.db import (
     GeneralQueryError,
@@ -13,7 +21,13 @@ from src.dependencies import get_auth_service
 from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthInfo, UserAuthUpdate, UserBase, UserCreate
+from src.models import (
+    PasswordResetRequest,
+    UserAuthInfo,
+    UserAuthUpdate,
+    UserBase,
+    UserCreate,
+)
 from src.service import AuthService
 from src.settings import settings
 
@@ -227,3 +241,45 @@ async def update_auth(
         )
     new_auth_info = await auth_service.update_user_auth(auth_update, current_user_auth.is_superuser)
     return new_auth_info.to_base()
+
+@auth_router.post("/request-password-reset", status_code=status.HTTP_200_OK, tags=["authentication"])
+async def request_password_reset(
+    email: str,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        await auth_service.request_password_reset(email)
+    except EmailNotValidError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email format")
+    except Exception:
+        # Don't reveal if email exists for security
+        return {"message": "If an account with that email exists, a reset link was sent."}
+
+    return {"message": "If an account with that email exists, a reset link was sent."}
+
+
+@auth_router.post("/reset-password", status_code=status.HTTP_200_OK, tags=["authentication"])
+async def reset_password(
+    reset_request: PasswordResetRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        await auth_service.reset_password(
+            reset_request.token, reset_request.new_password
+        )
+        return {"message": "Password reset successful"}
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password reset token expired",
+        )
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password reset token",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error",
+        )

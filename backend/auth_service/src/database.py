@@ -92,6 +92,7 @@ class AuthDB:
             ):
                 user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")  # Return first match immediately
                 logger.debug(f"Got from email {email}: {user_auth_info.model_dump()}")
+                return user_auth_info
             raise RecordNotFoundError()
         except RecordNotFoundError as e:
             logger.debug(f"User with email '{email}' not found")
