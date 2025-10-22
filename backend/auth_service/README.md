@@ -1,2 +1,3 @@
 # Running the program
-    uv run --extra auth_service fastapi dev main.py --port 8000 
+    uv sync
+    uv run fastapi dev src/main.py --port 8000

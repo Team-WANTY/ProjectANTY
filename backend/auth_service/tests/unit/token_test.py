@@ -17,6 +17,7 @@ from shared.models.token import Token
 from src.service import AuthService
 from src.settings import settings
 
+
 @pytest.mark.asyncio
 class TestTokenOperations:
     async def test_create_access_token(self):

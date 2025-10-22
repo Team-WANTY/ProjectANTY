@@ -3,39 +3,33 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "NAME HERE"
+name = "shared"
 version = "0.1.0"
-description = "DESCRIPTION HERE"
-readme = "README.md"
-requires-python = ">=3.12"
+description = "Shared models and utilities for microservices."
+requires-python = ">=3.12,<4.0"
 dependencies = [
-<<<<<<< HEAD
-    "pytest>=8.4.2",
-    "pytest-asyncio>=1.2.0",
-    "ruff>=0.14.0",
-    "ty>=0.0.1a22",
-=======
-    "fastapi[standard]>=0.119.0",
-    "python-dotenv>=1.1.1",
-    "uvicorn[standard]>=0.37.0,<0.50.0",
->>>>>>> main
+    "pydantic>=2.12.0,<3.0.0"
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["shared"]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
     "ruff>=0.14.0",
     "ty>=0.0.1a21",
 ]
 
 [tool.ty.src]
-include = ["service", "tests"]
+include = ["shared", "tests"]
 exclude = ["venv", ".venv"]
 
 [tool.ty.terminal]
 output-format = "full"
-error-on-warning = true 
+error-on-warning = true
 
 [tool.ruff]
 target-version = "py312"
@@ -55,7 +49,7 @@ ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
     "W191",  # indentation contains tabs
-    "B904",  # allow raising exceptions without 'from e' for HTTPException
+    "B904",  # allow raising exceptions without 'from e'
 ]
 
 [tool.ruff.lint.pyupgrade]

@@ -11,19 +11,31 @@ services:
 
   auth-service:
     build:
-      context: ./auth_service/
-      dockerfile: Dockerfile.dev
+      dockerfile: auth_service/Dockerfile.dev
     container_name: auth-service
     expose:
       - "8000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
       - "traefik.http.services.auth.loadbalancer.server.port=8000"
     depends_on:
       - traefik
     restart: unless-stopped
 
+  users-service:
+    build:
+      dockerfile: users_service/Dockerfile.dev
+    container_name: users-service
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/users`)"
+      - "traefik.http.services.users.loadbalancer.server.port=8000"
+    depends_on:
+      - traefik
+    restart: unless-stopped
 
 networks:
   default:
