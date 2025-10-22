@@ -5,11 +5,7 @@ services:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      - "--entrypoints.websecure.http.tls=true"
-      - "--entrypoints.websecure.http.tls.certificates.certFile=/certs/cert.pem"
-      - "--entrypoints.websecure.http.tls.certificates.keyFile=/certs/key.pem"
+      - "--providers.file.filename=/traefik/traefik.dev.yml"
     volumes:
-      - "./traefik/traefik.dev.yml:/traefik.yml:ro"
       - "./certs:/certs:ro"
+      - "./traefik/traefik.dev.yml:/traefik/traefik.dev.yml:ro"
