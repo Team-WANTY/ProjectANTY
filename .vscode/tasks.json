@@ -4,20 +4,27 @@
 	{
 		"label": "Run Authentication Service",
 		"type": "shell",
-		"command": "cd backend/auth_service && uv run --extra auth_service fastapi dev main.py --port 8000",
+		"command": "cd backend/auth_service && uv run --extra shared --extra auth_service fastapi dev main.py --port 8000",
 		"problemMatcher": []
 	},
 	{
 		"label": "Run Users Service",
 		"type": "shell",
-		"command": "cd backend/users_service && uv run --extra users_service fastapi dev main.py --port 8001",
+		"command": "cd backend/users_service && uv run --extra shared --extra users_service fastapi dev main.py --port 8001",
+		"problemMatcher": []
+	},
+	{
+		"label": "Run Profiles Service",
+		"type": "shell",
+		"command": "cd backend/profiles_service && uv run --extra shared --extra profiles_service fastapi dev main.py --port 8002",
 		"problemMatcher": []
 	},
 	{
 		"label": "Run All Services",
 		"dependsOn": [
 			"Run Authentication Service",
-			"Run Users Service"
+			"Run Users Service",
+			"Run Profiles Service"
 		],
 		"dependsOrder": "parallel",
 		"problemMatcher": [
