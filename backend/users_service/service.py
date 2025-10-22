@@ -1,23 +1,18 @@
 import logging
 
-from httpx import AsyncClient, HTTPStatusError, codes
-from pydantic import EmailStr, ValidationError
+from pydantic import EmailStr
 
-from backend.shared.exceptions.interservice import InterserviceError
-from backend.shared.exceptions.token import TokenError, TokenExpiredError
-from backend.shared.models.token import Token
+from backend.shared.auth import authorize_operation
 from backend.shared.models.users import UserInDB
 
 from .database import UsersDB
 from .models import UserUpdate
-from .settings import settings
 
 logger = logging.getLogger("users_service")
 
 class UsersService:
-    def __init__(self, user_db: UsersDB, auth_http_client: AsyncClient):
+    def __init__(self, user_db: UsersDB):
         self.user_db = user_db
-        self.auth_client = auth_http_client
         logger.debug("Made new UserService")
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
@@ -41,31 +36,22 @@ class UsersService:
         logger.debug(f"Successfully got user with email '{email}'")
         return user_in_db
 
-    async def update_user(self, user_update: UserUpdate, updater_is_super:bool) -> UserInDB:
+    async def update_user(self, user_update: UserUpdate, updater:UserInDB) -> UserInDB:
         """Update user"""
+        logger.debug(f"Checking if {updater.id} is authorized to update {user_update.id}")
+        authorize_operation(updater, user_update.id)
         logger.debug(f"Updating user with ID '{user_update.id}'")
         old_user_in_db = await self.get_user_by_id(user_update.id)
-        updated_user_in_db = await self.user_db.update_user(old_user_in_db, user_update, updater_is_super)
+        if not updater.is_superuser:
+            pass #TODO if any restricted updates, set them to None here
+        updated_user_in_db = await self.user_db.update_user(old_user_in_db, user_update)
         logger.debug(f"Successfully updated user with ID '{user_update.id}'")
         return updated_user_in_db
 
-    async def delete_user(self, user_id: str) -> None:
+    async def delete_user(self, user_id: str, deleter:UserInDB) -> None:
         """Delete user"""
+        logger.debug(f"Checking if {deleter.id} is authorized to delete {user_id}")
+        authorize_operation(deleter, user_id)
         logger.debug(f"Deleting user with ID '{user_id}'")
         await self.user_db.delete_user(user_id)
         logger.debug(f"Successfully deleted user with ID '{user_id}'")
-
-    async def verify_token(self, token:str) -> Token:
-        try:
-            logger.debug(f"Verifying token: {token}")
-            response = await self.auth_client.get(f"{settings.auth_service_endpoint}/verify?token={token}")
-            token = Token.model_validate(response.json(), extra="ignore")
-            logger.debug(f"Verified token: {token}, {token.model_dump()}")
-            return token
-        except HTTPStatusError as e:
-            if e.response.status_code == codes.UNAUTHORIZED:
-                raise TokenExpiredError()
-            else:
-                raise InterserviceError()
-        except ValidationError:
-            raise TokenError()

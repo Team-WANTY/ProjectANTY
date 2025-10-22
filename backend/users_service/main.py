@@ -11,30 +11,27 @@ logger = logging.getLogger("users_service")
 
 from azure.cosmos.aio import CosmosClient
 
-from .settings import settings
+from backend.shared.settings import settings as shared_settings
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(
-    settings.cosmosdb_endpoint,
-    settings.cosmosdb_key,
+    shared_settings.COSMOSDB_ENDPOINT,
+    shared_settings.COSMOSDB_KEY,
 )
-database = client.get_database_client(settings.cosmosdb_database_name)
-users_container = database.get_container_client(settings.cosmosdb_users_container_name)
+database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
+users_container = database.get_container_client("users")
 logger.debug("Connected to Azure CosmosDB and got users container")
 
 from functools import lru_cache
 
-from httpx import AsyncClient
-
 from .database import UsersDB
 from .service import UsersService
 
-headers = {"X-Interservice-Key": settings.interservice_key}
+headers = {"X-Interservice-Key": shared_settings.INTERSERVICE_KEY}
 @lru_cache
 def get_users_service() -> UsersService:
     return UsersService(
         UsersDB(users_container),
-        AsyncClient(headers=headers, base_url=settings.auth_service_endpoint),
     )
 
 from fastapi import FastAPI

@@ -16,4 +16,4 @@ class UserInDB(UserBase):
     is_superuser: bool
 
     def to_base(self):
-        return UserBase.model_validate(self.model_dump(), strict=True, extra="ignore")
+        return UserBase.model_validate(self.model_dump(), extra="ignore")

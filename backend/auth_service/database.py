@@ -13,9 +13,10 @@ from backend.shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
+from backend.shared.models.auth import UserAuthInfo
 from backend.shared.models.users import UserInDB
 
-from .models import UserAuthInfo, UserAuthUpdate, UserCreate
+from .models import UserAuthUpdate, UserCreate
 
 logger = logging.getLogger("auth_service")
 
@@ -33,7 +34,7 @@ class AuthDB:
             item: CosmosDict = await self.container.create_item(
                 body=user_in_db.model_dump()
             )
-            user_auth_info =  UserAuthInfo.model_validate(item, strict=True, extra="ignore")
+            user_auth_info =  UserAuthInfo.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created user: {user_auth_info.model_dump()}")
             return user_auth_info
         except exceptions.CosmosHttpResponseError:
@@ -105,12 +106,11 @@ class AuthDB:
             raise GeneralQueryError()
 
     async def update_auth(
-        self, old_user_auth_info: UserAuthInfo, auth_update_info: UserAuthUpdate, updater_is_super:bool
+        self, old_user_auth_info: UserAuthInfo, auth_update_info: UserAuthUpdate
     ) -> UserAuthInfo:
         try:
             patch_operations = []
 
-            logger.debug(f"Trying to update user with id '{auth_update_info.id}' as {"superuser" if updater_is_super else "owner"}, old record:{old_user_auth_info.model_dump()} | update information: {auth_update_info.model_dump()}")
             if auth_update_info.plain_text_password is not None:
                 logger.debug(f"Trying to update password for user '{auth_update_info.id}'")
                 # Check if new password matches old password
@@ -130,19 +130,11 @@ class AuthDB:
 
             if auth_update_info.is_active is not None:
                 logger.debug(f"Trying to update user '{auth_update_info.id}' active status")
-                if updater_is_super:
-                    patch_operations.append({"op": "replace", "path":"/is_active", "value":auth_update_info.is_active})
-                    logger.debug(f"Successfully added active status update operation for user '{auth_update_info.id}'")
-                else:
-                    logger.debug(f"Failed to update active status for user '{auth_update_info.id}' but updater is not superuser")
+                patch_operations.append({"op": "replace", "path":"/is_active", "value":auth_update_info.is_active})
 
             if auth_update_info.is_superuser is not None:
                 logger.debug(f"Trying to update user '{auth_update_info.id}' superuser status")
-                if updater_is_super:
-                    patch_operations.append({"op": "replace", "path":"/is_superuser", "value":auth_update_info.is_superuser})
-                    logger.debug(f"Successfully added superuser status update operation for user '{auth_update_info.id}'")
-                else:
-                    logger.debug(f"Failed to update superuser status for user '{auth_update_info.id}' but updater is not superuser")
+                patch_operations.append({"op": "replace", "path":"/is_superuser", "value":auth_update_info.is_superuser})
 
             if len(patch_operations) == 0:
                 logger.debug(f"No update operations pending for user '{auth_update_info.id}'")
@@ -156,7 +148,6 @@ class AuthDB:
                     "value": int(datetime.now(UTC).timestamp()),
                 }
             )
-            logger.debug(f"Successfully added 'updated at' timestamp update operation for user '{auth_update_info.id}'")
 
             logger.debug(f"Trying to send update operations to DB for user '{auth_update_info.id}'")
             item: CosmosDict = await self.container.patch_item(
