@@ -1,16 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "backend"
+name = "profiles_service"
 version = "0.1.0"
-description = "ProjectANTY backend"
-readme = "README.md"
-requires-python = ">=3.12"
+description = "FastAPI microservice for profile management."
+requires-python = ">=3.12,<4.0"
 dependencies = [
+    "fastapi[standard]>=0.119.0",
+    "aiohttp>=3.13.0",
+    "azure-cosmos>=4.14.0",
+    "shared"
+]
+
+[tool.uv.sources]
+"shared" = { path = "../shared", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
-    "python-dotenv>=1.1.1",
+    "pytest-cov>=7.0.0",
+    "pytest-subtests>=0.14.2",
     "ruff>=0.14.0",
-    "ty>=0.0.1a22",
+    "ty>=0.0.1a21",
 ]
+
+[tool.ty.src]
+include = ["src", "tests"]
+exclude = ["venv", ".venv"]
+
+[tool.ty.environment]
+extra-paths = ["../shared"]
 
 [tool.ty.terminal]
 output-format = "full"
@@ -35,7 +60,6 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "W191",  # indentation contains tabs
     "B904",  # allow raising exceptions without 'from e' for HTTPException
-    "E402",
 ]
 
 [tool.ruff.lint.pyupgrade]
