@@ -4,15 +4,16 @@ from datetime import UTC, datetime
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pydantic import EmailStr
-from shared.exceptions.db import (
+
+from backend.shared.exceptions.db import (
     GeneralQueryError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.users import UserInDB
+from backend.shared.models.users import UserInDB
 
-from src.models import UserUpdate
+from .models import UserUpdate
 
 logger = logging.getLogger("users_service")
 
@@ -74,7 +75,7 @@ class UsersDB:
         except Exception:
             raise GeneralQueryError()
 
-    async def update_user(self, old_user_db_record: UserInDB, user_update: UserUpdate, updater_is_super:bool) -> UserInDB:
+    async def update_user(self, old_user_db_record: UserInDB, user_update: UserUpdate) -> UserInDB:
         """Update user in CosmosDB using patch_item for partial updates"""
         try:
             logger.debug(f"Trying to update user with ID '{user_update.id}'")

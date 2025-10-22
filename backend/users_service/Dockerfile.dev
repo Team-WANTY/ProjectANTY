@@ -15,12 +15,12 @@ WORKDIR /app/users_service
 # Install both with uv
 # RUN cd /app/shared && uv sync
 
-RUN uv sync && uv pip install -e /app/shared
+RUN uv sync
 
-# EXPOSE 8000
+# EXPOSE 8001
 
 RUN groupadd -r anty && useradd -r -m -g anty anty
 
 USER anty
 
-CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uv", "run", "fastapi", "dev", "src/main.py", "--port", "8001"]
