@@ -4,11 +4,11 @@ from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
 
-from src.database import AuthDB
-from src.service import AuthService
-from src.settings import settings
+from backend.shared.settings import settings as shared_settings
 
-# Setup logging
+from .database import AuthDB
+from .service import AuthService
+
 logging.basicConfig(
     stream = stdout,
     level = logging.DEBUG,
@@ -17,14 +17,13 @@ logging.basicConfig(
 
 logger = logging.getLogger("auth_service")
 
-# Setup DB
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(
-    settings.cosmosdb_endpoint,
-    settings.cosmosdb_key,
+    shared_settings.COSMOSDB_ENDPOINT,
+    shared_settings.COSMOSDB_KEY,
 )
-database = client.get_database_client(settings.cosmosdb_database_name)
-users_container = database.get_container_client(settings.cosmosdb_users_container_name)
+database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
+users_container = database.get_container_client("users")
 logger.debug("Connected to Azure CosmosDB and got 'users' container")
 
 @lru_cache
@@ -36,3 +35,4 @@ def get_auth_service() -> AuthService:
     return AuthService(
         get_auth_db(),
     )
+

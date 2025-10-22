@@ -4,15 +4,18 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from email_validator import EmailNotValidError, validate_email
 from pwdlib import PasswordHash
-from shared.exceptions.token import TokenError, TokenExpiredError
-from shared.models.token import Token
 
-from src.database import AuthDB
-from src.exceptions import (
+from backend.shared.auth import authorize_operation
+from backend.shared.exceptions.token import TokenError, TokenExpiredError
+from backend.shared.models.auth import UserAuthInfo
+from backend.shared.models.token import Token
+
+from .database import AuthDB
+from .exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthInfo, UserAuthUpdate, UserCreate
-from src.settings import settings
+from .models import UserAuthUpdate, UserCreate
+from .settings import settings
 
 logger = logging.getLogger("auth_service")
 pwdhasher = PasswordHash.recommended()
@@ -71,12 +74,17 @@ class AuthService:
         return user_auth_info
 
     async def update_user_auth(
-        self, auth_update_info: UserAuthUpdate, updater_is_superuser:bool
+        self, auth_update_info: UserAuthUpdate, updater:UserAuthInfo
     ) -> UserAuthInfo:
+        logger.debug(f"Checking if {updater.id} is authorized to update {auth_update_info.id}")
+        authorize_operation(updater, auth_update_info.id)
+        if not updater.is_superuser:
+            auth_update_info.is_active = None
+            auth_update_info.is_superuser = None
         logger.debug(f"Trying to resolve and get user record with ID '{auth_update_info.id}'")
         old_user_auth_info = await self.get_user_auth_by_id(auth_update_info.id)
         logger.debug(f"Trying to update user with ID '{auth_update_info.id}'")#TODO for logging, get updater info
-        new_user_auth_info = await self.db.update_auth(old_user_auth_info, auth_update_info, updater_is_superuser)
+        new_user_auth_info = await self.db.update_auth(old_user_auth_info, auth_update_info)
         return new_user_auth_info
 
     # TOKEN FUNCTIONS
@@ -85,13 +93,13 @@ class AuthService:
         try:
             logger.debug(f"Trying to create access token for user with ID '{user_id}'")
             expiration = datetime.now(UTC) + timedelta(
-                minutes=settings.access_token_expiration_minutes
+                minutes=settings.ACCESS_TOKEN_EXPIRATION_MINUTES
             )
             payload = Token(sub=user_id, exp=int(expiration.timestamp()), token_type="access").model_dump()
             token = jwt.encode(
                 payload=payload,
-                key=settings.token_private_key,
-                algorithm=settings.token_algorithm,
+                key=settings.TOKEN_PRIVATE_KEY,
+                algorithm=settings.TOKEN_ALGORITHM,
             )
             logger.debug(f"Successfully created access token for user with ID '{user_id}'")
             return token
@@ -104,13 +112,13 @@ class AuthService:
         try:
             logger.debug(f"Trying to create refresh token for user with ID '{user_id}'")
             expiration = datetime.now(UTC) + timedelta(
-                days=settings.refresh_token_expiration_days
+                days=settings.REFRESH_TOKEN_EXPIRATION_DAYS
             )
             payload = Token(sub=user_id, exp=int(expiration.timestamp()), token_type="refresh").model_dump()
             token = jwt.encode(
                 payload=payload,
-                key=settings.token_private_key,
-                algorithm=settings.token_algorithm,
+                key=settings.TOKEN_PRIVATE_KEY,
+                algorithm=settings.TOKEN_ALGORITHM,
             )
             logger.debug(f"Successfully created refresh token for user with ID '{user_id}'")
             return token
@@ -124,8 +132,8 @@ class AuthService:
             logger.debug("Trying to decode JWT string to Token")
             payload: dict = jwt.decode(
                 jwt=token_str,
-                key=settings.token_public_key,
-                algorithms=[settings.token_algorithm],
+                key=settings.TOKEN_PUBLIC_KEY,
+                algorithms=settings.TOKEN_ALGORITHM,
             )
 
             token = Token.model_validate(payload, extra="ignore")

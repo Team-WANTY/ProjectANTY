@@ -3,18 +3,6 @@ FROM python:3.12-slim
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
-<<<<<<< HEAD
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-cache
-
-COPY . .
-
-EXPOSE 8000
-
-RUN groupadd -r anty && useradd -r -m -g anty anty
-
-CMD ["uv", "run", "uvicorn", "service.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-=======
 
 # Copy shared package first so it can be installed before service code
 COPY ./shared ./shared
@@ -27,7 +15,7 @@ WORKDIR /app/auth_service
 # Install both with uv
 # RUN cd /app/shared && uv sync
 
-RUN uv sync && uv pip install -e /app/shared
+RUN uv sync
 
 # EXPOSE 8000
 
@@ -35,5 +23,4 @@ RUN groupadd -r anty && useradd -r -m -g anty anty
 
 USER anty
 
-CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
->>>>>>> main
+CMD ["uv", "run", "fastapi", "dev", "src/main.py", "--port", "8000"]

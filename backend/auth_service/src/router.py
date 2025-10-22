@@ -1,30 +1,42 @@
 import logging
 
 from email_validator import EmailNotValidError
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from shared.exceptions.db import (
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.security import (
+    APIKeyHeader,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
+
+from backend.shared.exceptions.auth import AuthError
+from backend.shared.exceptions.db import (
     GeneralQueryError,
+    RecordAlreadyExistsError,
+    RecordCreationError,
     RecordNotFoundError,
 )
-from shared.exceptions.token import TokenError, TokenExpiredError
+from backend.shared.exceptions.token import TokenError, TokenExpiredError
+from backend.shared.models.auth import UserAuthInfo
+from backend.shared.models.users import UserBase
+from backend.shared.settings import settings as shared_settings
 
-from src.dependencies import get_auth_service
-from src.exceptions import (
+from .dependencies import get_auth_service
+from .exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthInfo, UserAuthUpdate, UserBase, UserCreate
-from src.service import AuthService
-from src.settings import settings
+from .models import UserAuthUpdate, UserCreate
+from .service import AuthService
+from .settings import settings
 
 logger = logging.getLogger("auth_service")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 
 async def get_current_user_auth(
     token: str = Depends(oauth2_scheme),
     auth_service: AuthService = Depends(get_auth_service),
-) -> UserBase:
+) -> UserAuthInfo:
     """Get current authenticated and active user from JWT token"""
     try:
         decoded_token = await auth_service.decode_token(token)
@@ -70,21 +82,23 @@ auth_router = APIRouter()
     "/register", response_model=UserBase, status_code=status.HTTP_201_CREATED, tags=["authentication"]
 )
 async def register(
-    response: Response,
     user_create: UserCreate,
     auth_service: AuthService = Depends(get_auth_service),
-):
+) -> UserBase:
     try:
         created_user = await auth_service.register_user(user_create)
-        response.status_code = status.HTTP_201_CREATED
-        return created_user.to_base()
-    except Exception:
+        return created_user.to_base().model_dump()
+    except RecordAlreadyExistsError:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status_code=status.HTTP_403_FORBIDDEN, detail="User already exists"
+        )
+    except RecordCreationError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error registering user"
         )
 
 
-@auth_router.post("/login", status_code=status.HTTP_200_OK, tags=["authentication"])
+@auth_router.post("/login", tags=["authentication"])
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),  # accepts username or email in 'username' field
@@ -103,7 +117,9 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    except Exception:
+    except RecordNotFoundError:
+        email_failed = True
+    except GeneralQueryError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -118,14 +134,18 @@ async def login(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        except Exception:
+        except RecordNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        except GeneralQueryError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     if not user_auth_info.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive"
         )
 
     response.set_cookie(
@@ -134,7 +154,7 @@ async def login(
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=settings.refresh_token_expiration_days * 24 * 60 * 60,
+        max_age=settings.REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60,
     )
 
     return {
@@ -143,14 +163,14 @@ async def login(
     }
 
 
-@auth_router.get("/verify", status_code=status.HTTP_200_OK, tags=["interservice"])
+@auth_router.get("/verify/{token}", status_code=status.HTTP_200_OK, tags=["interservice"])
 async def verify_token(
-    token: str,
+    token:str,
     auth_service: AuthService = Depends(get_auth_service),
-    x_interservice_key: str = Header(None)
-):
+    x_interservice_key = Depends(interservice_scheme)
+) -> UserAuthInfo:
     try:
-        if x_interservice_key != settings.interservice_key:
+        if x_interservice_key != shared_settings.INTERSERVICE_KEY:
             logger.error(f"Invalid interservice key: {x_interservice_key}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid key")
         decoded_token = await auth_service.decode_token(token)
@@ -158,7 +178,8 @@ async def verify_token(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Invalid token type"
             )
-        return decoded_token.model_dump()
+        user_auth_info = await auth_service.get_user_auth_by_id(decoded_token.sub)
+        return user_auth_info.model_dump()
     except HTTPException as e:
         raise e
     except TokenExpiredError:
@@ -170,10 +191,10 @@ async def verify_token(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error"
         )
 
-
-@auth_router.post("/refresh", status_code=status.HTTP_200_OK, tags=["authentication"])
+@auth_router.get("/refresh", status_code=status.HTTP_200_OK, tags=["authentication"])
 async def refresh_token(
-    request: Request, auth_service: AuthService = Depends(get_auth_service)
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service)
 ):
     try:
         refresh_token = request.cookies.get("refresh_token")
@@ -220,10 +241,11 @@ async def update_auth(
     auth_update: UserAuthUpdate,
     auth_service: AuthService = Depends(get_auth_service),
     current_user_auth: UserAuthInfo = Depends(get_current_user_auth)
-):
-    if current_user_auth.id != auth_update.id and not current_user_auth.is_superuser:
+) -> UserBase:
+    try:
+        new_auth_info = await auth_service.update_user_auth(auth_update, current_user_auth)
+        return new_auth_info.to_base().model_dump()
+    except AuthError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
-    new_auth_info = await auth_service.update_user_auth(auth_update, current_user_auth.is_superuser)
-    return new_auth_info.to_base()
