@@ -14,6 +14,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+shared = [
+    "pydantic-settings>=2.11.0",
+    "email-validator>=2.3.0",
+    "httpx>=0.28.1",
+]
+
 auth_service = [
     "aiohttp>=3.13.0",
     "azure-cosmos>=4.14.0",
@@ -28,9 +34,11 @@ auth_service = [
 users_service = [
     "aiohttp>=3.13.0",
     "azure-cosmos>=4.14.0",
-    "pydantic-settings>=2.11.0",
-    "email-validator>=2.3.0",
-    "httpx>=0.28.1",
+]
+
+profiles_service = [
+    "aiohttp>=3.13.0",
+    "azure-cosmos>=4.14.0",
 ]
 
 [tool.ty.terminal]

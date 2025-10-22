@@ -9,24 +9,9 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
-  hello-service:
-    build:
-      context: ./hello-world/
-      dockerfile: Dockerfile.dev
-    container_name: hello-service
-    expose:
-      - "8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.hello.rule=Host(`hello.localhost`)"
-      - "traefik.http.services.hello.loadbalancer.server.port=8000"
-    depends_on:
-      - traefik
-    restart: unless-stopped
-
   auth-service:
     build:
-      context: ./auth/
+      context: ./auth_service/
       dockerfile: Dockerfile.dev
     container_name: auth-service
     expose:
