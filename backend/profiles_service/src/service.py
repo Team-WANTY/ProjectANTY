@@ -22,7 +22,7 @@ class ProfileService:
         return profile
 
     async def update_profile(self, profile_update:ProfileUpdate, updater:UserAuthInfo):
-        authorize_operation(updater, profile_update.user_id)
+        await authorize_operation(updater, profile_update.user_id)
         if not updater.is_superuser:
             profile_update.unlocked_analytics = None
             profile_update.unlocked_badges = None
@@ -30,5 +30,5 @@ class ProfileService:
         return profile
 
     async def delete_profile(self, user_id:str, updater:UserAuthInfo):
-        authorize_operation(updater, user_id)
+        await authorize_operation(updater, user_id)
         await self.db.delete_profile(user_id)

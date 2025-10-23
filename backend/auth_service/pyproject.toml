@@ -40,7 +40,7 @@ include = ["src", "tests"]
 exclude = ["venv", ".venv"]
 
 [tool.ty.environment]
-extra-paths = ["../shared"]
+extra-paths = ["../"]
 
 [tool.ty.terminal]
 output-format = "full"
@@ -69,3 +69,10 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+[tool.pytest.ini_options]
+pythonpath = "../"
+python_files = "test_*.py"
+testpaths = [
+    "tests",
+]

@@ -76,7 +76,7 @@ class AuthService:
         self, auth_update_info: UserAuthUpdate, updater:UserAuthInfo
     ) -> UserAuthInfo:
         logger.debug(f"Checking if {updater.id} is authorized to update {auth_update_info.id}")
-        authorize_operation(updater, auth_update_info.id)
+        await authorize_operation(updater, auth_update_info.id)
         if not updater.is_superuser:
             auth_update_info.is_active = None
             auth_update_info.is_superuser = None

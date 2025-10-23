@@ -38,7 +38,7 @@ class UsersService:
     async def update_user(self, user_update: UserUpdate, updater:UserInDB) -> UserInDB:
         """Update user"""
         logger.debug(f"Checking if {updater.id} is authorized to update {user_update.id}")
-        authorize_operation(updater, user_update.id)
+        await authorize_operation(updater, user_update.id)
         logger.debug(f"Updating user with ID '{user_update.id}'")
         old_user_in_db = await self.get_user_by_id(user_update.id)
         if not updater.is_superuser:
@@ -50,7 +50,7 @@ class UsersService:
     async def delete_user(self, user_id: str, deleter:UserInDB) -> None:
         """Delete user"""
         logger.debug(f"Checking if {deleter.id} is authorized to delete {user_id}")
-        authorize_operation(deleter, user_id)
+        await authorize_operation(deleter, user_id)
         logger.debug(f"Deleting user with ID '{user_id}'")
         await self.user_db.delete_user(user_id)
         logger.debug(f"Successfully deleted user with ID '{user_id}'")

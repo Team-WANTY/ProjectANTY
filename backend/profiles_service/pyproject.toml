@@ -35,7 +35,7 @@ include = ["src", "tests"]
 exclude = ["venv", ".venv"]
 
 [tool.ty.environment]
-extra-paths = ["../shared"]
+extra-paths = ["../"]
 
 [tool.ty.terminal]
 output-format = "full"
