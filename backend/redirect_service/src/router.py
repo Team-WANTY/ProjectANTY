@@ -1,6 +1,4 @@
-
 from urllib.parse import urlencode
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
@@ -9,23 +7,24 @@ FALLBACK_URL = "https://google.com"  # Hardcoded fallback
 
 redirect_router = APIRouter()
 
-@redirect_router.get("/go", response_class=HTMLResponse, include_in_schema=False)
+@redirect_router.get("/app", response_class=HTMLResponse, include_in_schema=False)
 async def universal_redirect(
-    type: str,
-    token: str
+    page: str,
+    token: str | None = None
 ):
     """
     Universal redirect service for deep links with built-in fallback.
 
-    - type: type of action (password_reset, verify_email, invite, etc.)
-    - token: JWT or unique link token
+    - page: screen or action name (password_reset, verify_email, invite, etc.)
+    - token: optional JWT or unique link token
     """
-    if not type or not token:
-        raise HTTPException(status_code=400, detail="Missing required parameters")
+    if not page:
+        raise HTTPException(status_code=400, detail="Missing required 'page' parameter")
 
-    # Build query string for deep link
-    query_params = {"token": token}
-    deeplink_url = f"{DEEPLINK_SCHEME}{type}?{urlencode(query_params)}"
+    # Build query string only if token is provided
+    deeplink_url = f"{DEEPLINK_SCHEME}{page}"
+    if token:
+        deeplink_url += f"?{urlencode({'token': token})}"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -37,11 +36,6 @@ async def universal_redirect(
             window.onload = function() {{
                 // Attempt to open the app
                 window.location.href = "{deeplink_url}";
-
-                // If the app does not open within 5 seconds, redirect to built-in fallback
-                setTimeout(function() {{
-                    window.location.href = "{FALLBACK_URL}";
-                }}, 5000);
             }};
         </script>
         <style>
@@ -57,7 +51,7 @@ async def universal_redirect(
     </head>
     <body>
         <h2>Opening your app...</h2>
-        <p>If it doesn’t open automatically, you will be redirected shortly.</p>
+        <p>You will be redirected shortly.</p>
         <p><a href="{FALLBACK_URL}">Click here if nothing happens</a></p>
     </body>
     </html>
