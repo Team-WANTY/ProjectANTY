@@ -1,18 +1,34 @@
-entryPoints:
-  web:
-    address: ":80"
-  websecure:
-    address: ":443"
+http:
+  routers:
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      service: auth-service
 
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
+    users:
+      rule: "PathPrefix(`/users`)"
+      service: users-service
 
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: teamanty50@gmail.com
-      storage: /letsencrypt/acme.json
-      httpChallenge:
-        entryPoint: web
+    redirect:
+      rule: "PathPrefix(`/redirect`)"
+      service: redirect-service
+
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "https://auth.azure.com"
+
+    profiles-service:
+      loadBalancer:
+        servers:
+          - url: "https://profiles.azure.com"
+
+    redirect-service:
+      loadBalancer:
+        servers:
+          - url: "https://redirect.azure.com"
+    
+    users-service:
+      loadBalancer:
+        servers:
+          - url: "https://users.azure.com"

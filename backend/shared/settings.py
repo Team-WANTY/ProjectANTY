@@ -4,7 +4,7 @@ from typing import Any
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
-from .key_io import set_key_to_environment
+from key_io import set_key_to_environment
 
 load_dotenv()
 

@@ -184,7 +184,7 @@ class TestUpdateUserAuth:
             plain_text_password="NewPassword123!"
         )
 
-        with patch('shared.auth.authorize_operation', side_effect=AuthError()):
+        with patch('src.service.authorize_operation', side_effect=AuthError()):
             with pytest.raises(AuthError):
                 await auth_service.update_user_auth(auth_update, sample_user_auth_info)
 

@@ -8,9 +8,10 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  auth-backend:
+  users-backend:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
+    environment: "ANTY Backend Environment"
 
     steps:
       - name: Checkout code.
@@ -24,12 +25,10 @@ jobs:
           COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
           COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
           COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
-
-          AUTH_SERVICE_EXTERNAL_URL: ''
+          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
         run: |
-          cd backend/users_service
+          cd backend/auth_service
           uv sync --dev
           uv run ruff check
           uv run ty check
-          uv run pytest

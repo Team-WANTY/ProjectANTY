@@ -2,68 +2,9 @@ services:
   traefik:
     image: traefik:v3.5
     container_name: traefik
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false" #services not exposed by default unless specified
-      - "--entrypoints.web.address=:80"
+    restart: always
     ports:
       - "80:80"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    networks:
-      - traefik-net
 
-  auth-service:
-    build:
-      dockerfile: auth_service/Dockerfile.dev
-    container_name: auth-service
-    expose:
-      - "8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
-      - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.services.auth.loadbalancer.server.port=8000" #not necessary, but load balancing is possible. right now load balancer only has one server
-    depends_on:
-      - traefik
-    restart: unless-stopped
-    networks:
-      - traefik-net
-
-  users-service:
-    build:
-      dockerfile: users_service/Dockerfile.dev
-    container_name: users-service
-    expose:
-      - "8001"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.users.rule=PathPrefix(`/users`)"
-      - "traefik.http.routers.users.entrypoints=web"
-      - "traefik.http.services.users.loadbalancer.server.port=8001" #not necessary, but load balancing is possible. right now load balancer only has one server
-    depends_on:
-      - traefik
-    restart: unless-stopped
-    networks:
-      - traefik-net
-
-  profiles-service:
-    build:
-      dockerfile: profiles_service/Dockerfile.dev
-    container_name: profiles-service
-    expose:
-      - "8002"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.profiles.rule=PathPrefix(`/profiles`)"
-      - "traefik.http.routers.profiles.entrypoints=web"
-      - "traefik.http.services.profiles.loadbalancer.server.port=8002" #not necessary, but load balancing is possible. right now load balancer only has one server
-    depends_on:
-      - traefik
-    restart: unless-stopped
-    networks:
-      - traefik-net
-
-networks:
-  traefik-net:
-    driver: bridge

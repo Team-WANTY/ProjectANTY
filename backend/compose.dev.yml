@@ -1,14 +1,46 @@
 services:
   traefik:
     command:
-      #- "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--api.debug=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.file.filename=/traefik/traefik.dev.yml"
     ports:
-      - "80:80"
       - "8080:8080"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/traefik.dev.yml:/traefik/traefik.dev.yml:ro"
+
+  auth-service:
+    build:
+      dockerfile: auth_service/Dockerfile.dev
+    container_name: auth-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  profiles-service:
+    build:
+      dockerfile: profiles_service/Dockerfile.dev
+    container_name: profiles-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  redirect-service:
+    build:
+      dockerfile: redirect_service/Dockerfile.dev
+    container_name: redirect-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  users-service:
+    build:
+      dockerfile: users_service/Dockerfile.dev
+    container_name: users-service
+    expose:
+      - "8000"
+    restart: unless-stopped

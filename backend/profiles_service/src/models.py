@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-
 from shared.db import now_timestamp
 
 

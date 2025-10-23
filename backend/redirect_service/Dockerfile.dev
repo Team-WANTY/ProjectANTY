@@ -4,20 +4,12 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Copy shared package first so it can be installed before service code
-COPY ./shared ./shared
-
 # Copy service code
-COPY ./users_service ./users_service
+COPY ./redirect_service ./redirect_service
 
-WORKDIR /app/users_service
-
-# Install both with uv
-# RUN cd /app/shared && uv sync
+WORKDIR /app/redirect_service
 
 RUN uv sync
-
-# EXPOSE 8001
 
 RUN groupadd -r anty && useradd -r -m -g anty anty
 
