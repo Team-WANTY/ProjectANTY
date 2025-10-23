@@ -1,11 +1,12 @@
 services:
   traefik:
     command:
-      - "--api.dashboard=true"
+      #- "--api.dashboard=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--api.insecure=true"
+      - "--api.debug=true"
     ports:
       - "80:80"
       - "8080:8080"

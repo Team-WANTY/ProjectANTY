@@ -29,7 +29,7 @@ jobs:
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
         run: |
           cd backend/users_service
-          uv sync --dev && uv pip install -e ../shared
+          uv sync --dev
           uv run ruff check
           uv run ty check
           uv run pytest

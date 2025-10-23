@@ -33,7 +33,7 @@ jobs:
           REFRESH_TOKEN_EXPIRATION_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }}
         run: |
           cd backend/auth_service
-          uv sync --dev && uv pip install -e ../shared
+          uv sync --dev
           uv run ruff check
           uv run ty check
           uv run pytest
