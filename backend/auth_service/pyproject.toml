@@ -5,22 +5,22 @@ build-backend = "hatchling.build"
 [project]
 name = "auth_service"
 version = "0.1.0"
-description = "FastAPI microservice for user authentication."
+description = "FastAPI microservice for authentication."
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi[standard]>=0.119.0",
-    "python-dotenv>=1.1.1",
-    "uvicorn[standard]>=0.37.0,<0.50.0",
-
     "aiohttp>=3.13.0",
     "azure-cosmos>=4.14.0",
     "email-validator>=2.3.0",
-    "httpx>=0.28.1",
     "pwdlib[argon2]>=0.2.1",
     "pydantic-settings>=2.11.0",
     "pyjwt[crypto]>=2.10.1",
     "python-multipart>=0.0.20",
+    "shared"
 ]
+
+[tool.uv.sources]
+"shared" = { path = "../shared", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
@@ -40,7 +40,7 @@ include = ["src", "tests"]
 exclude = ["venv", ".venv"]
 
 [tool.ty.environment]
-extra-paths = ["../shared"]
+extra-paths = ["../"]
 
 [tool.ty.terminal]
 output-format = "full"
@@ -69,3 +69,11 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+[tool.pytest.ini_options]
+addopts = "-p no:warnings"
+pythonpath = "../"
+python_files = "test_*.py"
+testpaths = [
+    "tests",
+]

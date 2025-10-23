@@ -1,5 +1,5 @@
-class AuthError(Exception):
-    pass
+from shared.exceptions.auth import AuthError
+
 
 class AuthIncorrectPasswordError(AuthError):
     pass

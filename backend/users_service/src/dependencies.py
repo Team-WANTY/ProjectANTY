@@ -3,13 +3,11 @@ from functools import lru_cache
 from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
-from httpx import AsyncClient
+from shared.settings import settings as shared_settings
 
 from src.database import UsersDB
 from src.service import UsersService
-from src.settings import settings
 
-# Setup logger
 logging.basicConfig(
     stream = stdout,
     level = logging.DEBUG,
@@ -20,19 +18,16 @@ logger = logging.getLogger("users_service")
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(
-    settings.cosmosdb_endpoint,
-    settings.cosmosdb_key,
+    shared_settings.COSMOSDB_ENDPOINT,
+    shared_settings.COSMOSDB_KEY,
 )
-
-# Setup DB
-database = client.get_database_client(settings.cosmosdb_database_name)
-users_container = database.get_container_client(settings.cosmosdb_users_container_name)
+database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
+users_container = database.get_container_client("users")
 logger.debug("Connected to Azure CosmosDB and got users container")
 
-headers = {"X-Interservice-Key": settings.interservice_key}
+headers = {"X-Interservice-Key": shared_settings.INTERSERVICE_KEY}
 @lru_cache
 def get_users_service() -> UsersService:
     return UsersService(
         UsersDB(users_container),
-        AsyncClient(headers=headers, base_url=settings.auth_service_internal_url),
     )

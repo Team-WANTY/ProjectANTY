@@ -74,7 +74,7 @@ class UsersDB:
         except Exception:
             raise GeneralQueryError()
 
-    async def update_user(self, old_user_db_record: UserInDB, user_update: UserUpdate, updater_is_super:bool) -> UserInDB:
+    async def update_user(self, old_user_db_record: UserInDB, user_update: UserUpdate) -> UserInDB:
         """Update user in CosmosDB using patch_item for partial updates"""
         try:
             logger.debug(f"Trying to update user with ID '{user_update.id}'")

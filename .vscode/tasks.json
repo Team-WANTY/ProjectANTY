@@ -2,22 +2,34 @@
   "version": "2.0.0",
   "tasks": [
 	{
-		"label": "Run Authentication Service",
+		"label": "Update /shared",
 		"type": "shell",
-		"command": "cd backend/auth_service && uv run --extra auth_service fastapi dev main.py --port 8000",
-		"problemMatcher": []
+		"command": "cd backend/shared; uv sync",
+	},
+	{
+		"label": "Run Authentication Service",
+		"dependsOn":["Update /shared"],
+		"type": "shell",
+		"command": "cd backend/auth_service; uv sync; uv run fastapi dev src/main.py --port 8000",
 	},
 	{
 		"label": "Run Users Service",
+		"dependsOn":["Update /shared"],
 		"type": "shell",
-		"command": "cd backend/users_service && uv run --extra users_service fastapi dev main.py --port 8001",
-		"problemMatcher": []
+		"command": "cd backend/users_service; uv sync; uv run fastapi dev src/main.py --port 8001",
+	},
+	{
+		"label": "Run Profiles Service",
+		"dependsOn":["Update /shared"],
+		"type": "shell",
+		"command": "cd backend/profiles_service; uv sync; uv run fastapi dev src/main.py --port 8002",
 	},
 	{
 		"label": "Run All Services",
 		"dependsOn": [
 			"Run Authentication Service",
-			"Run Users Service"
+			"Run Users Service",
+			"Run Profiles Service"
 		],
 		"dependsOrder": "parallel",
 		"problemMatcher": [

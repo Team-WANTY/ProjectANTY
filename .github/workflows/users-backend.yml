@@ -24,20 +24,12 @@ jobs:
           COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
           COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
           COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
-          COSMOSDB_USERS_CONTAINER_NAME: ${{ secrets.COSMOSDB_USER_CONTAINER_NAME }}
-          
-          AUTH_SERVICE_EXTERNAL_URL: ''
-          AUTH_SERVICE_INTERNAL_URL: ''
-          INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
 
-          TOKEN_PUBLIC_KEY: ''
-          TOKEN_PRIVATE_KEY: ''
-          TOKEN_ALGORITHM: ${{ secrets.TOKEN_ALGORITHM }}
-          ACCESS_TOKEN_EXPIRATION_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRATION_MINUTES }}
-          REFRESH_TOKEN_EXPIRATION_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRATION_DAYS }}
+          AUTH_SERVICE_EXTERNAL_URL: ''
+          INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
         run: |
           cd backend/users_service
-          uv sync --dev && uv pip install -e ../shared
+          uv sync --dev
           uv run ruff check
           uv run ty check
           uv run pytest

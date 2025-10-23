@@ -1,5 +1,6 @@
 import os
 
+
 def set_key_to_environment(key_name: str, key: str):
     """Set an environment variable and persist it in a .env file."""
 
