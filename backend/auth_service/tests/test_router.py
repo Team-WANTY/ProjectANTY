@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -177,7 +178,6 @@ class TestLogin:
             username="testuser",
             email="test@gmail.com",
             hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-            created_at=int(datetime.now(UTC).timestamp()),
             updated_at=int(datetime.now(UTC).timestamp()),
             is_active=False,
             is_superuser=False
@@ -335,7 +335,6 @@ class TestRefreshToken:
             username="testuser",
             email="test@gmail.com",
             hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-            created_at=int(datetime.now(UTC).timestamp()),
             updated_at=int(datetime.now(UTC).timestamp()),
             is_active=False,
             is_superuser=False
@@ -418,5 +417,6 @@ class TestGetCurrentUserAuth:
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user_auth(token="fake_token")
 
-        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "inactive" in exc_info.value.detail.lower()
+        exc: HTTPException = cast(HTTPException, exc_info.value)
+        assert exc.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "inactive" in exc.detail.lower()

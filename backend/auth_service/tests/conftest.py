@@ -36,7 +36,6 @@ def sample_user_auth_info():
         username="testuser",
         email="test@gmail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        created_at=now_timestamp(),
         updated_at=now_timestamp(),
         is_active=True,
         is_superuser=False
@@ -51,7 +50,6 @@ def sample_superuser():
         username="admin",
         email="admin@superfaketestemail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        created_at=now_timestamp(),
         updated_at=now_timestamp(),
         is_active=True,
         is_superuser=True

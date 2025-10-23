@@ -66,6 +66,7 @@ ignore = [
 keep-runtime-typing = true
 
 [tool.pytest.ini_options]
+addopts = -p no:warnings
 pythonpath = "../"
 python_files = "test_*.py"
 testpaths = [
