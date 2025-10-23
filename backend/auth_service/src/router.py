@@ -7,7 +7,6 @@ from fastapi.security import (
     OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
-
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     GeneralQueryError,

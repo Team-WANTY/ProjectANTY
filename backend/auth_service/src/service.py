@@ -4,7 +4,6 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from email_validator import EmailNotValidError, validate_email
 from pwdlib import PasswordHash
-
 from shared.auth import authorize_operation
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.auth import UserAuthInfo

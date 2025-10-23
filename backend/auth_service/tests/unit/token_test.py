@@ -3,9 +3,8 @@ from uuid import uuid4
 
 import jwt
 import pytest
-from src.settings import settings
-from shared.exceptions.token import TokenError, TokenExpiredError#ty: ignore
-from shared.models.token import Token #ty: ignore
+from shared.exceptions.token import TokenError, TokenExpiredError
+from shared.models.token import Token
 
 from src.service import AuthService
 from src.settings import settings

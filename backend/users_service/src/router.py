@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from shared.auth import get_current_user_auth
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (

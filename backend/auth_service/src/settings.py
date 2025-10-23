@@ -4,7 +4,6 @@ from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
-
 from shared.key_io import set_key_to_environment
 
 load_dotenv()

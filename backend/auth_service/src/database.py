@@ -5,7 +5,6 @@ from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pwdlib import PasswordHash
 from pydantic import EmailStr
-
 from shared.exceptions.db import (
     GeneralQueryError,
     RecordAlreadyExistsError,

@@ -1,6 +1,5 @@
 from pwdlib import PasswordHash
 from pydantic import BaseModel, EmailStr
-
 from shared.db import generate_id, now_timestamp
 from shared.models.users import UserInDB
 

@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pydantic import EmailStr
-
 from shared.exceptions.db import (
     GeneralQueryError,
     RecordDeletionError,

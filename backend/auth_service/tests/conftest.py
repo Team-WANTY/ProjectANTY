@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from pwdlib import PasswordHash
 
 from src.dependencies import get_auth_service
@@ -14,24 +15,19 @@ pwdhasher = PasswordHash.recommended()
 
 
 @pytest.fixture
-async def async_client(mock_auth_service):
-    """Async FastAPI test client"""
+def client(mock_auth_service):
+    """FastAPI TestClient with dependency overrides (mocked)"""
     app.dependency_overrides[get_auth_service] = lambda: mock_auth_service
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        yield ac
+    with TestClient(app) as client:
+        yield client
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-async def real_client():
-    """Real async client WITHOUT mocks"""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as ac:
-        yield ac
+def real_client():
+    """FastAPI TestClient without mocks"""
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture

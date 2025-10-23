@@ -1,10 +1,10 @@
 from unittest.mock import patch
 
 import pytest
-from shared.exceptions.db import RecordNotFoundError #ty: ignore
+from shared.exceptions.db import RecordNotFoundError
+from shared.models.auth import UserAuthInfo
 
 from src.exceptions import AuthIncorrectPasswordError
-from shared.models.auth import UserAuthInfo #ty: ignore
 from src.service import AuthService
 
 

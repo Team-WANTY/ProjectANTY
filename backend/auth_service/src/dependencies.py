@@ -3,7 +3,6 @@ from functools import lru_cache
 from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
-
 from shared.settings import settings as shared_settings
 
 from src.database import AuthDB

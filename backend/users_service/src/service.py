@@ -1,7 +1,6 @@
 import logging
 
 from pydantic import EmailStr
-
 from shared.auth import authorize_operation
 from shared.models.users import UserInDB
 
