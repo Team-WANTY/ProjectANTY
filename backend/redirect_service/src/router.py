@@ -1,4 +1,5 @@
 from urllib.parse import urlencode
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
