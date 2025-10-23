@@ -37,6 +37,8 @@ class Settings(BaseSettings):
             ).decode()
             set_key_to_environment(key_name="TOKEN_PUBLIC_KEY", key=public_key)
             self.TOKEN_PUBLIC_KEY = public_key
-
+        if not self.TOKEN_ALGORITHM:
+            set_key_to_environment(key_name="TOKEN_ALGORITHM", key="RS256")
+            self.TOKEN_ALGORITHM="RS256"
 
 settings = Settings()  # ty :ignore
