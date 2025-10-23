@@ -2,7 +2,6 @@ import logging
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
-
 from shared.db import now_timestamp
 from shared.exceptions.db import (
     GeneralQueryError,

@@ -1,7 +1,6 @@
 services:
   traefik:
     command:
-      - "--api.dashboard=true"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"

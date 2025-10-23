@@ -2,17 +2,9 @@ services:
   traefik:
     image: traefik:v3.5
     container_name: traefik
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false" #services not exposed by default unless specified
-      - "--entrypoints.web.address=:80"
+    restart: always
     ports:
       - "80:80"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    networks:
-      - traefik-net
 
-networks:
-  traefik-net:
-    driver: bridge
