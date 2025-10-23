@@ -25,6 +25,8 @@ jobs:
           COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
           COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
           COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
+          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
+          INTERSERVICE_KEYL: ${{ secrets.INTERSERVICE_KEY }}
 
           TOKEN_PUBLIC_KEY: ''
           TOKEN_PRIVATE_KEY: ''
