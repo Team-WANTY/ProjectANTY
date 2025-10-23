@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from .router import users_router
+from src.router import users_router
 
-app = FastAPI(title="Users Service with CosmosDB")
+app = FastAPI(title="Users Service with CosmosDB", root_path="/users")
 
 app.include_router(users_router)

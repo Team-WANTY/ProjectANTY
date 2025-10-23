@@ -1,19 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.shared.auth import get_current_user_auth
-from backend.shared.exceptions.auth import AuthError
-from backend.shared.exceptions.db import (
+from shared.auth import get_current_user_auth
+from shared.exceptions.auth import AuthError
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
 )
-from backend.shared.models.auth import UserAuthInfo
-from backend.shared.models.users import UserBase, UserInDB
+from shared.models.auth import UserAuthInfo
+from shared.models.users import UserBase, UserInDB
 
-from .dependencies import get_users_service
-from .models import UserUpdate
-from .service import UsersService
+from src.dependencies import get_users_service
+from src.models import UserUpdate
+from src.service import UsersService
 
 
 async def get_current_user(

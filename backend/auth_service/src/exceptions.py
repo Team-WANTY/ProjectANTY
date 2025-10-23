@@ -1,4 +1,4 @@
-from backend.shared.exceptions.auth import AuthError
+from shared.exceptions.auth import AuthError
 
 
 class AuthIncorrectPasswordError(AuthError):

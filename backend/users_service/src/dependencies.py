@@ -4,10 +4,10 @@ from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
 
-from backend.shared.settings import settings as shared_settings
+from shared.settings import settings as shared_settings
 
-from .database import UsersDB
-from .service import UsersService
+from src.database import UsersDB
+from src.service import UsersService
 
 logging.basicConfig(
     stream = stdout,

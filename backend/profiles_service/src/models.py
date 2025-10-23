@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from backend.shared.db import now_timestamp
+from shared.db import now_timestamp
 
 
 class Profile(BaseModel):

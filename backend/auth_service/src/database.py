@@ -6,17 +6,17 @@ from azure.cosmos.aio import ContainerProxy
 from pwdlib import PasswordHash
 from pydantic import EmailStr
 
-from backend.shared.exceptions.db import (
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
     RecordNotFoundError,
     RecordUpdateError,
 )
-from backend.shared.models.auth import UserAuthInfo
-from backend.shared.models.users import UserInDB
+from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 
-from .models import UserAuthUpdate, UserCreate
+from src.models import UserAuthUpdate, UserCreate
 
 logger = logging.getLogger("auth_service")
 

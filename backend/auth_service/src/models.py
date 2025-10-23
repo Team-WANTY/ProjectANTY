@@ -1,8 +1,8 @@
 from pwdlib import PasswordHash
 from pydantic import BaseModel, EmailStr
 
-from backend.shared.db import generate_id, now_timestamp
-from backend.shared.models.users import UserInDB
+from shared.db import generate_id, now_timestamp
+from shared.models.users import UserInDB
 
 """Slightly different from standard set of User models, only what is needed for auth-related read & updates"""
 

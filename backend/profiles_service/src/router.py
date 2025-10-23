@@ -3,9 +3,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
 
-from backend.shared.auth import get_current_user_auth
-from backend.shared.exceptions.auth import AuthError
-from backend.shared.exceptions.db import (
+from shared.auth import get_current_user_auth
+from shared.exceptions.auth import AuthError
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -13,12 +13,12 @@ from backend.shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from backend.shared.models.auth import UserAuthInfo
-from backend.shared.settings import settings
+from shared.models.auth import UserAuthInfo
+from shared.settings import settings
 
-from .main import get_profiles_service
-from .models import Profile, ProfileUpdate
-from .service import ProfileService
+from src.dependencies import get_profiles_service
+from src.models import Profile, ProfileUpdate
+from src.service import ProfileService
 
 logger = logging.getLogger("profiles_service")
 

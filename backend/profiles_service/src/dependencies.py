@@ -3,11 +3,10 @@ from functools import lru_cache
 from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
-
 from shared.settings import settings as shared_settings
 
-from src.database import AuthDB
-from src.service import AuthService
+from src.database import ProfileDB
+from src.service import ProfileService
 
 logging.basicConfig(
     stream = stdout,
@@ -15,7 +14,8 @@ logging.basicConfig(
     format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s"
 )
 
-logger = logging.getLogger("auth_service")
+logger = logging.getLogger("profiles_service")
+
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(
@@ -23,16 +23,16 @@ client = CosmosClient(
     shared_settings.COSMOSDB_KEY,
 )
 database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
-users_container = database.get_container_client("users")
-logger.debug("Connected to Azure CosmosDB and got 'users' container")
+profiles_container = database.get_container_client("profiles")
+logger.debug("Connected to Azure CosmosDB and got profiles container")
 
-@lru_cache
-def get_auth_db() -> AuthDB:
-    return AuthDB(users_container)
 
+
+# not needed due to generalized
+# headers = {"X-Interservice-Key": shared_settings.INTERSERVICE_KEY}
+# AsyncClient(headers=headers, base_url=???)
 @lru_cache
-def get_auth_service() -> AuthService:
-    return AuthService(
-        get_auth_db(),
+def get_profiles_service() -> ProfileService:
+    return ProfileService(
+        ProfileDB(profiles_container),
     )
-

@@ -3,16 +3,9 @@ from uuid import uuid4
 
 import jwt
 import pytest
-from service.config import settings
-from service.exceptions.token import JWTTokenExpiredError
-from service.models.token import Token
-from service.security.token import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-)
-from shared.exceptions.token import TokenError, TokenExpiredError
-from shared.models.token import Token
+from src.settings import settings
+from shared.exceptions.token import TokenError, TokenExpiredError#ty: ignore
+from shared.models.token import Token #ty: ignore
 
 from src.service import AuthService
 from src.settings import settings
@@ -29,8 +22,8 @@ class TestTokenOperations:
 
         payload = jwt.decode(
             jwt=token_str,
-            key=settings.token_public_key,
-            algorithms=[settings.token_algorithm],
+            key=settings.TOKEN_PUBLIC_KEY,
+            algorithms=[settings.TOKEN_ALGORITHM],
         )
         assert payload["token_type"] == "access"
         assert payload["sub"] == str(user_id)
@@ -44,8 +37,8 @@ class TestTokenOperations:
 
         payload = jwt.decode(
             jwt=token_str,
-            key=settings.token_public_key,
-            algorithms=[settings.token_algorithm],
+            key=settings.TOKEN_PUBLIC_KEY,
+            algorithms=[settings.TOKEN_ALGORITHM],
         )
         assert payload["token_type"] == "refresh"
         assert payload["sub"] == str(user_id)
@@ -68,8 +61,8 @@ class TestTokenOperations:
         payload = token.model_dump()
         expired_token = jwt.encode(
             payload=payload,
-            key=settings.token_private_key,
-            algorithm=settings.token_algorithm,
+            key=settings.TOKEN_PRIVATE_KEY,
+            algorithm=settings.TOKEN_ALGORITHM,
         )
 
         with pytest.raises(TokenExpiredError):
@@ -85,23 +78,23 @@ class TestTokenOperations:
         access_token_str = await AuthService.create_access_token(user_id)  # <-- await
         access_payload = jwt.decode(
             jwt=access_token_str,
-            key=settings.token_public_key,
-            algorithms=[settings.token_algorithm],
+            key=settings.TOKEN_PUBLIC_KEY,
+            algorithms=[settings.TOKEN_ALGORITHM],
         )
         access_exp = datetime.fromtimestamp(access_payload["exp"], tz=UTC)
         expected_access_exp = datetime.now(UTC) + timedelta(
-            minutes=settings.access_token_expiration_minutes
+            minutes=settings.ACCESS_TOKEN_EXPIRATION_MINUTES
         )
         assert abs((access_exp - expected_access_exp).total_seconds()) < 60
 
         refresh_token_str = await AuthService.create_refresh_token(user_id)  # <-- await
         refresh_payload = jwt.decode(
             jwt=refresh_token_str,
-            key=settings.token_public_key,
-            algorithms=[settings.token_algorithm],
+            key=settings.TOKEN_PUBLIC_KEY,
+            algorithms=[settings.TOKEN_ALGORITHM],
         )
         refresh_exp = datetime.fromtimestamp(refresh_payload["exp"], tz=UTC)
         expected_refresh_exp = datetime.now(UTC) + timedelta(
-            days=settings.refresh_token_expiration_days
+            days=settings.REFRESH_TOKEN_EXPIRATION_DAYS
         )
         assert abs((refresh_exp - expected_refresh_exp).total_seconds()) < 3600

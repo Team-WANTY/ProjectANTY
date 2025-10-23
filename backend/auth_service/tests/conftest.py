@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 from uuid import uuid4
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 from pwdlib import PasswordHash
 
 from src.dependencies import get_auth_service

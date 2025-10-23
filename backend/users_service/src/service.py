@@ -2,11 +2,11 @@ import logging
 
 from pydantic import EmailStr
 
-from backend.shared.auth import authorize_operation
-from backend.shared.models.users import UserInDB
+from shared.auth import authorize_operation
+from shared.models.users import UserInDB
 
-from .database import UsersDB
-from .models import UserUpdate
+from src.database import UsersDB
+from src.models import UserUpdate
 
 logger = logging.getLogger("users_service")
 

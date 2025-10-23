@@ -5,17 +5,17 @@ import jwt
 from email_validator import EmailNotValidError, validate_email
 from pwdlib import PasswordHash
 
-from backend.shared.auth import authorize_operation
-from backend.shared.exceptions.token import TokenError, TokenExpiredError
-from backend.shared.models.auth import UserAuthInfo
-from backend.shared.models.token import Token
+from shared.auth import authorize_operation
+from shared.exceptions.token import TokenError, TokenExpiredError
+from shared.models.auth import UserAuthInfo
+from shared.models.token import Token
 
-from .database import AuthDB
-from .exceptions import (
+from src.database import AuthDB
+from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from .models import UserAuthUpdate, UserCreate
-from .settings import settings
+from src.models import UserAuthUpdate, UserCreate
+from src.settings import settings
 
 logger = logging.getLogger("auth_service")
 pwdhasher = PasswordHash.recommended()

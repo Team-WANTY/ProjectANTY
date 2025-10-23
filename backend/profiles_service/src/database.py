@@ -3,8 +3,8 @@ import logging
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 
-from backend.shared.db import now_timestamp
-from backend.shared.exceptions.db import (
+from shared.db import now_timestamp
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -13,7 +13,7 @@ from backend.shared.exceptions.db import (
     RecordUpdateError,
 )
 
-from .models import Profile, ProfileUpdate
+from src.models import Profile, ProfileUpdate
 
 logger = logging.getLogger("profile_service")
 

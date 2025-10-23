@@ -16,7 +16,11 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "pyjwt[crypto]>=2.10.1",
     "python-multipart>=0.0.20",
+    "shared"
 ]
+
+[tool.uv.sources]
+"shared" = { path = "../shared", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

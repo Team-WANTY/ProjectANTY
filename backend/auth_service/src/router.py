@@ -8,25 +8,25 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
 
-from backend.shared.exceptions.auth import AuthError
-from backend.shared.exceptions.db import (
+from shared.exceptions.auth import AuthError
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
     RecordNotFoundError,
 )
-from backend.shared.exceptions.token import TokenError, TokenExpiredError
-from backend.shared.models.auth import UserAuthInfo
-from backend.shared.models.users import UserBase
-from backend.shared.settings import settings as shared_settings
+from shared.exceptions.token import TokenError, TokenExpiredError
+from shared.models.auth import UserAuthInfo
+from shared.models.users import UserBase
+from shared.settings import settings as shared_settings
 
-from .dependencies import get_auth_service
-from .exceptions import (
+from src.dependencies import get_auth_service
+from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from .models import UserAuthUpdate, UserCreate
-from .service import AuthService
-from .settings import settings
+from src.models import UserAuthUpdate, UserCreate
+from src.service import AuthService
+from src.settings import settings
 
 logger = logging.getLogger("auth_service")
 

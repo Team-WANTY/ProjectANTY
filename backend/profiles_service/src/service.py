@@ -1,10 +1,10 @@
 import logging
 
-from backend.shared.auth import authorize_operation
-from backend.shared.models.auth import UserAuthInfo
+from shared.auth import authorize_operation
+from shared.models.auth import UserAuthInfo
 
-from .database import ProfileDB
-from .models import Profile, ProfileUpdate
+from src.database import ProfileDB
+from src.models import Profile, ProfileUpdate
 
 logger = logging.getLogger("profiles_service")
 

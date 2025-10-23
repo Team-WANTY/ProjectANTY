@@ -2,13 +2,7 @@
   "version": "2.0.0",
   "tasks": [
 	{
-		"label": "Acquire local .venv",
-		"type": "shell",
-		"command": "source backend/.venv/bin/activate",
-	},
-	{
 		"label": "Update /shared",
-		"dependsOn":["Acquire local .venv"],
 		"type": "shell",
 		"command": "cd backend/shared; uv sync",
 	},

@@ -3,9 +3,11 @@ services:
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--providers.file.filename=/traefik/traefik.dev.yml"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
     volumes:
-      - "./certs:/certs:ro"
-      - "./traefik/traefik.dev.yml:/traefik/traefik.dev.yml:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"

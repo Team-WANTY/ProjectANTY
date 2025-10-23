@@ -5,15 +5,15 @@ from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pydantic import EmailStr
 
-from backend.shared.exceptions.db import (
+from shared.exceptions.db import (
     GeneralQueryError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
 )
-from backend.shared.models.users import UserInDB
+from shared.models.users import UserInDB
 
-from .models import UserUpdate
+from src.models import UserUpdate
 
 logger = logging.getLogger("users_service")
 
