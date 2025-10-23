@@ -13,7 +13,6 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 from shared.models.auth import UserAuthInfo
-from shared.models.users import UserInDB
 
 from src.models import UserAuthUpdate, UserCreate
 
@@ -26,7 +25,7 @@ class AuthDB:
         self.container = container
         logger.debug("Created AuthDB")
 
-    async def create_user(self, user_create: UserCreate) -> UserInDB:
+    async def create_user(self, user_create: UserCreate) -> UserAuthInfo:
         try:
             logger.debug(f"Trying to create user: {user_create.model_dump()}")
             user_in_db = user_create.to_user_in_db()
@@ -59,7 +58,7 @@ class AuthDB:
             logger.error(f"Unexpected error: {e}")
             raise GeneralQueryError()
 
-    async def get_user_auth_by_username(self, username: str) -> UserInDB:
+    async def get_user_auth_by_username(self, username: str) -> UserAuthInfo:
         """Get user by username"""
         query = "SELECT * FROM c WHERE c.username = @username"
         parameters: list[dict[str, object]] = [{"name": "@username", "value": username}]
@@ -82,7 +81,7 @@ class AuthDB:
             logger.error(f"Unexpected error: {e}")
             raise GeneralQueryError()
 
-    async def get_user_auth_by_email(self, email: EmailStr) -> UserInDB:
+    async def get_user_auth_by_email(self, email: EmailStr) -> UserAuthInfo:
         """Get user by email"""
         query = "SELECT * FROM c WHERE c.email = @email"
         parameters: list[dict[str, object]] = [{"name": "@email", "value": email}]

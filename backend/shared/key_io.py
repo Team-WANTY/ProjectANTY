@@ -12,7 +12,7 @@ def set_key_to_environment(key_name: str, key: str):
     updated = False
 
     try:
-        with open(".env", "r") as envf:
+        with open(".env") as envf:
             for line in envf:
                 if line.strip().startswith(f"{key_name.upper()}="):
                     lines.append(f"{key_name.upper()}='{key}'\n")

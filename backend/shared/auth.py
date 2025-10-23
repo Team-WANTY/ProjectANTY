@@ -2,10 +2,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from httpx import AsyncClient
 
-from .exceptions.auth import AuthError
-from .models.auth import UserAuthInfo
-from .models.users import UserInDB
-from .settings import settings
+from exceptions.auth import AuthError
+from models.auth import UserAuthInfo
+from models.users import UserInDB
+from settings import settings
 
 oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_SERVICE_URL}/login")
 
