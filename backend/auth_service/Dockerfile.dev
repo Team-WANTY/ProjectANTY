@@ -12,12 +12,7 @@ COPY ./auth_service ./auth_service
 
 WORKDIR /app/auth_service
 
-# Install both with uv
-# RUN cd /app/shared && uv sync
-
 RUN uv sync
-
-# EXPOSE 8000
 
 RUN groupadd -r anty && useradd -r -m -g anty anty
 
