@@ -101,7 +101,7 @@ class AuthService:
         user_auth_info = await self.get_user_auth_by_email(email)
         reset_token = await self.create_password_reset_token(user_auth_info.id)
         reset_link = f"{settings.FRONTEND_URL}/redirect/app?page=recovery&token={reset_token}"
-        logger.debug(f"Token and link generated, try to send recovery email to user.")
+        logger.debug("Token and link generated, try to send recovery email to user.")
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, send_email, user_auth_info.email, "Password Reset Request",

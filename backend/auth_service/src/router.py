@@ -23,7 +23,7 @@ from src.dependencies import get_auth_service
 from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthUpdate, UserCreate, PasswordResetRequest
+from src.models import PasswordResetRequest, UserAuthUpdate, UserCreate
 from src.service import AuthService
 from src.settings import settings
 
