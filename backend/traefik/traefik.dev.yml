@@ -11,6 +11,10 @@ http:
     redirect:
       rule: "PathPrefix(`/redirect`)"
       service: redirect-service
+    
+    profiles:
+      rule: "PathPrefix(`/profiles`)"
+      service: profiles-service
 
   services:
     auth-service:

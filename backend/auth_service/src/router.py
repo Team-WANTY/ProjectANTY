@@ -23,13 +23,13 @@ from src.dependencies import get_auth_service
 from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthUpdate, UserCreate
+from src.models import PasswordResetRequest, UserAuthUpdate, UserCreate
 from src.service import AuthService
 from src.settings import settings
 
 logger = logging.getLogger("auth_service")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 
 async def get_current_user_auth(
@@ -234,6 +234,47 @@ async def logout(response: Response):
     response.delete_cookie(
         key="refresh_token", httponly=True, secure=True, samesite="lax"
     )
+
+@auth_router.post("/request-password-reset", status_code=status.HTTP_200_OK, tags=["authentication"])
+async def request_password_reset(
+    email: str,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        await auth_service.request_password_reset(email)
+    except EmailNotValidError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email format")
+    except Exception:
+        return {"message": "If an account with that email exists, a reset link was sent."}
+
+    return {"message": "If an account with that email exists, a reset link was sent."}
+
+
+@auth_router.post("/reset-password", status_code=status.HTTP_200_OK, tags=["authentication"])
+async def reset_password(
+    reset_request: PasswordResetRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        await auth_service.reset_password(
+            reset_request.token, reset_request.new_password
+        )
+        return {"message": "Password reset successful"}
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password reset token expired",
+        )
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password reset token",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error",
+        )
 
 @auth_router.patch("/", response_model=UserBase, tags=["authentication"])
 async def update_auth(
