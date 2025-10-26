@@ -12,4 +12,8 @@ WORKDIR /app/auth_service
 
 RUN uv sync --locked
 
-CMD ["uv", "run", "fastapi", "dev", "src/main.py", "--host", "0.0.0.0","--port", "8000"]
+RUN groupadd -r anty && useradd -r -m -g anty anty
+
+USER anty
+
+CMD ["uv", "run", "fastapi", "src/main.py", "--host", "0.0.0.0","--port", "8000"]

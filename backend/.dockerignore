@@ -1,0 +1,10 @@
+# Python artifacts
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.ruff_cache
+
+# Virtual environment
+**/.venv
