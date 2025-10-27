@@ -5,6 +5,7 @@
 **/*.pyd
 **/.pytest_cache
 **/.ruff_cache
+**/uv.lock
 
 # Virtual environment
 **/.venv
