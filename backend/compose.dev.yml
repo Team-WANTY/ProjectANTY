@@ -1,5 +1,13 @@
 services:
   traefik:
+    image: traefik:v3.5
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    networks:
+      - traefik-net
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
@@ -8,10 +16,9 @@ services:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--providers.file.filename=/traefik/traefik.dev.yml"
-    ports:
-      - "8080:8080"
     volumes:
       - "./traefik/traefik.dev.yml:/traefik/traefik.dev.yml:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   auth-service:
     build:
@@ -20,6 +27,8 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+    networks:
+      - traefik-net
   
   profiles-service:
     build:
@@ -28,6 +37,8 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+    networks:
+      - traefik-net
   
   redirect-service:
     build:
@@ -36,6 +47,8 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+    networks:
+      - traefik-net
   
   users-service:
     build:
@@ -44,3 +57,9 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    driver: bridge

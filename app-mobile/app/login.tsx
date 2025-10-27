@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Checkbox } from "react-native-paper";
-import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
+import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import { authApi } from "@/services/auth-api";
@@ -18,7 +18,7 @@ export default function LoginScreen() {
     const [isError, setIsError] = useState(true);
     const styles = getStyles(theme);
     const { width: screenWidth } = Dimensions.get("window");
-    
+
     const handleLogin = async () => {
         setMessage("");
         setLoading(true);
@@ -31,19 +31,19 @@ export default function LoginScreen() {
             }
 
             const me = await usersApi.me();
-                if (!me.ok) {
+            if (!me.ok) {
                 setMessage(me.message);
-            return;
+                return;
             }
-            router.replace("/home");
-        } 
+            router.replace("tabs/home");
+        }
         catch (error: any) {
             setMessage(error?.message || "Network error. Please try again.");
             console.error("Login error:", error?.response?.data || error);
-        } 
+        }
         finally {
             setLoading(false);
-       }
+        }
     };
 
     return (
@@ -125,7 +125,7 @@ export default function LoginScreen() {
                 </Pressable>
             </View>
         </View>
-    ); 
+    );
 }
 
 function getStyles(theme) {

@@ -10,7 +10,7 @@ from src.service import AuthService
 
 logging.basicConfig(
     stream = stdout,
-    level = logging.DEBUG,
+    level = logging.ERROR,
     format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s"
 )
 
@@ -24,6 +24,11 @@ client = CosmosClient(
 database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
 users_container = database.get_container_client("users")
 logger.debug("Connected to Azure CosmosDB and got 'users' container")
+
+# Suppress Azure Core pipeline logs below WARNING
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+logging.getLogger("azure.core.pipeline").setLevel(logging.WARNING)
+logging.getLogger("azure").setLevel(logging.WARNING)
 
 @lru_cache
 def get_auth_db() -> AuthDB:

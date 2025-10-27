@@ -1,5 +1,12 @@
 services:
   traefik:
+    image: traefik:v3.5
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - traefik-net
     command:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
@@ -7,3 +14,8 @@ services:
       - "--providers.file.filename=/traefik/traefik.prod.yml"
     volumes:
       - "./traefik/traefik.prod.yml:/traefik/traefik.prod.yml:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+networks:
+  traefik-net:
+    driver: bridge
