@@ -12,6 +12,14 @@ http:
       rule: "PathPrefix(`/redirect`)"
       service: redirect-service
 
+    tasks:
+      rule: "PathPrefix(`/tasks`)"
+      service: tasks-service
+
+    profiles:
+      rule: "PathPrefix(`/profiles`)"
+      service: profiles-service
+
   services:
     auth-service:
       loadBalancer:
@@ -32,3 +40,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://users-service:8000"
+    
+    tasks-service:
+      loadBalancer:
+        servers:
+          - url: "http://tasks-service:8000"
