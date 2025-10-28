@@ -14,7 +14,7 @@ async def get_auth_info_from_service(token: str) -> UserAuthInfo:
     """Call the Auth microservice to validate the token and return user info."""
     async with AsyncClient() as client:
         response = await client.get(
-            f"{settings.AUTH_SERVICE_URL_INTERNAL}/verify/{token}",
+            f"{settings.AUTH_SERVICE_URL}/verify/{token}",
             headers={"X-Interservice-Key": settings.INTERSERVICE_KEY},
         )
     if response.status_code != 200:

@@ -48,8 +48,8 @@ async def create_task(
 
 @tasks_router.get("/", response_model=Task, tags=["tasks"])
 async def get_task(
-    task_id: str,
-    user_id: str,
+    task_id: str = "",
+    user_id: str = "",
     quantity: int = 10,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),
