@@ -7,7 +7,7 @@ from models.auth import UserAuthInfo
 from models.users import UserInDB
 from settings import settings
 
-oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_SERVICE_URL_PUBLIC}/login")
+oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_EXTERNAL_URL}/login")
 
 
 async def get_auth_info_from_service(token: str) -> UserAuthInfo:

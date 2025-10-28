@@ -33,3 +33,8 @@ class UserAuthUpdate(BaseModel):
     # RESTRICTED
     is_active: bool | None = None
     is_superuser: bool | None = None
+
+
+class PasswordResetRequest(BaseModel):
+    token: str
+    new_password: str

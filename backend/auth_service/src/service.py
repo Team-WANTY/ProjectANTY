@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -10,6 +11,7 @@ from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
 
 from src.database import AuthDB
+from src.email import send_email
 from src.exceptions import (
     AuthIncorrectPasswordError,
 )
@@ -83,6 +85,14 @@ class AuthService:
         )
         return user_auth_info
 
+    async def get_user_auth_by_email(self, email: str) -> UserAuthInfo:
+        logger.debug(f"Trying to resolve and get user record with email '{email}'")
+        user_auth_info = await self.db.get_user_auth_by_email(email)
+        logger.debug(
+            f"Successfully got user with email '{email}': {user_auth_info.model_dump()}"
+        )
+        return user_auth_info
+
     async def update_user_auth(
         self, auth_update_info: UserAuthUpdate, updater: UserAuthInfo
     ) -> UserAuthInfo:
@@ -104,6 +114,48 @@ class AuthService:
             old_user_auth_info, auth_update_info
         )
         return new_user_auth_info
+
+    async def request_password_reset(self, email: str):
+        # Verify email exists
+        user_auth_info = await self.get_user_auth_by_email(email)
+        reset_token = await self.create_password_reset_token(user_auth_info.id)
+        reset_link = (
+            f"{settings.FRONTEND_URL}/redirect/app?page=recovery&token={reset_token}"
+        )
+        logger.debug("Token and link generated, try to send recovery email to user.")
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            send_email,
+            user_auth_info.email,
+            "Password Reset Request",
+            f"Click the following link to reset your password: {reset_link}\n\nThis link expires in 30 minutes.",
+        )
+
+    async def reset_password(self, token_str: str, new_password: str):
+        try:
+            logger.debug("Decoding password reset token")
+            token = await self.decode_token(token_str)
+            if token.token_type != "password_reset":
+                raise TokenError("Invalid token type for password reset")
+
+            user_auth_info = await self.get_user_auth_by_id(token.sub)
+            update_data = UserAuthUpdate(
+                id=user_auth_info.id,
+                plain_text_password=new_password,
+                is_superuser=True,
+            )
+            updated_user = await self.update_user_auth(update_data, user_auth_info)
+            logger.debug(f"Password reset successful for user '{token.sub}'")
+            return updated_user
+
+        except TokenExpiredError:
+            logger.warning("Password reset token expired")
+            raise TokenExpiredError()
+        except Exception as e:
+            logger.error(f"Unexpected error resetting password: {e}")
+            raise TokenError("Failed to reset password")
 
     # TOKEN FUNCTIONS
     @staticmethod
@@ -153,6 +205,33 @@ class AuthService:
         except Exception as e:
             logger.error(
                 f"Error creating refresh token for user with ID '{user_id}', unexpected: {e}"
+            )
+            raise e
+
+    @staticmethod
+    async def create_password_reset_token(user_id: str) -> str:
+        try:
+            logger.debug(f"Creating password reset token for user '{user_id}'")
+            expiration = datetime.now(UTC) + timedelta(
+                minutes=settings.PW_RESET_TOKEN_EXPIRATION_MINUTES
+            )
+            payload = Token(
+                sub=user_id,
+                exp=int(expiration.timestamp()),
+                token_type="password_reset",
+            ).model_dump()
+            token = jwt.encode(
+                payload=payload,
+                key=settings.TOKEN_PRIVATE_KEY,
+                algorithm=settings.TOKEN_ALGORITHM,
+            )
+            logger.debug(
+                f"Successfully created password reset token for user '{user_id}'"
+            )
+            return token
+        except Exception as e:
+            logger.error(
+                f"Error creating password reset token for user '{user_id}': {e}"
             )
             raise e
 

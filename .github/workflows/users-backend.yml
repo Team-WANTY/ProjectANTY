@@ -28,7 +28,7 @@ jobs:
           AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
         run: |
-          cd backend/auth_service
+          cd backend/users_service
           uv sync --dev
           uv run ruff check
           uv run ty check

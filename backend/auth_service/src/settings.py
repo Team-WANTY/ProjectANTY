@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     TOKEN_ALGORITHM: str
     ACCESS_TOKEN_EXPIRATION_MINUTES: int
     REFRESH_TOKEN_EXPIRATION_DAYS: int
+    PW_RESET_TOKEN_EXPIRATION_MINUTES: int
+
+    FRONTEND_URL: str
+    SMTP_USER: str
+    SMTP_PASSWORD: str
 
     def model_post_init(self, __context: dict[str, Any]):
         if not self.TOKEN_PRIVATE_KEY or not self.TOKEN_PUBLIC_KEY:

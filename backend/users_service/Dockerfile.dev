@@ -1,26 +1,17 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
-RUN pip install --no-cache-dir uv
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
 
 WORKDIR /app
 
-# Copy shared package first so it can be installed before service code
+# Copy source code
 COPY ./shared ./shared
-
-# Copy service code
 COPY ./users_service ./users_service
 
 WORKDIR /app/users_service
 
-# Install both with uv
-# RUN cd /app/shared && uv sync
-
-RUN uv sync
-
-# EXPOSE 8001
-
-RUN groupadd -r anty && useradd -r -m -g anty anty
-
-USER anty
+# The proper thing to do is uv sync --lock, with a uv.lock in version control.
+# But prof doesn't want us to commit lock files so we can't.
+RUN uv sync && uv lock
 
 CMD ["uv", "run", "fastapi", "dev", "src/main.py", "--host", "0.0.0.0", "--port", "8000"]

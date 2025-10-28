@@ -29,12 +29,15 @@ export default function LoginScreen() {
                 setMessage(res.message);
                 return;
             }
-
+            // Debugging
+            console.log("Logged in Successfully");
             const me = await usersApi.me();
                 if (!me.ok) {
                 setMessage(me.message);
-            return;
+                return;
             }
+            console.log("Validated user sucessfully");
+            console.log("Welcome:", me.data.username);
             router.replace("/home");
         } 
         catch (error: any) {

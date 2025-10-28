@@ -20,7 +20,7 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
-
+  
   profiles-service:
     build:
       dockerfile: profiles_service/Dockerfile.dev
@@ -28,7 +28,7 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
-
+  
   redirect-service:
     build:
       dockerfile: redirect_service/Dockerfile.dev
@@ -36,7 +36,7 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
-
+  
   users-service:
     build:
       dockerfile: users_service/Dockerfile.dev

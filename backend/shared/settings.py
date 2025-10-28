@@ -10,8 +10,8 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    AUTH_SERVICE_URL_PUBLIC: str  # TODO temporary while auth service not deployed
-    AUTH_SERVICE_URL_INTERNAL: str  # TODO ^
+    AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed
+    AUTH_EXTERNAL_URL: str
     INTERSERVICE_KEY: str
 
     COSMOSDB_ENDPOINT: str

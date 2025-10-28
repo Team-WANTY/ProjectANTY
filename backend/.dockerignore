@@ -1,0 +1,11 @@
+# Python artifacts
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.ruff_cache
+**/uv.lock
+
+# Virtual environment
+**/.venv
