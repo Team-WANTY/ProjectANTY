@@ -16,13 +16,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { authApi } from "@/services/auth-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
-    const [isError, setIsError] = useState(false);
+    const [isError, setIsError] = useState(true);
     const [loading, setLoading] = useState(false);
     const { theme } = useTheme();
     const router = useRouter();
@@ -30,22 +30,27 @@ export default function ForgotPassword() {
     // Screen width for responsive sizing
     const { width: screenWidth } = Dimensions.get("window");
     const fontSize = 20; // Base font size for the back arrow
-
     const insets = useSafeAreaInsets();
 
     const handleRecover = async () => {
         setMessage("");
-        setIsError(false);
         setLoading(true);
         try {
-            // Placeholder for real recover logic; keep console for now
-            console.log("Recover password for:", email);
-            // Simulate success and navigate back to login
-            router.replace("/login");
+            const emailTrimmed = email.trim();
+            const res = await authApi.requestForgetPassword(emailTrimmed);
+            if (!res.ok) {
+                setMessage(res.message);
+                return;
+            }
+
+            setIsError(false);
+            setMessage("Recovery email sent. Check your inbox.");
+            console.log("Recovery email sent. Check your inbox.");
+
+            setTimeout(() => router.replace("/login"), 1000);
         }
         catch (err) {
             console.error(err);
-            setIsError(true);
             setMessage("Unable to send recovery link. Please try again.");
         }
         finally {
@@ -106,7 +111,6 @@ export default function ForgotPassword() {
                     onChangeText={setEmail}
                 />
 
-                {/* Inline message like login.tsx */}
                 {message ? (
                     <Text style={[styles.message, isError ? styles.errorText : styles.successText]}>
                         {message}
@@ -118,20 +122,16 @@ export default function ForgotPassword() {
                     disabled={loading}
                     onPress={() => {
                         if (!email) {
-                            setIsError(true);
                             setMessage("Please fill out the email field.");
                             return;
                         }
                         const emailTrimmed = email.trim();
                         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                         if (!emailRegex.test(emailTrimmed)) {
-                            setIsError(true);
                             setMessage("Please enter a valid email address.");
                             return;
                         }
                         // valid
-                        setIsError(false);
-                        setMessage("");
                         handleRecover();
                     }}
                 >
@@ -183,16 +183,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "500",
     },
-    // Message styles (used for inline feedback)
     message: {
         marginBottom: 8,
         fontSize: 13,
         textAlign: "center",
     },
-    errorText: {
-        color: "red",
-    },
-    successText: {
-        color: "green",
-    },
+    errorText: { color: "red"},
+    successText: { color: "green" },
 });

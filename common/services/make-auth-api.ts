@@ -8,12 +8,16 @@ export type AuthPaths = {
     login: string;        // POST
     register: string;     // POST
     // refresh?: string;     // POST 
+    request_password_reset: string; // POST
+    reset_password: string; // POST
 };
 
 const defaultPaths: AuthPaths = {
     login: "/auth/login",
     // refresh: "/auth/refresh",
-    register: "/auth/register"
+    register: "/auth/register",
+    request_password_reset: "/auth/request-password-reset",
+    reset_password: "/auth/reset-password",
 };  
 
 export function makeAuthApi(http: HttpClient, tokens: TokenStore, paths: AuthPaths = defaultPaths) {
@@ -55,8 +59,58 @@ export function makeAuthApi(http: HttpClient, tokens: TokenStore, paths: AuthPat
             await tokens.clear();
             return { ok: true, status: 200, data: undefined };
         },
+        
+        // Requset Forget Password
+        async requestForgetPassword(email: string): Promise<ApiResult<void>> {
+            if (!paths.request_password_reset) return { ok: false, message: "request password reset endpoint not configured" };
+            try {
+                const url = `${paths.request_password_reset}?email=${encodeURIComponent(email.trim())}`;
+                
+                // Debugging
+                // console.log("POST ->", `${paths.request_password_reset}?email=${encodeURIComponent(email.trim())}`);
 
-        //POST /auth/register
+                const res = await http.post<{ message?: string }>(url);
+
+                return {ok: true, status: res.status, data: undefined};
+            }
+            catch (error: any) {
+                const status = error?.response?.status;
+                const data = error?.response?.data;
+                const msg = 
+                    status === 400 ? toMessage(data, "Invalid email")
+                    : status === 404 ? "No account found with that email"
+                    : status === 429 ? "Too many requests. Try again later."
+                    : status && status >= 500 ? "Server error. Please try again."
+                    : toMessage(data, "Couldn't send reset email");
+                return { ok: false, status, message: msg, detail: data };
+            }
+        },
+        
+        // Reset Password
+        async resetPassword(token: string, newPassword: string): Promise<ApiResult<void>> {
+            if(!paths.reset_password) {
+                return {ok: false, message: "reset password endpoint not configured"};
+            }
+
+            try {
+                const res = await http.post<{ message?: string }>(paths.reset_password, {
+                    token,
+                    new_password: newPassword,
+                });
+                return {ok: true, status: res.status, data: undefined};
+            }
+            catch (error: any) {
+                const status = error?.response?.status;
+                const data = error?.response?.data;
+                const msg = 
+                    status === 400 ? "Invalid or malformed reset token"
+                    : status === 401 ? "Your reset link has expired. Please request a new one."
+                    : status && status >= 500 ? "Server error. Please try again."
+                    : toMessage(data, "Password reset failed");
+                return {ok: false, status, message: msg, detail: data};
+            }
+        },
+        // Register
         async register(
             email: string,
             username: string,
@@ -79,28 +133,12 @@ export function makeAuthApi(http: HttpClient, tokens: TokenStore, paths: AuthPat
                 // console.log("Register failed:", error?.response?.data);
                 const msg =
                     status === 400 ? toMessage(data, "Invalid input")
-                    : status === 409 ? "Username or email already exists"
+                    : status === 403 ? "Username or email already exists"
                     : toMessage(data, "Registration failed");
                 return { ok: false, status, message: msg, detail: data };
             }
         },
 
         
-        /*
-        async refresh(): Promise<ApiResult<{ access_token: string }>> {
-        if (!paths.refresh) return { ok: false, message: "Refresh endpoint not configured" };
-        try {
-            const res = await http.post<{ access_token: string }>(paths.refresh, {});
-            const token = res.data?.access_token;
-            if (!token) return { ok: false, status: res.status, message: "Refresh failed" };
-            await tokens.set(token);
-            return { ok: true, status: res.status, data: res.data };
-        } catch (error: any) {
-            const status = error?.response?.status;
-            const data   = error?.response?.data;
-            return { ok: false, status, message: toMessage(data, "Refresh failed"), detail: data };
-        }
-        },
-        */
     };
 }
