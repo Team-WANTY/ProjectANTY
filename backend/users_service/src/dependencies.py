@@ -9,9 +9,9 @@ from src.database import UsersDB
 from src.service import UsersService
 
 logging.basicConfig(
-    stream = stdout,
-    level = logging.DEBUG,
-    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s"
+    stream=stdout,
+    level=logging.DEBUG,
+    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s",
 )
 
 logger = logging.getLogger("users_service")
@@ -26,6 +26,8 @@ users_container = database.get_container_client("users")
 logger.debug("Connected to Azure CosmosDB and got users container")
 
 headers = {"X-Interservice-Key": shared_settings.INTERSERVICE_KEY}
+
+
 @lru_cache
 def get_users_service() -> UsersService:
     return UsersService(

@@ -16,7 +16,7 @@ from src.service import UsersService
 
 
 async def get_current_user(
-    current_user_auth:UserAuthInfo = Depends(get_current_user_auth),
+    current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
     users_service: UsersService = Depends(get_users_service),
 ) -> UserBase:
     """Get current authenticated and active user from JWT token"""
@@ -45,26 +45,21 @@ users_router = APIRouter()
 
 
 @users_router.get("/me", response_model=UserInDB, tags=["users"])
-async def read_users_me(
-    current_user: UserInDB = Depends(get_current_user)
-) -> UserInDB:
+async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
     """Get current user"""
     return current_user.model_dump()
 
 
 @users_router.get("/{user_id}", response_model=UserBase, tags=["users"])
 async def get_user(
-    user_id: str,
-    users_service: UsersService = Depends(get_users_service)
+    user_id: str, users_service: UsersService = Depends(get_users_service)
 ) -> UserBase:
     """Get user by ID"""
     try:
         user = await users_service.get_user_by_id(user_id)
         return user.to_base()
     except RecordNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -85,17 +80,12 @@ async def update_user(
         )
     try:
         return await users_service.update_user(
-            user_update,
-            current_user
-        ) #TODO should return full record since authorization needed?
+            user_update, current_user
+        )  # TODO should return full record since authorization needed?
     except AuthError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     except RecordNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except RecordUpdateError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -108,7 +98,9 @@ async def update_user(
         )
 
 
-@users_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["users"])
+@users_router.delete(
+    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["users"]
+)
 async def delete_user(
     user_id: str,
     current_user: UserInDB = Depends(get_current_user),
@@ -118,15 +110,11 @@ async def delete_user(
     try:
         await users_service.delete_user(
             user_id, current_user
-        ) #TODO should return full record since authorization needed?
+        )  # TODO should return full record since authorization needed?
     except AuthError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     except RecordNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except RecordDeletionError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

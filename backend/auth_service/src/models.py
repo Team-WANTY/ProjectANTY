@@ -5,7 +5,8 @@ from shared.models.users import UserInDB
 
 """Slightly different from standard set of User models, only what is needed for auth-related read & updates"""
 
-pwd_hasher= PasswordHash.recommended()
+pwd_hasher = PasswordHash.recommended()
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -24,10 +25,11 @@ class UserCreate(BaseModel):
             is_superuser=False,  # assume created user is not admin unless set
         )
 
+
 class UserAuthUpdate(BaseModel):
     id: str
     plain_text_password: str | None = None
 
-    #RESTRICTED
+    # RESTRICTED
     is_active: bool | None = None
     is_superuser: bool | None = None

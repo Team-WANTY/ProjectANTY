@@ -9,9 +9,9 @@ from src.database import ProfileDB
 from src.service import ProfileService
 
 logging.basicConfig(
-    stream = stdout,
-    level = logging.DEBUG,
-    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s"
+    stream=stdout,
+    level=logging.DEBUG,
+    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s",
 )
 
 logger = logging.getLogger("profiles_service")
@@ -25,7 +25,6 @@ client = CosmosClient(
 database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
 profiles_container = database.get_container_client("profiles")
 logger.debug("Connected to Azure CosmosDB and got profiles container")
-
 
 
 # not needed due to generalized
