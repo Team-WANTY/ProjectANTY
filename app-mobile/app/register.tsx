@@ -19,15 +19,10 @@ export default function Register() {
     const { width: screenWidth } = Dimensions.get("window");
     const insets = useSafeAreaInsets();
     const [message, setMessage] = useState("");
-    const [isError, setIsError] = useState(false);
+    const [isError, setIsError] = useState(true);
     const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; username?: boolean; password?: boolean; passwordConfirm?: boolean; }>({});
     const [loading, setLoading] = useState(false);
     const redirectTimer = useRef<any>(null);
-
-    // cleanup timer on unmount/cancel
-    useEffect(() => {
-    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current)};
-    }, []);
 
     const handleRegister = async () => { 
         setMessage("");
@@ -46,9 +41,7 @@ export default function Register() {
             setIsError(false);
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
             setMessage("Account registered successfully! Redirecting to login page…");
-            redirectTimer.current = setTimeout(() => {
-                router.replace("/login");
-            }, 2000);
+            setTimeout(() =>  router.replace("/login"), 800);
         } 
         catch (error: any) {
             console.error(error.response?.data || error.message);
@@ -160,13 +153,11 @@ export default function Register() {
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (email.trim() && !emailRegex.test(emailTrimmed)) {
                         setMessage("Please enter a valid email address");
-                        setIsError(true);
                         newFieldErrors.email = true;
                     }
 
                     if (password && passwordConfirm && password !== passwordConfirm) {
                         setMessage("Passwords do not match");
-                        setIsError(true);
                         newFieldErrors.password = true;
                         newFieldErrors.passwordConfirm = true;
                     }

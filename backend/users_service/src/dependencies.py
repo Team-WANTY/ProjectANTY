@@ -10,7 +10,7 @@ from src.service import UsersService
 
 logging.basicConfig(
     stream = stdout,
-    level = logging.DEBUG,
+    level = logging.INFO,
     format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s"
 )
 

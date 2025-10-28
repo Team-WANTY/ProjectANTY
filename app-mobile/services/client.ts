@@ -20,14 +20,3 @@ api.interceptors.request.use(async (config) => {
 	return config;
 });
 
-// Response interceptor to handle/log network errors centrally
-api.interceptors.response.use(
-	(response) => response,
-	(error) => {
-		console.error("API request failed:", error?.message || error);
-		if (error?.code === 'ECONNABORTED' || !error?.response) {
-			return Promise.reject(new Error("Network error or timeout"));
-		}
-		return Promise.reject(error);
-	}
-);

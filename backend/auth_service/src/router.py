@@ -151,7 +151,7 @@ async def login(
         key="refresh_token",
         value=await auth_service.create_refresh_token(user_auth_info.id),
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60,
     )
