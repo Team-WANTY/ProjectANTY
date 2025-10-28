@@ -7,15 +7,15 @@ from models.auth import UserAuthInfo
 from models.users import UserInDB
 from settings import settings
 
-oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_SERVICE_URL}/login")
+oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_SERVICE_URL_PUBLIC}/login")
 
 
 async def get_auth_info_from_service(token: str) -> UserAuthInfo:
     """Call the Auth microservice to validate the token and return user info."""
     async with AsyncClient() as client:
         response = await client.get(
-            f"{settings.AUTH_SERVICE_URL}/verify/{token}",
-            headers={"X-Interservice-Key":settings.INTERSERVICE_KEY},
+            f"{settings.AUTH_SERVICE_URL_INTERNAL}/verify/{token}",
+            headers={"X-Interservice-Key": settings.INTERSERVICE_KEY},
         )
     if response.status_code != 200:
         raise HTTPException(
@@ -40,8 +40,8 @@ async def get_current_user_auth(
 
     return user_auth_info
 
-async def authorize_operation(operator:UserAuthInfo|UserInDB, operatee_id:str):
+
+async def authorize_operation(operator: UserAuthInfo | UserInDB, operatee_id: str):
     """Is 'operator' authorized to perform protected actions on 'operatee'?"""
     if not operator.is_superuser and operator.id != operatee_id:
         raise AuthError()
-
