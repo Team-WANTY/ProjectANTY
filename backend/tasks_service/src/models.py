@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 
 class FrequencySpecifier(StrEnum):
-    NO_REPEAT = auto()
     DAILY = auto()
     WEEKLY = auto()
     MONTHLY = auto()
@@ -20,69 +19,62 @@ class DurationSpecifier(StrEnum):
 class RepeatDuration(BaseModel):
     """
     Duration of repetition:
-    specifier = FOREVER: value is ignored
-    specifier = NUMBER_OF_TIMES: value dictates how many times to repeat until
-    specifier = UNTIL: value is a timestamp for when to repeat until
+    - FOREVER: value is ignored
+    - NUMBER_OF_TIMES: value = how many times to repeat
+    - UNTIL_DATE: value = timestamp until which to repeat
     """
-
-    specifier: DurationSpecifier = DurationSpecifier.FOREVER
-    value: int = 0
+    specifier: DurationSpecifier | None = DurationSpecifier.FOREVER
+    value: int | None = None
 
 
 class RepeatFrequency(BaseModel):
     """
     Frequency of repetition:
-    NO_REPEAT: default value, repetition is ignored
-    DAILY_REPEAT: repeat daily
-    WEEKLY_REPEAT: repeat weekly, specify days_of_week to repeat on (Ex: every '0','2' (M,W))
-    MONTHLY_REPEAT: repeat monthly, specify a day_of_month to repeat on (Ex: every '16'th)
-    YEARLY_REPEAT: repeat yearly, specify a day_of_month and month_of_year to repeat on (Ex: every '1'/'10' (Jan 10th))
+    - specifier:
+        - DAILY: repeat daily
+        - WEEKLY: repeat weekly, specify days_of_week (0=Mon ... 6=Sun)
+        - MONTHLY: specify day_of_month (1-31)
+        - YEARLY: specify day_of_month (1-31) and month_of_year (1-12)
+    - value: amount to repeat (ex: every x days/weeks/months/year where x is value)
     """
+    specifier: FrequencySpecifier | None = None
+    value: int | None = Field(default=None, ge=1)
 
-    specifier: FrequencySpecifier = FrequencySpecifier.NO_REPEAT
-    value: int = Field(default=1, ge=1)
-
-    days_of_week: list[int] = Field(
-        default_factory=list, description="0=Monday ... 6=Sunday", max_items=7
-    )  # only applicable for weekly repeat
-    day_of_month: int | None = Field(
-        default=None, ge=1, le=31
-    )  # only applicable for monthly & yearly repeat
-    month_of_year: int | None = Field(
-        default=None, ge=1, le=12
-    )  # only applicable for yearly repeat
+    days_of_week: list[int] | None = Field(
+        default=None,
+        max_items=7
+    )
+    day_of_month: int | None = Field(default=None, ge=1, le=31)
+    month_of_year: int | None = Field(default=None, ge=1, le=12)
 
 
 class RepeatRule(BaseModel):
     """
-    Repetition details
-    frequency (RepeatFrequency): how often to repeat
-    duration (RepeatDuration): when to stop repetition
+    Repetition details:
+    frequency: how often to repeat
+    duration: when to stop repetition
     """
-
-    frequency: RepeatFrequency
-    duration: RepeatDuration
+    frequency: RepeatFrequency | None = None
+    duration: RepeatDuration | None = None
 
 
 class Task(BaseModel):
     """
     Task data model
-    id (str): ID of task
-    name (str): name of task
-    desc (str): description of task
-    cat (str): category of task
-    due_date (int): timestamp of when task is due, repetition starts on this date
-    repeat_rule (RepeatRule): how to repeat, if at all
+    - id: id of task, optional at creation
+    - user_id: owner of task
+    - name, desc, cat: descriptive fields
+    - due_date: timestamp when task is due (repetition starts here)
+    - repeat_rule: how to repeat, if at all
     """
-
-    id: str
+    id: str | None = None
     user_id: str
     name: str
     desc: str
-    cat: str
+    cat: str | None = None
     due_date: int
 
-    repeat_rule: RepeatRule
+    repeat_rule: RepeatRule | None = None
 
 
 class TaskInDB(Task):
@@ -93,9 +85,7 @@ class TaskInDB(Task):
 class TaskUpdate(BaseModel):
     id: str
     name: str | None = None
-    description: str | None = None
-    category: str | None = None
-
+    desc: str | None = None
+    cat: str | None = None
     due_date: int | None = None
-
     repeat_rule: RepeatRule | None = None

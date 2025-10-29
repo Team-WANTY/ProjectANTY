@@ -26,12 +26,12 @@ class TasksService:
         await authorize_operation(getter, user_id)
         return await self.task_db.get_tasks_by_user_id(user_id, qty)
 
-    async def update_task(self, task_upate: TaskUpdate, updater: UserAuthInfo) -> Task:
-        task_owner_id = self.get_task_by_id(task_upate.id, updater).user_id
-        await authorize_operation(updater, task_owner_id)
-        return await self.task_db.update_task(task_upate)
+    async def update_task(self, task_update: TaskUpdate, updater: UserAuthInfo) -> Task:
+        task = await self.get_task_by_id(task_update.id, updater)
+        await authorize_operation(updater, task.user_id)
+        return await self.task_db.update_task(task_update)
 
     async def delete_task(self, task_id: str, deleter: UserAuthInfo):
-        task_owner_id = self.get_task_by_id(task_id, deleter).user_id
-        await authorize_operation(deleter, task_owner_id)
+        task = await self.get_task_by_id(task_id, deleter)
+        await authorize_operation(deleter, task.user_id)
         await self.task_db.delete_task(task_id)

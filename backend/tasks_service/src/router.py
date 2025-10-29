@@ -87,7 +87,7 @@ async def get_task(
 
 
 @tasks_router.patch("/", response_model=Task, tags=["tasks"])
-async def update_profile(
+async def update_task(
     task_update: TaskUpdate,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),

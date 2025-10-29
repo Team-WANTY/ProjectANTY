@@ -46,6 +46,7 @@ class TaskDB:
             item: CosmosDict = await self.container.read_item(
                 item=task_id, partition_key=task_id
             )
+            print(item)
             task = Task.model_validate(item, extra="ignore")
             return task
         except exceptions.ResourceNotFoundError:
@@ -89,18 +90,18 @@ class TaskDB:
                     {"op": "replace", "path": "/name", "value": task_upate.name}
                 )
 
-            if task_upate.description is not None:
+            if task_upate.desc is not None:
                 patch_operations.append(
                     {
                         "op": "replace",
-                        "path": "/description",
-                        "value": task_upate.description,
+                        "path": "/desc",
+                        "value": task_upate.desc,
                     }
                 )
 
-            if task_upate.category is not None:
+            if task_upate.cat is not None:
                 patch_operations.append(
-                    {"op": "replace", "path": "/category", "value": task_upate.category}
+                    {"op": "replace", "path": "/cat", "value": task_upate.cat}
                 )
 
             if task_upate.due_date is not None:
@@ -113,7 +114,7 @@ class TaskDB:
                     {
                         "op": "replace",
                         "path": "/repeat_rule",
-                        "value": task_upate.repeat_rule,
+                        "value": task_upate.repeat_rule.model_dump(),
                     }
                 )
 
@@ -130,11 +131,13 @@ class TaskDB:
                 partition_key=task_upate.id,
                 patch_operations=patch_operations,
             )
+            print(item)
             task = Task.model_validate(item, extra="ignore")
             return task
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            print(f"ERROR: {e}")
             raise RecordUpdateError()
 
     async def delete_task(self, task_id: str):
