@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
 
@@ -35,31 +36,80 @@ const formatDate = (d: Date) => {
 };
 
 // --- Task Item Component --
-const TaskItem = ({ task, theme, onToggle }) => (
-    <View style={[styles.taskCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-        <View style={styles.taskTextContent}>
-            <Text style={[styles.taskTitle, { color: theme.textSecondary }]}>{task.title}</Text>
-            <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>{task.dueDate}</Text>
-        </View>
-        <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
-            <View style={[
-                styles.checkboxBox,
-                { borderColor: theme.textSecondary, backgroundColor: task.completed ? theme.primary : 'transparent' }
-            ]}>
-                {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.text} />}
-            </View>
-        </TouchableOpacity>
-    </View>
-);
+const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
+    const anim = useRef(new Animated.Value(1)).current; // 1 => visible, 0 => hidden
+
+    const handleDeletePress = () => {
+        // subtle exit animation (fade + collapse)
+        Animated.timing(anim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: true,
+        }).start(() => {
+            onDelete(task.id);
+        });
+    };
+
+    const animatedStyle = {
+        opacity: anim,
+    } as any;
+    const renderRightActions = (_progress: any, _dragX: any) => {
+        const maxWidth = width * 0.25; // 25% of screen width
+        
+        return (
+            <Animated.View style={[{ opacity: anim }]}>
+                <RectButton 
+                    style={[
+                        styles.rightAction, 
+                        { 
+                            backgroundColor: '#ff4d4f',
+                            width: maxWidth,
+                        }
+                    ]} 
+                    onPress={handleDeletePress}
+                >
+                    <View style={styles.trashIconContainer}>
+                        <Ionicons name="trash-outline" size={20} color="#fff" />
+                    </View>
+                </RectButton>
+            </Animated.View>
+        );
+    };
+
+    return (
+        <Swipeable
+            renderRightActions={renderRightActions}
+            overshootRight={false}
+            rightThreshold={40}
+            friction={2}>
+            <Animated.View style={[styles.taskCard, animatedStyle, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                <View style={styles.taskTextContent}>
+                    <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>{task.title}</Text>
+                    <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>{task.dueDate}</Text>
+                </View>
+                <View style={styles.rightControls}>
+                    <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
+                        <View style={[
+                            styles.checkboxBox,
+                            { borderColor: theme.secondaryText, backgroundColor: task.completed ? theme.primary : 'transparent' }
+                        ]}>
+                            {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.text} />}
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            </Animated.View>
+        </Swipeable>
+    );
+};
 
 // --- Category Tag Component ---
-const CategoryTag = ({ category, theme, isActive, onPress }) => {
+const CategoryTag = ({ category, theme, isActive, onPress }: any) => {
     const tagStyle = {
         backgroundColor: isActive ? theme.primary : theme.border,
         borderColor: theme.primary,
     };
     const textStyle = {
-        color: isActive ? theme.text : theme.textSecondary,
+    color: isActive ? theme.text : theme.secondaryText,
     };
 
     return (
@@ -90,12 +140,16 @@ export default function TasksScreen() {
         return dateMatch && categoryMatch;
     });
 
-    const handleToggleTask = (id) => {
+    const handleToggleTask = (id: number) => {
         setTasks(prevTasks =>
             prevTasks.map(task =>
                 task.id === id ? { ...task, completed: !task.completed } : task
             )
         );
+    };
+
+    const handleDeleteTask = (id: number) => {
+        setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
     };
 
     // Calculate tasks completed (for the header)
@@ -122,7 +176,7 @@ export default function TasksScreen() {
                     </TouchableOpacity>
 
                     <View style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}>
-                        <Text style={[styles.dateText, { color: theme.textSecondary }]}>{display}</Text>
+                        <Text style={[styles.dateText, { color: theme.secondaryText }]}>{display}</Text>
                     </View>
 
                     <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()+1))}>
@@ -174,6 +228,7 @@ export default function TasksScreen() {
                             task={task}
                             theme={theme}
                             onToggle={handleToggleTask}
+                            onDelete={handleDeleteTask}
                         />
                     ))}
                 </View>
@@ -306,6 +361,26 @@ const styles = StyleSheet.create({
         height: 20,
         borderRadius: 3,
         borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    rightControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    deleteButton: {
+        padding: 8,
+        marginLeft: 8,
+        borderRadius: 6,
+    },
+    rightAction: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%', // Match parent height
+    },
+    trashIconContainer: {
+        width: 40,
+        height: 40,
         justifyContent: 'center',
         alignItems: 'center',
     },
