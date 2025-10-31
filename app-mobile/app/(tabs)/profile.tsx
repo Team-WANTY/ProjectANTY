@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -7,7 +7,10 @@ import {
     Dimensions,
     TouchableOpacity,
     Image,
-    TextInput
+    TextInput,
+    Modal,
+    Pressable,
+    Animated
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
@@ -55,7 +58,29 @@ export default function ProfileScreen() {
     const styles = getStyles(theme);
     const insets = useSafeAreaInsets();
 
+    // user state (single source of truth for profile fields shown on the page)
+    const [user, setUser] = useState(userData);
     const [bioText, setBioText] = useState(userData.bio);
+    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+    const [editUsername, setEditUsername] = useState(user.username);
+    const [editBio, setEditBio] = useState(user.bio);
+    const fadeAnim = useState(new Animated.Value(0))[0];
+
+    useEffect(() => {
+        if (isEditModalVisible) {
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [isEditModalVisible]);
 
     // Dynamic header height including safe area
     const HEADER_BACKGROUND_HEIGHT = screenWidth * 0.495; // Height for the swoosh SVG
@@ -86,21 +111,162 @@ export default function ProfileScreen() {
                         <DecorativeSwoosh color={headerLightColor} width={screenWidth} height={HEADER_BACKGROUND_HEIGHT * 1.1} />
                     </View>
 
-                    <Image source={{ uri: userData.profilePicture }} style={styles.profileImage} />
+                    <Image source={{ uri: user.profilePicture }} style={styles.profileImage} />
 
                     <View style={styles.userInfo}>
-                        <Text style={styles.username}>{userData.username}</Text>
+                        <Text style={styles.username}>{user.username}</Text>
                         <View style={styles.socialStats}>
-                            <Text style={styles.socialText}>{userData.friends} Friends</Text>
-                            <Text style={styles.socialText}>{userData.likes} Likes</Text>
+                            <Text style={styles.socialText}>
+                                <Text style={styles.socialTextBold}>{user.friends}</Text> Friends
+                            </Text>
+                            <Text style={styles.socialText}>
+                                <Text style={styles.socialTextBold}>{user.likes}</Text> Likes
+                            </Text>
                         </View>
                     </View>
 
-                    <TouchableOpacity style={styles.editProfileButton}>
+                    <TouchableOpacity 
+                        style={styles.editProfileButton}
+                        onPress={() => {
+                            // Prefill modal fields from current user state
+                            setEditUsername(user.username);
+                            setEditBio(user.bio);
+                            setIsEditModalVisible(true);
+                            // Start fade in animation
+                            Animated.timing(fadeAnim, {
+                                toValue: 1,
+                                duration: 200,
+                                useNativeDriver: true,
+                            }).start();
+                        }}
+                    >
                         <Text style={styles.editProfileButtonText}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
 
+                {/* Edit Profile Modal */}
+                <Modal
+                    animationType="none"
+                    transparent={true}
+                    visible={isEditModalVisible}
+                    onRequestClose={() => {
+                        Animated.timing(fadeAnim, {
+                            toValue: 0,
+                            duration: 200,
+                            useNativeDriver: true,
+                        }).start(() => setIsEditModalVisible(false));
+                    }}
+                >
+                    <Animated.View 
+                        style={[
+                            styles.modalOverlay,
+                            { opacity: fadeAnim }
+                        ]}
+                    >
+                        <Pressable 
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => {
+                                Animated.timing(fadeAnim, {
+                                    toValue: 0,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                }).start(() => setIsEditModalVisible(false));
+                            }}
+                        />
+                        <Animated.View 
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: theme.border,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                accessible={true}
+                                accessibilityLabel="Close edit profile"
+                                onPress={() => {
+                                    Animated.timing(fadeAnim, {
+                                        toValue: 0,
+                                        duration: 200,
+                                        useNativeDriver: true,
+                                    }).start(() => setIsEditModalVisible(false));
+                                }}
+                                style={styles.modalCloseButton}
+                            >
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </Pressable>
+                            <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Profile</Text>
+                            
+                            {/* Profile Picture Section */}
+                            <TouchableOpacity style={styles.profilePictureSection}>
+                                <Image 
+                                    source={{ uri: user.profilePicture }} 
+                                    style={styles.modalProfileImage} 
+                                />
+                                <Text style={[styles.changePhotoText, { color: theme.background }]}>
+                                    Change Photo
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Username Input */}
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Username</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={editUsername}
+                                    onChangeText={setEditUsername}
+                                    placeholder="Enter username"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                            </View>
+
+                            {/* Bio Input */}
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Bio</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={editBio}
+                                    onChangeText={setEditBio}
+                                    placeholder="Tell us about yourself..."
+                                    placeholderTextColor={theme.background + '80'}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                            </View>
+
+                            {/* Save Button */}
+                                <TouchableOpacity 
+                                    style={[styles.saveButton, { backgroundColor: theme.primary || theme.text }]}
+                                    onPress={() => {
+                                        // Update the profile data (username + bio)
+                                        setUser(prev => ({
+                                            ...prev,
+                                            username: editUsername,
+                                            bio: editBio,
+                                        }));
+                                        setBioText(editBio);
+
+                                        // Fade out animation before closing modal
+                                        Animated.timing(fadeAnim, {
+                                            toValue: 0,
+                                            duration: 200,
+                                            useNativeDriver: true,
+                                        }).start(() => {
+                                            setIsEditModalVisible(false);
+                                        });
+                                    }}
+                                >
+                                    <Text style={[styles.saveButtonText, { color: '#fff' }]}>Save Changes</Text>
+                                </TouchableOpacity>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
             </View>
 
 
@@ -169,8 +335,82 @@ const PADDING_HORIZONTAL = screenWidth * 0.05
 const HEADER_BACKGROUND_HEIGHT = screenWidth * SWOOSH_FACTOR;
 const IMAGE_SIZE = screenWidth * 0.18;       // ~18% of screen width
 
-function getStyles(theme) {
+function getStyles(theme: any) {
     return StyleSheet.create({
+        // Modal Styles
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalContent: {
+            width: '85%',
+            borderRadius: 15,
+            padding: 20,
+            elevation: 5,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+        },
+        modalTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            marginBottom: 20,
+            textAlign: 'center',
+        },
+        profilePictureSection: {
+            alignItems: 'center',
+            marginBottom: 20,
+        },
+        modalProfileImage: {
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            marginBottom: 10,
+        },
+        changePhotoText: {
+            fontSize: 16,
+            fontWeight: '600',
+        },
+        modalCloseButton: {
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            padding: 6,
+            borderRadius: 12,
+            zIndex: 10,
+        },
+        modalCloseText: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: '#1D3B53',
+        },
+        inputContainer: {
+            marginBottom: 15,
+        },
+        inputLabel: {
+            fontSize: 16,
+            marginBottom: 5,
+            fontWeight: '500',
+        },
+        input: {
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: 10,
+            fontSize: 16,
+        },
+        saveButton: {
+            padding: 15,
+            borderRadius: 8,
+            alignItems: 'center',
+            marginTop: 10,
+        },
+        saveButtonText: {
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
         container: {
             flex: 1,
         },
@@ -236,6 +476,11 @@ function getStyles(theme) {
 
         socialText: {
             fontSize: screenWidth * 0.03,   // ~3% of screen width
+            color: theme.secondaryText
+        },
+        socialTextBold: {
+            fontSize: screenWidth * 0.03,   // ~3% of screen width
+            fontWeight: 'bold',
             color: theme.secondaryText
         },
 
