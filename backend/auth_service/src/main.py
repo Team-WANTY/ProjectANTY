@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 
 from src.router import auth_router

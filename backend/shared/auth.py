@@ -15,7 +15,7 @@ async def get_auth_info_from_service(token: str) -> UserAuthInfo:
     async with AsyncClient() as client:
         response = await client.get(
             f"{settings.AUTH_SERVICE_URL}/verify/{token}",
-            headers={"X-Interservice-Key":settings.INTERSERVICE_KEY},
+            headers={"X-Interservice-Key": settings.INTERSERVICE_KEY},
         )
     if response.status_code != 200:
         raise HTTPException(
@@ -40,8 +40,8 @@ async def get_current_user_auth(
 
     return user_auth_info
 
-async def authorize_operation(operator:UserAuthInfo|UserInDB, operatee_id:str):
+
+async def authorize_operation(operator: UserAuthInfo | UserInDB, operatee_id: str):
     """Is 'operator' authorized to perform protected actions on 'operatee'?"""
     if not operator.is_superuser and operator.id != operatee_id:
         raise AuthError()
-

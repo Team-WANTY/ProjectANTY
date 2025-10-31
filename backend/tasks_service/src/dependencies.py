@@ -5,16 +5,17 @@ from sys import stdout
 from azure.cosmos.aio import CosmosClient
 from shared.settings import settings as shared_settings
 
-from src.database import UsersDB
-from src.service import UsersService
+from src.database import TaskDB
+from src.service import TasksService
 
 logging.basicConfig(
     stream=stdout,
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s",
 )
 
-logger = logging.getLogger("users_service")
+logger = logging.getLogger("tasks_service")
+
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(
@@ -22,14 +23,10 @@ client = CosmosClient(
     shared_settings.COSMOSDB_KEY,
 )
 database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
-users_container = database.get_container_client("users")
-logger.debug("Connected to Azure CosmosDB and got users container")
-
-headers = {"X-Interservice-Key": shared_settings.INTERSERVICE_KEY}
+tasks_container = database.get_container_client("tasks")
+logger.debug("Connected to Azure CosmosDB and got tasks container")
 
 
 @lru_cache
-def get_users_service() -> UsersService:
-    return UsersService(
-        UsersDB(users_container),
-    )
+def get_tasks_service() -> TasksService:
+    return TasksService(TaskDB(tasks_container))

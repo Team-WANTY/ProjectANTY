@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     id: str
     is_active: bool
 
+
 class UserInDB(UserBase):
     username: str
     email: EmailStr

@@ -13,6 +13,7 @@ class Profile(BaseModel):
     equipped_badges: list[str] = Field(default_factory=list, max_items=4)
     equipped_analytics: list[str] = Field(default_factory=list, max_items=4)
 
+
 class ProfileUpdate(BaseModel):
     user_id: str
     bio: str | None = None

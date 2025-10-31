@@ -9,6 +9,7 @@ from src.models import UserUpdate
 
 logger = logging.getLogger("users_service")
 
+
 class UsersService:
     def __init__(self, user_db: UsersDB):
         self.user_db = user_db
@@ -35,19 +36,21 @@ class UsersService:
         logger.debug(f"Successfully got user with email '{email}'")
         return user_in_db
 
-    async def update_user(self, user_update: UserUpdate, updater:UserInDB) -> UserInDB:
+    async def update_user(self, user_update: UserUpdate, updater: UserInDB) -> UserInDB:
         """Update user"""
-        logger.debug(f"Checking if {updater.id} is authorized to update {user_update.id}")
+        logger.debug(
+            f"Checking if {updater.id} is authorized to update {user_update.id}"
+        )
         await authorize_operation(updater, user_update.id)
         logger.debug(f"Updating user with ID '{user_update.id}'")
         old_user_in_db = await self.get_user_by_id(user_update.id)
         if not updater.is_superuser:
-            pass #TODO if any restricted updates, set them to None here
+            pass  # TODO if any restricted updates, set them to None here
         updated_user_in_db = await self.user_db.update_user(old_user_in_db, user_update)
         logger.debug(f"Successfully updated user with ID '{user_update.id}'")
         return updated_user_in_db
 
-    async def delete_user(self, user_id: str, deleter:UserInDB) -> None:
+    async def delete_user(self, user_id: str, deleter: UserInDB) -> None:
         """Delete user"""
         logger.debug(f"Checking if {deleter.id} is authorized to delete {user_id}")
         await authorize_operation(deleter, user_id)

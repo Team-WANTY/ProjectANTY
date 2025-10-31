@@ -16,6 +16,10 @@ http:
       rule: "PathPrefix(`/profiles`)"
       service: profiles-service
 
+    tasks:
+      rule: "PathPrefix(`/tasks`)"
+      service: tasks-service
+
   services:
     auth-service:
       loadBalancer:
@@ -36,3 +40,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://users-service:8000"
+    
+    tasks-service:
+      loadBalancer:
+        servers:
+          - url: "http://tasks-service:8000"

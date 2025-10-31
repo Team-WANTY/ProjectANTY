@@ -10,8 +10,8 @@ EMAIL_FROM = "noreply@projectanty.com"
 SERVER = "smtp.gmail.com"
 PORT = 587
 
-def send_email(recipient: str, subject: str, message: str):
 
+def send_email(recipient: str, subject: str, message: str):
     message = MIMEText(message)
     message["Subject"] = subject
     message["From"] = EMAIL_FROM

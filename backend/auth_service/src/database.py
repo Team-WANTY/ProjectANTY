@@ -20,6 +20,7 @@ logger = logging.getLogger("auth_service")
 
 pwdhasher = PasswordHash.recommended()
 
+
 class AuthDB:
     def __init__(self, container: ContainerProxy):
         self.container = container
@@ -32,14 +33,18 @@ class AuthDB:
             item: CosmosDict = await self.container.create_item(
                 body=user_in_db.model_dump()
             )
-            user_auth_info =  UserAuthInfo.model_validate(item, extra="ignore")
+            user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created user: {user_auth_info.model_dump()}")
             return user_auth_info
         except exceptions.CosmosHttpResponseError:
-            logger.warning(f"Error while creating user: {user_create.model_dump()}, already exists")
+            logger.warning(
+                f"Error while creating user: {user_create.model_dump()}, already exists"
+            )
             raise RecordAlreadyExistsError()
         except Exception as e:
-            logger.error(f"Error while creating user: {user_create.model_dump()}, unexpected: {e}")
+            logger.error(
+                f"Error while creating user: {user_create.model_dump()}, unexpected: {e}"
+            )
             raise RecordCreationError()
 
     async def get_user_auth_by_id(self, user_id: str) -> UserAuthInfo:
@@ -67,8 +72,12 @@ class AuthDB:
             async for item in self.container.query_items(
                 query=query, parameters=parameters
             ):
-                user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")  # Return first match immediately
-                logger.debug(f"Got from username '{username}: {user_auth_info.model_dump()}'")
+                user_auth_info = UserAuthInfo.model_validate(
+                    item, extra="ignore"
+                )  # Return first match immediately
+                logger.debug(
+                    f"Got from username '{username}: {user_auth_info.model_dump()}'"
+                )
                 return user_auth_info
             raise RecordNotFoundError()
         except RecordNotFoundError as e:
@@ -90,7 +99,9 @@ class AuthDB:
             async for item in self.container.query_items(
                 query=query, parameters=parameters
             ):
-                user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")  # Return first match immediately
+                user_auth_info = UserAuthInfo.model_validate(
+                    item, extra="ignore"
+                )  # Return first match immediately
                 logger.debug(f"Got from email {email}: {user_auth_info.model_dump()}")
                 return user_auth_info
             raise RecordNotFoundError()
@@ -111,32 +122,58 @@ class AuthDB:
             patch_operations = []
 
             if auth_update_info.plain_text_password is not None:
-                logger.debug(f"Trying to update password for user '{auth_update_info.id}'")
+                logger.debug(
+                    f"Trying to update password for user '{auth_update_info.id}'"
+                )
                 # Check if new password matches old password
                 if pwdhasher.verify(
                     auth_update_info.plain_text_password,
                     old_user_auth_info.hashed_password,
                 ):
-                    logger.warning(f"Failed to update password for user '{auth_update_info.id}' but old password matches new password, must be different")
+                    logger.warning(
+                        f"Failed to update password for user '{auth_update_info.id}' but old password matches new password, must be different"
+                    )
                     raise RecordUpdateError()
 
                 # TODO validate password meets requirements
                 # logger.warning(f"Failed to update password for user '{auth_update_info.id}' but new password did not meet requirements")
 
                 hashed_pw = pwdhasher.hash(auth_update_info.plain_text_password)
-                patch_operations.append({"op": "replace", "path": "/hashed_password", "value": hashed_pw})
-                logger.debug(f"Successfully added password update operation for user '{auth_update_info.id}'")
+                patch_operations.append(
+                    {"op": "replace", "path": "/hashed_password", "value": hashed_pw}
+                )
+                logger.debug(
+                    f"Successfully added password update operation for user '{auth_update_info.id}'"
+                )
 
             if auth_update_info.is_active is not None:
-                logger.debug(f"Trying to update user '{auth_update_info.id}' active status")
-                patch_operations.append({"op": "replace", "path":"/is_active", "value":auth_update_info.is_active})
+                logger.debug(
+                    f"Trying to update user '{auth_update_info.id}' active status"
+                )
+                patch_operations.append(
+                    {
+                        "op": "replace",
+                        "path": "/is_active",
+                        "value": auth_update_info.is_active,
+                    }
+                )
 
             if auth_update_info.is_superuser is not None:
-                logger.debug(f"Trying to update user '{auth_update_info.id}' superuser status")
-                patch_operations.append({"op": "replace", "path":"/is_superuser", "value":auth_update_info.is_superuser})
+                logger.debug(
+                    f"Trying to update user '{auth_update_info.id}' superuser status"
+                )
+                patch_operations.append(
+                    {
+                        "op": "replace",
+                        "path": "/is_superuser",
+                        "value": auth_update_info.is_superuser,
+                    }
+                )
 
             if len(patch_operations) == 0:
-                logger.debug(f"No update operations pending for user '{auth_update_info.id}'")
+                logger.debug(
+                    f"No update operations pending for user '{auth_update_info.id}'"
+                )
                 return old_user_auth_info
 
             # Always update updated_at timestamp
@@ -148,7 +185,9 @@ class AuthDB:
                 }
             )
 
-            logger.debug(f"Trying to send update operations to DB for user '{auth_update_info.id}'")
+            logger.debug(
+                f"Trying to send update operations to DB for user '{auth_update_info.id}'"
+            )
             item: CosmosDict = await self.container.patch_item(
                 item=auth_update_info.id,
                 partition_key=auth_update_info.id,
@@ -156,14 +195,16 @@ class AuthDB:
             )
 
             user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")
-            logger.debug(f"Successfully updated user '{auth_update_info.id}', new record: {user_auth_info.model_dump()}")
+            logger.debug(
+                f"Successfully updated user '{auth_update_info.id}', new record: {user_auth_info.model_dump()}"
+            )
             return user_auth_info
 
         except exceptions.CosmosResourceNotFoundError:
             logger.debug(f"User with id {auth_update_info.id} not found")
             raise RecordNotFoundError()
         except RecordUpdateError as e:
-            #no logging needed, already covered above
+            # no logging needed, already covered above
             raise e
         except Exception as e:
             logger.error(f"Unexpected error: {e}")

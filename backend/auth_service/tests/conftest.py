@@ -16,6 +16,7 @@ def client():
     """Fixture for FastAPI test client"""
     return TestClient(app)
 
+
 @pytest.fixture
 def mock_auth_db():
     """Fixture for mocked AuthDB"""
@@ -38,7 +39,7 @@ def sample_user_auth_info():
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
         updated_at=now_timestamp(),
         is_active=True,
-        is_superuser=False
+        is_superuser=False,
     )
 
 
@@ -52,8 +53,9 @@ def sample_superuser():
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
         updated_at=now_timestamp(),
         is_active=True,
-        is_superuser=True
+        is_superuser=True,
     )
+
 
 @pytest.fixture
 def mock_container():
@@ -73,5 +75,5 @@ def sample_user_create():
     return UserCreate(
         email="test@gmail.com",
         username="testuser",
-        plain_text_password="SecurePassword123!"
+        plain_text_password="SecurePassword123!",
     )

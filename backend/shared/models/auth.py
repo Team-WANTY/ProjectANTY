@@ -15,6 +15,4 @@ class UserAuthInfo(UserBase):
 
     @staticmethod
     def from_in_db(user_in_db: UserInDB) -> """UserAuthInfo""":
-        return UserAuthInfo.model_validate(
-            user_in_db.model_dump(), extra="ignore"
-        )
+        return UserAuthInfo.model_validate(user_in_db.model_dump(), extra="ignore")

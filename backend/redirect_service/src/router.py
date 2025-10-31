@@ -8,11 +8,9 @@ FALLBACK_URL = "https://google.com"  # Hardcoded fallback
 
 redirect_router = APIRouter()
 
+
 @redirect_router.get("/app", response_class=HTMLResponse, include_in_schema=False)
-async def universal_redirect(
-    page: str,
-    token: str | None = None
-):
+async def universal_redirect(page: str, token: str | None = None):
     """
     Universal redirect service for deep links with built-in fallback.
 
