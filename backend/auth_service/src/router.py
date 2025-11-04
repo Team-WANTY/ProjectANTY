@@ -40,14 +40,14 @@ async def get_current_user_auth(
     """Get current authenticated and active user from JWT token"""
     try:
         decoded_token = await auth_service.decode_token(token)
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired token"
+        )
     except TokenError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token error",
-        )
-    except TokenExpiredError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired token"
         )
     except Exception:
         raise HTTPException(

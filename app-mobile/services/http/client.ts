@@ -51,7 +51,7 @@ api.interceptors.response.use(
     // Only refresh on actual expired-token cases
     const detail = error?.response?.data?.detail;
     const shouldRefresh =
-      status === 401 && !originalRequest?._retry // && detail === "Expired token" ;
+      status === 401 && !originalRequest?._retry && detail === "Expired token" ;
 
     if (!shouldRefresh) {
       return Promise.reject(error);
@@ -93,7 +93,7 @@ api.interceptors.response.use(
 				method: originalRequest.method,
 				url: originalRequest.url,
 			});
-			
+
       // Resolve queued requests
       queue.splice(0).forEach(({ resolve, originalRequest }) => {
         originalRequest.headers = originalRequest.headers ?? {};
