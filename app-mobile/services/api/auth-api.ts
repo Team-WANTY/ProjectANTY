@@ -34,7 +34,8 @@ export const authApi = {
         await secureStoreToken.clear();
         return { ok: false, status: res.status, message: "Login failed" };
       }
-      console.log("Access Token:", maskToken(token, 6));
+
+      console.log("Access Token:", maskToken(token, 6)); // Debugging
       await secureStoreToken.set(token);
       return { ok: true, status: res.status, data: res.data };
     } 
@@ -59,8 +60,11 @@ export const authApi = {
       const res = await api.post(paths.logout);
       const token = res.data?.access_token;
       await secureStoreToken.clear();
+
+      // Debugging
       console.log("Access token cleared");
       console.log("Access Token:", maskToken(token, 6));
+
       return { ok: true, status: res.status, data: undefined };
     } 
     catch (error: any) {
@@ -140,13 +144,15 @@ export const authApi = {
     try {
       const res = await api.get<LoginResponse>(paths.refresh);
       const token = res.data?.access_token;
+    
       if (!token) {
         await secureStoreToken.clear();
         return {ok: false, status: res.status, message: "Refresh failed"};
       }
       
-      console.log("Access Token:", maskToken(token, 6));
       await secureStoreToken.set(token);
+
+      // Debugging
       console.log("New access token set");
       console.log("Access Token:", maskToken(token, 6));
       return {ok:true, status: res.status, data: res.data};
