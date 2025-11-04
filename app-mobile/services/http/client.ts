@@ -42,16 +42,17 @@ api.interceptors.response.use(
     const originalRequest: any = error?.config;
     const status = error?.response?.status;
     const url = (originalRequest?.url ?? "").toString();
-
+		const hadAuth = !!originalRequest?.headers?.Authorization;
+		const isAuthEndpoint = url.endsWith("/auth/login") || url.endsWith("/auth/refresh");
     // 1) Skip refresh flow for /auth/refresh itself
-		if (url.endsWith("/auth/login") || url.endsWith("/auth/refresh")) {
+		if (isAuthEndpoint) {
 			return Promise.reject(error);
-}
+		}		
 
     // Only refresh on actual expired-token cases
     const detail = error?.response?.data?.detail;
     const shouldRefresh =
-      status === 401 && !originalRequest?._retry && detail === "Expired token" ;
+      status === 401 && !originalRequest?._retry && hadAuth && !isAuthEndpoint;
 
     if (!shouldRefresh) {
       return Promise.reject(error);
