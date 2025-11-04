@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {authApi} from '@/services/auth-api'
+import {authApi} from '@/services/api/auth-api'
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 
