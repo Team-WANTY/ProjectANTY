@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { authApi } from "@/services/auth-api";
+import { authApi } from "@/services/api/auth-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 export default function ForgotPassword() {
