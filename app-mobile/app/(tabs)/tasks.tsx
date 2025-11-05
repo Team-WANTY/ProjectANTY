@@ -1,5 +1,16 @@
 import React, { useState, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Animated } from "react-native";
+import { 
+    View, 
+    Text, 
+    ScrollView, 
+    StyleSheet, 
+    Dimensions, 
+    TouchableOpacity, 
+    Animated,
+    Modal,
+    TextInput,
+    Pressable
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,7 +96,10 @@ const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
             <Animated.View style={[styles.taskCard, animatedStyle, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
                 <View style={styles.taskTextContent}>
                     <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>{task.title}</Text>
-                    <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>{task.dueDate}</Text>
+                    <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>
+                        {task.dueDate}
+                        {task.repeat ? ` • ${task.repeat}` : ''}
+                    </Text>
                 </View>
                 <View style={styles.rightControls}>
                     <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
@@ -125,6 +139,53 @@ export default function TasksScreen() {
     const insets = useSafeAreaInsets();
     const [tasks, setTasks] = useState(taskList);
     const router = useRouter();
+    
+    // Modal states
+    const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
+    const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
+    const [categoriesList, setCategoriesList] = useState(categories);
+    
+    // Form states
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [newTask, setNewTask] = useState({
+        title: "",
+        category: "",
+        dueDate: "",
+        repeat: "",
+    });
+    const [isRepeatOpen, setIsRepeatOpen] = useState(false);
+    const [dateError, setDateError] = useState("");
+    const [taskNameError, setTaskNameError] = useState("");
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Animation helpers
+    const fadeIn = () => {
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const fadeOut = (onComplete: () => void) => {
+        Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(onComplete);
+    };
+
+    // Date validation helper
+    const isValidDateFormat = (date: string) => {
+        const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+        if (!dateRegex.test(date)) return false;
+        
+        const [month, day, year] = date.split('/').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        return dateObj.getMonth() === month - 1 && 
+               dateObj.getDate() === day && 
+               dateObj.getFullYear() === year;
+    };
     
     // date state
     const [date, setDate] = useState(new Date(2025, 8, 17)); // 0 indexed month so 0 - Jan, 1 - Feb... 
@@ -191,17 +252,85 @@ export default function TasksScreen() {
                 {/* 3. Categories Header and Tags */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Categories</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                        setIsNewCategoryModalVisible(true);
+                        fadeIn();
+                    }}>
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
+
+                {/* New Category Modal */}
+                <Modal
+                    transparent={true}
+                    visible={isNewCategoryModalVisible}
+                    onRequestClose={() => {
+                        fadeOut(() => setIsNewCategoryModalVisible(false));
+                    }}
+                    animationType="none"
+                >
+                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                        <Pressable
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: theme.border,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                accessible={true}
+                                accessibilityLabel="Close new category"
+                                onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                                style={styles.modalCloseButton}
+                            >
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </Pressable>
+                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Category</Text>
+                            
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={newCategoryName}
+                                    onChangeText={setNewCategoryName}
+                                    placeholder="Enter category name"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                                onPress={() => {
+                                    if (newCategoryName.trim()) {
+                                        setCategoriesList(prev => [...prev, newCategoryName.trim()]);
+                                        setNewCategoryName("");
+                                        fadeOut(() => setIsNewCategoryModalVisible(false));
+                                    }
+                                }}
+                            >
+                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Category</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
 
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.categoryTagsContainer}
                 >
-                    {categories.map((cat, index) => (
+                    {categoriesList.map((cat, index) => (
                         <CategoryTag
                             key={index}
                             category={cat}
@@ -212,13 +341,212 @@ export default function TasksScreen() {
                     ))}
                 </ScrollView>
 
-                {/* 4. To-Do List Header */}
+                {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>To-Do List</Text>
-                    <TouchableOpacity>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
+                    <TouchableOpacity onPress={() => {
+                        setIsNewTaskModalVisible(true);
+                        setDateError("");
+                        fadeIn();
+                    }}>
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
+
+                {/* New Task Modal */}
+                <Modal
+                    transparent={true}
+                    visible={isNewTaskModalVisible}
+                    onRequestClose={() => {
+                        fadeOut(() => setIsNewTaskModalVisible(false));
+                    }}
+                    animationType="none"
+                >
+                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                        <Pressable
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: theme.border,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                accessible={true}
+                                accessibilityLabel="Close new task"
+                                onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
+                                style={styles.modalCloseButton}
+                            >
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </Pressable>
+                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Task</Text>
+                            
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        { 
+                                            color: theme.background, 
+                                            borderColor: taskNameError ? '#ff4d4f' : theme.background 
+                                        }
+                                    ]}
+                                    value={newTask.title}
+                                    onChangeText={(text) => {
+                                        setTaskNameError("");
+                                        setNewTask(prev => ({ ...prev, title: text }))
+                                    }}
+                                    placeholder="Enter task name"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                                {taskNameError ? (
+                                    <Text style={styles.errorText}>{taskNameError}</Text>
+                                ) : null}
+                            </View>
+
+                            {/* Description removed per request */}
+
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                                    {categoriesList.map((cat) => (
+                                        <TouchableOpacity
+                                            key={cat}
+                                            style={[
+                                                styles.categoryOption,
+                                                {
+                                                    backgroundColor: newTask.category === cat ? theme.primary : 'transparent',
+                                                    borderColor: theme.background
+                                                }
+                                            ]}
+                                            onPress={() => setNewTask(prev => ({ ...prev, category: cat }))}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.categoryOptionText,
+                                                    { color: newTask.category === cat ? '#fff' : theme.background }
+                                                ]}
+                                            >
+                                                {cat}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            {/* Repeat Dropdown */}
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
+                                <Pressable
+                                    style={[styles.dropdown, { borderColor: theme.background }]}
+                                    onPress={() => setIsRepeatOpen((o) => !o)}
+                                >
+                                    <Text style={[styles.dropdownText, { color: theme.background }]}>{newTask.repeat || 'None'}</Text>
+                                    <Ionicons name="chevron-down" size={18} color={theme.background} />
+                                </Pressable>
+                                {isRepeatOpen && (
+                                    <View style={[styles.dropdownMenu, { backgroundColor: theme.cardBackground, borderColor: theme.background }] }>
+                                        {['None','Daily','Weekly','Monthly','Yearly'].map((opt) => (
+                                            <TouchableOpacity
+                                                key={opt}
+                                                style={styles.dropdownItem}
+                                                onPress={() => {
+                                                    const value = opt === 'None' ? '' : opt;
+                                                    setNewTask(prev => ({ ...prev, repeat: value }));
+                                                    setIsRepeatOpen(false);
+                                                }}
+                                            >
+                                                <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>{opt}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Due Date (MM/DD/YYYY)</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={newTask.dueDate}
+                                    onChangeText={(text) => {
+                                        setNewTask(prev => ({ ...prev, dueDate: text }));
+                                        setDateError("");
+                                    }}
+                                    placeholder="MM/DD/YYYY"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                                {dateError ? (
+                                    <Text style={styles.errorText}>{dateError}</Text>
+                                ) : null}
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                                onPress={() => {
+                                    if (!newTask.title.trim()) {
+                                        setTaskNameError("Task name is required");
+                                        return;
+                                    }
+
+                                    // If no due date provided, accept and set to 'no due date'
+                                    let dueDateValue = newTask.dueDate.trim();
+                                    let dateISOValue = "";
+
+                                    if (dueDateValue === "") {
+                                        dueDateValue = "No due date";
+                                        // associate to currently selected date so it appears in today's list
+                                        dateISOValue = selectedDate;
+                                    } else {
+                                        if (!isValidDateFormat(dueDateValue)) {
+                                            setDateError("Please enter a valid date in MM/DD/YYYY format");
+                                            return;
+                                        }
+                                        const [month, day, year] = dueDateValue.split('/');
+                                        const dateObj = new Date(+year, +month - 1, +day);
+                                        dateISOValue = formatDate(dateObj).iso;
+                                    }
+
+                                    const newTaskItem = {
+                                        id: tasks.length + 1,
+                                        title: newTask.title.trim(),
+                                        category: newTask.category || "",
+                                        dueDate: dueDateValue,
+                                        dateISO: dateISOValue,
+                                        repeat: newTask.repeat || "",
+                                        completed: false
+                                    };
+
+                                    // Append to the tasks list
+                                    setTasks(prev => [...prev, newTaskItem]);
+
+                                    // Reset form
+                                    setNewTask({
+                                        title: "",
+                                        category: "",
+                                        dueDate: "",
+                                        repeat: "",
+                                    });
+                                    setTaskNameError("");
+
+                                    // Close modal with fade out
+                                    fadeOut(() => setIsNewTaskModalVisible(false));
+                                }}
+                            >
+                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Task</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
 
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
@@ -246,6 +574,113 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '85%',
+        borderRadius: 15,
+        padding: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    inputContainer: {
+        marginBottom: 15,
+    },
+    inputLabel: {
+        fontSize: 16,
+        marginBottom: 5,
+        fontWeight: '500',
+    },
+    input: {
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 10,
+        fontSize: 16,
+        minHeight: 40,
+    },
+    categoryScroll: {
+        flexDirection: 'row',
+        marginBottom: 5,
+    },
+    categoryOption: {
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginRight: 10,
+    },
+    categoryOptionText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    saveButton: {
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    errorText: {
+        color: '#ff4d4f',
+        fontSize: 14,
+        marginTop: 5,
+    },
+    dropdown: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    dropdownText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    dropdownMenu: {
+        borderWidth: 1,
+        borderRadius: 8,
+        marginTop: 8,
+        overflow: 'hidden',
+    },
+    dropdownItem: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    dropdownItemText: {
+        fontSize: 16,
+    },
+    modalCloseButton: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        padding: 6,
+        borderRadius: 12,
+        zIndex: 10,
+    },
+    modalCloseText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1D3B53', // Dark blue from app theme
     },
     // --- Header Bar Styles ---
     headerBar: {
