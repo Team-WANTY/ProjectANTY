@@ -191,9 +191,8 @@ class TestGetUserAuthByEmail:
     @pytest.mark.asyncio
     async def test_get_user_by_email_not_found(self, mock_auth_db, mock_container):
         """Test retrieval when email not found"""
-        mock_container.query_items.side_effect = (
-            exceptions.CosmosResourceNotFoundError()
-        )
+        mock_container.query_items = Mock()
+        mock_container.query_items.side_effect = exceptions.CosmosResourceNotFoundError()
 
         with pytest.raises(RecordNotFoundError):
             await mock_auth_db.get_user_auth_by_email("nonexistent@gmail.com")
