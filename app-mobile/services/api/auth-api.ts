@@ -12,9 +12,10 @@ const paths = {
   reset_password: "/auth/reset-password",
   refresh: "/auth/refresh",
   logout: "/auth/logout",
-  // update_auth: "/auth/",  
+  update: "/auth/",  
 } as const;
 
+export type ChangePassword = {id: string, plain_text_password: string};
 export type LoginResponse = { access_token: string; token_type?: "bearer"  };
 
 export const authApi = {
@@ -166,6 +167,29 @@ export const authApi = {
         : status === 403 ? "Invalid token type"
         : toMessage(data, "Failed to refresh session");
       return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+  // PATCH /auth
+  async update(body: Partial<ChangePassword>): Promise<ApiResult<ChangePassword>> {
+    try {
+      const id = (body as any).id;
+      if (!id) {
+        return {ok: false, status: 400, message: "id field is required in body"};
+      }
+      const payload: Record<string, any> = {id};
+      if (body.plain_text_password !== undefined) payload.plain_text_password = body.plain_text_password;
+
+      const res = await api.patch(paths.update, payload);
+      return {ok: true, status: res.status, data: res.data};
+    }
+    catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const msg =
+        status === 401 ? "Not authenticated"
+        : toMessage(data, "Failed to change password");
+      return {ok: false, status, message: msg, detail: data};
     }
   },
 };

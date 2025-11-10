@@ -58,7 +58,7 @@ export const usersApi = {
     }
   },
 
-  // PATCH
+  // PATCH require user_id in JSON body
   async update(body: Partial<SimpleUser>): Promise<ApiResult<SimpleUser>> {
     try {
       const id = (body as any).id;

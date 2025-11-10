@@ -1,50 +1,23 @@
 import React, { useState, useRef } from "react";
-import { 
-    View, 
-    Text, 
-    ScrollView, 
-    StyleSheet, 
-    Dimensions, 
-    TouchableOpacity, 
-    Animated,
-    Modal,
-    TextInput,
-    Pressable
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
+    Animated,Modal, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Swipeable, RectButton } from 'react-native-gesture-handler';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
 
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar"
+import { tasksApi, type NewTask, type RepeatRule } from "@/services/api/tasks-api";
+import { useUserStore } from "@/services/stores/users-store";
 
 const { width } = Dimensions.get("window");
 
-// --- Mock Data ---
-const taskList = [
-    { id: 1, title: "Buy work clothes",       dueDate: "9/17/2025",     category: "Work",       completed: false , dateISO: "2025-09-17"},
-    { id: 2, title: "Distributed Network HW", dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
-    { id: 3, title: "Exercise",               dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
-    { id: 4, title: "Research Paper Draft",   dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
-    { id: 5, title: "Groceries",              dueDate: "9/17/2025",     category: "Personal",   completed: false , dateISO: "2025-09-17"},
-    { id: 6, title: "Coding Challenge",       dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
-    { id: 7, title: "Meal Prep",              dueDate: "9/17/2025",     category: "Errands",    completed: false , dateISO: "2025-09-17"},
-    { id: 8, title: "Go Buy some meat",       dueDate: "9/18/2025",     category: "Errands",    completed: false , dateISO: "2025-09-18"},
-];
 
 // Mock Categories
 const categories = ["Personal", "School", "Routine", "Work", "Errands"];
 
-// pad helper
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-// date function
-const formatDate = (d: Date) => {
-    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; // for task filtering, ex 2025-09-18
-    const display = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`; // UI display, ex 9/17/2025
-    return { iso, display };
-};
 
 // --- Task Item Component --
 const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
@@ -88,7 +61,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
     };
 
     return (
-        <Swipeable
+        <ReanimatedSwipeable
             renderRightActions={renderRightActions}
             overshootRight={false}
             rightThreshold={40}
@@ -112,7 +85,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
                     </TouchableOpacity>
                 </View>
             </Animated.View>
-        </Swipeable>
+        </ReanimatedSwipeable>
     );
 };
 
@@ -142,9 +115,14 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
 export default function TasksScreen() {
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
-    const [tasks, setTasks] = useState(taskList);
+    const [tasks, setTasks] = useState<any[]>([]);
     const router = useRouter();
-    
+    const [date, setDate] = useState(new Date());
+    const display = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const filtered = tasks.filter(
+        t => !selectedCategory || t.category === selectedCategory
+    );
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
@@ -160,14 +138,16 @@ export default function TasksScreen() {
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newTask, setNewTask] = useState({
         title: "",
+        description: "",
         category: "",
-        dueDate: "",
-        repeat: "",
     });
+
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
     const [taskNameError, setTaskNameError] = useState("");
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const userId   = useUserStore(s => s.userId);
+    const [loading, setLoading] = useState(false);
 
     // Animation helpers
     const fadeIn = () => {
@@ -245,39 +225,76 @@ export default function TasksScreen() {
                dateObj.getDate() === day && 
                dateObj.getFullYear() === year;
     };
-    
-    // date state
-    const [date, setDate] = useState(new Date(2025, 8, 17)); // 0 indexed month so 0 - Jan, 1 - Feb... 
-    const { iso: selectedDate, display } = formatDate(date);
 
-    // state: no category selected by default, show all tasks when no category selected
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-    // task filtering logic: filter by date, then filter by category
-    const filtered = tasks.filter(t => {
-        const dateMatch = t.dateISO === selectedDate;
-        const categoryMatch = !selectedCategory || t.category === selectedCategory; 
-        return dateMatch && categoryMatch;
-    });
-
-    const handleToggleTask = (id: number) => {
-        setTasks(prevTasks =>
-            prevTasks.map(task =>
-                task.id === id ? { ...task, completed: !task.completed } : task
+    const handleToggleTask = (id: string) => {
+        setTasks(prev =>
+            prev.map(task =>
+            task.id === id ? { ...task, completed: !task.completed } : task
             )
         );
     };
 
-    const handleDeleteTask = (id: number) => {
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+    const handleDeleteTask = (id: string) => {
+        setTasks(prev => prev.filter(t => t.id !== id));
     };
 
     // Calculate tasks completed (for the header)
     const completedCount = tasks.filter(t => t.completed).length;
 
+    const createTask = async () => {
+        const title = newTask.title.trim();
+        if (!title) {
+            setTaskNameError("Task name is required");
+            return;
+        }
+        if (!userId) {
+            console.log("NO user id");
+            router.replace("/login");
+            return;
+        }
+        setLoading(true);
+        try {
+            const payload = {
+                user_id: userId,
+                name: title,
+                desc: newTask.description?.trim() || "",
+                cat: newTask.category ?? null,
+                due_date: 0, 
+            };
+
+            const res = await tasksApi.create(payload);
+            if (!res.ok || !res.data) {
+                console.log("Failed to create task:");
+                setDateError("Failed to create task");
+                return;
+            }
+
+            console.log(`Task Created: Task name: ${res.data.name}, description: ${res.data.desc}, category: ${res.data.cat}`);
+            const created = res.data; // contains { id, user_id, name, desc, cat, ... }
+
+            // Add new task to local state
+            setTasks(prev => [
+                ...prev,
+                {
+                    id: created.id,              // server ID (string)
+                    title: created.name,
+                    category: created.cat || "General",
+                    dueDate: "No due date",
+                    completed: false,
+                },
+            ]);
+            // reset + close
+            setNewTask({ title: "", description: "", category: "" });
+            fadeOut(() => setIsNewTaskModalVisible(false));
+        } 
+        finally {
+            setLoading(false);
+        }
+    };
+    
+
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-
             {/* 1. Top Navigation Bar */}
             <HeaderBar
                 title="Tasks"
@@ -553,6 +570,7 @@ export default function TasksScreen() {
                             </Pressable>
                             <Text style={[styles.modalTitle, { color: theme.background }]}>New Task</Text>
                             
+                            {/* Task Name */}
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
                                 <TextInput
@@ -571,13 +589,23 @@ export default function TasksScreen() {
                                     placeholder="Enter task name"
                                     placeholderTextColor={theme.background + '80'}
                                 />
-                                {taskNameError ? (
-                                    <Text style={styles.errorText}>{taskNameError}</Text>
-                                ) : null}
+                                {taskNameError ? ( <Text style={styles.errorText}>{taskNameError} </Text> ) : null}
                             </View>
 
-                            {/* Description removed per request */}
+                            {/* Description */}
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Description</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={newTask.description}
+                                    onChangeText={(text) => setNewTask(prev => ({ ...prev, description: text }))}
+                                    placeholder="What’s this task about?"
+                                    placeholderTextColor={theme.background + '80'}
+                                    multiline
+                                />
+                            </View>
 
+                            {/* Category */}
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: theme.background }]}>Category</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
@@ -606,7 +634,7 @@ export default function TasksScreen() {
                                 </ScrollView>
                             </View>
 
-                            {/* Repeat Dropdown */}
+                            {/* Repeat Dropdown 
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
                                 <Pressable
@@ -634,7 +662,9 @@ export default function TasksScreen() {
                                     </View>
                                 )}
                             </View>
-
+                            */}
+                            
+                            {/* Due Date 
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: theme.background }]}>Due Date (MM/DD/YYYY)</Text>
                                 <TextInput
@@ -651,60 +681,18 @@ export default function TasksScreen() {
                                     <Text style={styles.errorText}>{dateError}</Text>
                                 ) : null}
                             </View>
+                            */}
 
                             <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                                onPress={() => {
-                                    if (!newTask.title.trim()) {
-                                        setTaskNameError("Task name is required");
-                                        return;
-                                    }
-
-                                    // If no due date provided, accept and set to 'no due date'
-                                    let dueDateValue = newTask.dueDate.trim();
-                                    let dateISOValue = "";
-
-                                    if (dueDateValue === "") {
-                                        dueDateValue = "No due date";
-                                        // associate to currently selected date so it appears in today's list
-                                        dateISOValue = selectedDate;
-                                    } else {
-                                        if (!isValidDateFormat(dueDateValue)) {
-                                            setDateError("Please enter a valid date in MM/DD/YYYY format");
-                                            return;
-                                        }
-                                        const [month, day, year] = dueDateValue.split('/');
-                                        const dateObj = new Date(+year, +month - 1, +day);
-                                        dateISOValue = formatDate(dateObj).iso;
-                                    }
-
-                                    const newTaskItem = {
-                                        id: tasks.length + 1,
-                                        title: newTask.title.trim(),
-                                        category: newTask.category || "",
-                                        dueDate: dueDateValue,
-                                        dateISO: dateISOValue,
-                                        repeat: newTask.repeat || "",
-                                        completed: false
-                                    };
-
-                                    // Append to the tasks list
-                                    setTasks(prev => [...prev, newTaskItem]);
-
-                                    // Reset form
-                                    setNewTask({
-                                        title: "",
-                                        category: "",
-                                        dueDate: "",
-                                        repeat: "",
-                                    });
-                                    setTaskNameError("");
-
-                                    // Close modal with fade out
-                                    fadeOut(() => setIsNewTaskModalVisible(false));
-                                }}
+                                style={[styles.saveButton, { backgroundColor: theme.primary }, loading && { opacity: 0.6 }]}
+                                disabled={loading}
+                                onPress={createTask}
                             >
-                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Task</Text>
+                                {loading ? (
+                                    <ActivityIndicator />
+                                ) : (
+                                    <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Task</Text>
+                                )}
                             </TouchableOpacity>
                         </Animated.View>
                     </Animated.View>
