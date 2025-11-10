@@ -211,6 +211,7 @@ export const authApi = {
       if (body.plain_text_password !== undefined) payload.plain_text_password = body.plain_text_password;
 
       const res = await api.patch(paths.update, payload);
+<<<<<<< HEAD
       return { 
         ok: true, 
         status: res.status, 
@@ -218,6 +219,9 @@ export const authApi = {
         detail: res.data?.detail,
         data: res.data 
       };
+=======
+      return {ok: true, status: res.status, data: res.data};
+>>>>>>> 42f7261 (task creation)
     }
     catch (error: any) {
       const status = error?.response?.status;

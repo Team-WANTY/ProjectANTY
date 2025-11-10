@@ -1,23 +1,12 @@
 import React, { useState, useRef } from "react";
-import {
-View,
-Text,
-ScrollView,
-StyleSheet,
-Dimensions,
-TouchableOpacity,
-Animated,
-Modal,
-TextInput,
-Pressable,
-ActivityIndicator,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
+    Animated,Modal, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import { RectButton } from "react-native-gesture-handler";
-
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { RectButton } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
+
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 
@@ -453,6 +442,7 @@ export default function TasksScreen() {
         }
     };
 
+
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             {/* 1. Top Navigation Bar */}
@@ -706,6 +696,7 @@ export default function TasksScreen() {
                             </Pressable>
                             <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
                             
+                            {/* Task Name */}
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
                                 <TextInput
@@ -716,6 +707,7 @@ export default function TasksScreen() {
                                     placeholderTextColor={theme.background + '80'}
                                 />
                             </View>
+                            
 
                             <TouchableOpacity
                                 style={[styles.saveButton, { backgroundColor: theme.primary }]}
