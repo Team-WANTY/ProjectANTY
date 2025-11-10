@@ -8,7 +8,6 @@ from key_io import set_key_to_environment
 
 load_dotenv()
 
-
 class Settings(BaseSettings):
     AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed
     AUTH_EXTERNAL_URL: str

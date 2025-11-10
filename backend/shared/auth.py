@@ -41,7 +41,7 @@ async def get_current_user_auth(
     return user_auth_info
 
 
-async def authorize_operation(operator: UserAuthInfo | UserInDB, operatee_id: str):
+async def authorize_operation(operator: UserAuthInfo, operatee_id: str):
     """Is 'operator' authorized to perform protected actions on 'operatee'?"""
     if not operator.is_superuser and operator.id != operatee_id:
         raise AuthError()

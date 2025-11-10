@@ -18,11 +18,9 @@ class UserCreate(BaseModel):
             id=generate_id(),
             username=self.username,
             email=self.email,
-            hashed_password=pwd_hasher.hash(self.plain_text_password),
             created_at=now_timestamp(),
             updated_at=now_timestamp(),
             is_active=True,  # assume the user is being created this shouldn't be inactive
-            is_superuser=False,  # assume created user is not admin unless set
         )
 
 
