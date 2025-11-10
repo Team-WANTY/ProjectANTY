@@ -19,12 +19,21 @@ http:
     tasks:
       rule: "PathPrefix(`/tasks`)"
       service: tasks-service
+    
+    images:
+      rule: "PathPrefix(`/images`)"
+      service: image-service
 
   services:
     auth-service:
       loadBalancer:
         servers:
           - url: "http://auth-service:8000"
+    
+    image-service:
+      loadBalancer:
+        servers:
+          - url: "http://image-service:8000"
 
     profiles-service:
       loadBalancer:
