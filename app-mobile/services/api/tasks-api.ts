@@ -13,7 +13,6 @@ function fillId(tpl: string, id: string) {
   return tpl.replace("{user_id}", encodeURIComponent(id));
 }
 
-<<<<<<< HEAD
 function fillTaskId(tpl: string, taskId: string) {
   return tpl.replace("{task_id}", encodeURIComponent(taskId));
 }
@@ -21,11 +20,7 @@ function fillTaskId(tpl: string, taskId: string) {
 // Frequency and Duration Specifiers
 export type FrequencySpecifier = "daily" | "weekly" | "monthly" | "yearly";
 export type DurationSpecifier = "forever" | "number_of_times" | "until_date";
-=======
-// Frequency and Duration Specifiers
-export type FrequencySpecifier = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
-export type DurationSpecifier = "FOREVER" | "NUMBER_OF_TIMES" | "UNTIL_DATE";
->>>>>>> 42f7261 (task creation)
+
 
 export type RepeatDuration = {
   specifier?: DurationSpecifier | null; // default FOREVER
@@ -45,7 +40,6 @@ export type RepeatRule = {
   duration?: RepeatDuration | null;
 };
 
-<<<<<<< HEAD
 /**
  * backend Task model:
  * - id: string 
@@ -59,19 +53,11 @@ export type RepeatRule = {
 
 export type Task = {
   id: string;                 
-=======
-export type Task = {
-  id?: string | null;
->>>>>>> 42f7261 (task creation)
   user_id: string;
   name: string;
   desc: string;
   cat?: string | null;
-<<<<<<< HEAD
   due_date: number;           
-=======
-  due_date?: number | null; 
->>>>>>> 42f7261 (task creation)
   repeat_rule?: RepeatRule | null;
 };
 
@@ -92,7 +78,6 @@ export const tasksApi = {
   async create(task: NewTask): Promise<ApiResult<Task>> {
     try {
       const res = await api.post<Task>(paths.root, task);
-<<<<<<< HEAD
       return { 
         ok: true, 
         status: res.status, 
@@ -100,9 +85,7 @@ export const tasksApi = {
         data: res.data 
       };
 
-=======
-      return {ok: true, status: res.status, data: res.data};
->>>>>>> 42f7261 (task creation)
+
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -120,16 +103,13 @@ export const tasksApi = {
   async getByID(taskId: string): Promise<ApiResult<Task>> {
     try {
       const res = await api.get<Task>(`${paths.root}?task_id=${encodeURIComponent(taskId)}`);
-<<<<<<< HEAD
       return { 
         ok: true, 
         status: res.status, 
         message: res.statusText || "Request successful", 
         data: res.data 
       };
-=======
-      return {ok: true, status: res.status, data: res.data};
->>>>>>> 42f7261 (task creation)
+
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -147,7 +127,6 @@ export const tasksApi = {
     try {
       const url = `${paths.root}?user_id=${encodeURIComponent(userId)}&quantity=${encodeURIComponent(String(quantity))}`;
       const res = await api.get<Task[] | Task>(url);
-<<<<<<< HEAD
       const raw = res.data;
       const data: Task[] = Array.isArray(raw)
         ? raw
@@ -161,10 +140,7 @@ export const tasksApi = {
         message: res.statusText || "Request successful", 
         data
       };
-=======
-      const data = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
-      return { ok: true, status: res.status, data};
->>>>>>> 42f7261 (task creation)
+
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -180,7 +156,6 @@ export const tasksApi = {
   // PATCH /tasks requires user_id in the JSON body
   async update(body: TaskUpdateBody): Promise<ApiResult<Task>> {
     try {
-<<<<<<< HEAD
       const id = body.id;
       if (!id) {
         return { ok: false, status: 400, message: "id field is required in body" };
@@ -192,14 +167,6 @@ export const tasksApi = {
         message: res.statusText || "Request successful", 
         data: res.data 
       };
-=======
-      const id = (body as any).id;
-      if (!id) {
-        return { ok: false, status: 400, message: "id field is required in body" };
-      }
-      const res = await api.patch<Task>(fillId(paths.root, id), body);
-      return { ok: true, status: res.status, data: res.data };
->>>>>>> 42f7261 (task creation)
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -215,7 +182,6 @@ export const tasksApi = {
   // Delete /tasks/{task_id}
   async remove(taskId: string): Promise<ApiResult<Task>> {
     try {
-<<<<<<< HEAD
       const url = fillTaskId(paths.byId, taskId);
       const res = await api.delete<Task>(url);
       return { 
@@ -224,10 +190,6 @@ export const tasksApi = {
         message: res.statusText || "Request successful", 
         data: res.data 
       };
-=======
-      const res = await api.delete(fillId(paths.byId, taskId));
-      return { ok: true, status: res.status, data: res.data}; 
->>>>>>> 42f7261 (task creation)
     }
     catch (error: any) {
       const status = error?.response?.status;

@@ -13,6 +13,8 @@ import { HeaderBar } from "@/components/header-bar";
 import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
 import { useUserStore } from "@/services/stores/users-store";
 import { useTasksStore } from "@/services/stores/tasks-store";
+import { NewTaskModal  } from "@/components/task-create-modal";
+import { EditTaskModal } from "@/components/task-edit-modal";
 
 const { width } = Dimensions.get("window");
 
@@ -237,6 +239,9 @@ export default function TasksScreen() {
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
     
+    const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
+    const [editingTask, setEditingTask] = useState<any | null>(null);
+
     // Form states
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newTask, setNewTask] = useState<{
@@ -325,10 +330,20 @@ export default function TasksScreen() {
     };
 
     const handleEditTask = (id: string) => {
-        console.log(id);
-        setIsNewTaskModalVisible(true);
+        const taskToEdit = tasks.find((t) => t.id === id);
+        if (!taskToEdit) return;
+
+        setEditingTask({
+            id: taskToEdit.id,
+            title: taskToEdit.name,
+            description: taskToEdit.desc,
+            category: taskToEdit.cat ?? null,
+            repeatLabel: formatRepeatRule(taskToEdit.repeat_rule) || "",
+            dueDate: unixToDisplayDate(taskToEdit.due_date),
+        });
+
+        setIsEditTaskModalVisible(true);
         setDateError("");
-        fadeIn();
     };
 
     // Toggle completion using the store
@@ -442,6 +457,36 @@ export default function TasksScreen() {
         }
     };
 
+    const updateExistingTask = async () => {
+        if (!editingTask || !editingTask.title.trim()) return;
+        setLoading(true);
+        try {
+            const dueTimestamp = dateStringToUnix(editingTask.dueDate);
+            const repeatRule = buildRepeatRuleFromLabel(editingTask.repeatLabel);
+            
+            const res = await tasksApi.update({
+                id: editingTask.id,
+                name: editingTask.title,
+                desc: editingTask.description,
+                cat: editingTask.category,
+                due_date: dueTimestamp,
+                repeat_rule: repeatRule,
+                
+            });
+            if (res.ok && res.data) {
+                console.log("Task Updated");
+                updateTask(editingTask.id, res.data);
+                
+            } else {
+                console.log("Update failed", res.message);
+            }
+
+            fadeOut(() => setIsEditTaskModalVisible(false));
+            setEditingTask(null);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -733,268 +778,41 @@ export default function TasksScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* New Task Modal */}
-            <Modal
-                transparent={true}
+            <NewTaskModal
                 visible={isNewTaskModalVisible}
-                onRequestClose={() => {
-                    fadeOut(() => setIsNewTaskModalVisible(false));
+                theme={theme}
+                categoriesList={categoriesList}
+                newTask={newTask}
+                setNewTask={setNewTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                taskNameError={taskNameError}
+                loading={loading}
+                onClose={() => {
+                    setIsNewTaskModalVisible(false);
                 }}
-                animationType="none"
-            >
-                <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                    <Pressable
-                        style={StyleSheet.absoluteFill}
-                        onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
-                    />
-                    <Animated.View
-                        style={[
-                            styles.modalContent,
-                            {
-                                backgroundColor: theme.border,
-                                transform: [
-                                    {
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1],
-                                        }),
-                                    },
-                                ],
-                            },
-                        ]}
-                    >
-                        <Pressable
-                            accessible={true}
-                            accessibilityLabel="Close new task"
-                            onPress={() =>
-                                fadeOut(() => setIsNewTaskModalVisible(false))
-                            }
-                            style={styles.modalCloseButton}
-                        >
-                            <Text style={styles.modalCloseText}>✕</Text>
-                        </Pressable>
-                        <Text
-                            style={[styles.modalTitle, { color: theme.background }]}
-                        >
-                            New Task
-                        </Text>
+                onSubmit={createTask}
+            />
 
-                        {/* Task Name */}
-                        <View style={styles.inputContainer}>
-                            <Text
-                                style={[styles.inputLabel, { color: theme.background }]}
-                            >
-                                Task Name
-                            </Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    {
-                                        color: theme.background,
-                                        borderColor: taskNameError
-                                            ? "#ff4d4f"
-                                            : theme.background,
-                                    },
-                                ]}
-                                value={newTask.title}
-                                onChangeText={(text) => {
-                                    setTaskNameError("");
-                                    setNewTask((prev) => ({ ...prev, title: text }));
-                                }}
-                                placeholder="Enter task name"
-                                placeholderTextColor={theme.background + "80"}
-                            />
-                            {taskNameError ? (
-                                <Text style={styles.errorText}>{taskNameError}</Text>
-                            ) : null}
-                        </View>
-
-                        {/* Description */}
-                        <View style={styles.inputContainer}>
-                            <Text
-                                style={[styles.inputLabel, { color: theme.background }]}
-                            >
-                                Description
-                            </Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    { color: theme.background, borderColor: theme.background },
-                                ]}
-                                value={newTask.description}
-                                onChangeText={(text) =>
-                                    setNewTask((prev) => ({ ...prev, description: text }))
-                                }
-                                placeholder="What’s this task about?"
-                                placeholderTextColor={theme.background + "80"}
-                                multiline
-                            />
-                        </View>
-
-                        {/* Category */}
-                        <View style={styles.inputContainer}>
-                            <Text
-                                style={[styles.inputLabel, { color: theme.background }]}
-                            >
-                                Category
-                            </Text>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                style={styles.categoryScroll}
-                            >
-                                {categoriesList.map((cat) => (
-                                    <TouchableOpacity
-                                        key={cat}
-                                        style={[
-                                            styles.categoryOption,
-                                            {
-                                                backgroundColor:
-                                                    newTask.category === cat
-                                                    ? theme.primary
-                                                    : "transparent",
-                                                borderColor: theme.background,
-                                            },
-                                        ]}
-                                        onPress={() =>
-                                            setNewTask((prev) => ({ ...prev, category: cat }))
-                                        }
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.categoryOptionText,
-                                                {
-                                                    color:
-                                                    newTask.category === cat
-                                                        ? "#fff"
-                                                        : theme.background,
-                                                },
-                                            ]}
-                                        >
-                                            {cat}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-
-                        {/* Repeat Dropdown */}
-                        <View style={styles.inputContainer}>
-                            <Text
-                                style={[styles.inputLabel, { color: theme.background }]}
-                            >
-                                Repeat
-                            </Text>
-                            <Pressable
-                                style={[
-                                    styles.dropdown,
-                                    { borderColor: theme.background },
-                                ]}
-                                onPress={() => setIsRepeatOpen((o) => !o)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.dropdownText,
-                                        { color: theme.background },
-                                    ]}
-                                >
-                                    {newTask.repeatLabel  || "None"}
-                                </Text>
-                                <Ionicons
-                                    name="chevron-down"
-                                    size={18}
-                                    color={theme.background}
-                                />
-                            </Pressable>
-                            {isRepeatOpen && (
-                                <View
-                                    style={[
-                                        styles.dropdownMenu,
-                                        {
-                                            backgroundColor: theme.cardBackground,
-                                            borderColor: theme.background,
-                                        },
-                                    ]}
-                                >
-                                    {["None", "Daily", "Weekly", "Monthly", "Yearly"].map(
-                                    (opt) => (
-                                        <TouchableOpacity
-                                            key={opt}
-                                            style={styles.dropdownItem}
-                                            onPress={() => {
-                                                const value =
-                                                opt === "None" ? "" : opt;
-                                                setNewTask((prev) => ({
-                                                    ...prev,
-                                                    repeatLabel: value,
-                                                }));
-                                                setIsRepeatOpen(false);
-                                            }}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.dropdownItemText,
-                                                    { color: theme.secondaryText },
-                                                ]}
-                                            >
-                                                {opt}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )
-                                )}
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Due Date */}
-                    <View style={styles.inputContainer}>
-                        <Text
-                            style={[styles.inputLabel, { color: theme.background }]}
-                        >
-                            Due Date (MM/DD/YYYY)
-                        </Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                {
-                                    color: theme.background,
-                                    borderColor: dateError ? "#ff4d4f" : theme.background,
-                                },
-                            ]}
-                            value={newTask.dueDate}
-                            onChangeText={(text) => {
-                                setNewTask((prev) => ({ ...prev, dueDate: text }));
-                                setDateError("");
-                            }}
-                            placeholder="MM/DD/YYYY"
-                            placeholderTextColor={theme.background + "80"}
-                        />
-                        {dateError ? (
-                            <Text style={styles.errorText}>{dateError}</Text>
-                        ) : null}
-                    </View>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.saveButton,
-                            { backgroundColor: theme.primary },
-                            loading && { opacity: 0.6 },
-                        ]}
-                        disabled={loading}
-                        onPress={createTask}
-                    >
-                        {loading ? (
-                            <ActivityIndicator />
-                        ) : (
-                            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-                                Add Task
-                            </Text>
-                        )}
-                        </TouchableOpacity>
-                    </Animated.View>
-                </Animated.View>
-            </Modal>
-
+            <EditTaskModal
+                visible={isEditTaskModalVisible}
+                theme={theme}
+                categoriesList={categoriesList}
+                editingTask={editingTask}
+                setEditingTask={setEditingTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                setDateError={setDateError}
+                loading={loading}
+                onSave={updateExistingTask}
+                onRequestClose={() => {
+                    setIsEditTaskModalVisible(false);
+                    setEditingTask(null);
+                }}
+            />
+            
             {/* 5. To-Do List Items */}
             <View style={styles.taskListContainer}>
                 {filtered.map((task) => (
