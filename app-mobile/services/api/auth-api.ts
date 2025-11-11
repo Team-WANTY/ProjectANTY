@@ -38,7 +38,12 @@ export const authApi = {
 
       console.log("Access Token:", maskToken(token, 6)); // Debugging
       await secureStoreToken.set(token);
-      return { ok: true, status: res.status, data: res.data };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       await secureStoreToken.clear();
@@ -66,7 +71,12 @@ export const authApi = {
       console.log("Access token cleared");
       console.log("Access Token:", maskToken(token, 6));
 
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       await secureStoreToken.clear();
@@ -81,7 +91,12 @@ export const authApi = {
     try {
       const url = `${paths.request_password_reset}?email=${encodeURIComponent(email.trim())}`;
       const res = await api.post<{ message?: string }>(url);
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -103,7 +118,12 @@ export const authApi = {
         token,
         new_password: newPassword,
       });
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -125,7 +145,12 @@ export const authApi = {
         username,
         plain_text_password: password,
       });
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -156,7 +181,12 @@ export const authApi = {
       // Debugging
       console.log("New access token set");
       console.log("Access Token:", maskToken(token, 6));
-      return {ok:true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       await secureStoreToken.clear();
@@ -181,7 +211,13 @@ export const authApi = {
       if (body.plain_text_password !== undefined) payload.plain_text_password = body.plain_text_password;
 
       const res = await api.patch(paths.update, payload);
-      return {ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        detail: res.data?.detail,
+        data: res.data 
+      };
     }
     catch (error: any) {
       const status = error?.response?.status;

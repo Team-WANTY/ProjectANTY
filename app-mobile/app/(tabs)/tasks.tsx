@@ -1,90 +1,196 @@
 import React, { useState, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
-    Animated,Modal, TextInput, Pressable, ActivityIndicator } from "react-native";
+import {
+View,
+Text,
+ScrollView,
+StyleSheet,
+Dimensions,
+TouchableOpacity,
+Animated,
+Modal,
+TextInput,
+Pressable,
+ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { RectButton } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from "expo-router";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import { RectButton } from "react-native-gesture-handler";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { HeaderBar } from "@/components/header-bar"
-import { tasksApi, type NewTask, type RepeatRule } from "@/services/api/tasks-api";
+import { HeaderBar } from "@/components/header-bar";
+
+import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
 import { useUserStore } from "@/services/stores/users-store";
+import { useTasksStore } from "@/services/stores/tasks-store";
 
 const { width } = Dimensions.get("window");
-
 
 // Mock Categories
 const categories = ["Personal", "School", "Routine", "Work", "Errands"];
 
+// MM/DD/YYYY -> valid?
+const isValidDateFormat = (dateStr: string) => {
+  const dateRegex =
+    /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+  if (!dateRegex.test(dateStr)) return false;
 
-// --- Task Item Component --
-const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
+  const [month, day, year] = dateStr.split("/").map(Number);
+  const d = new Date(year, month - 1, day);
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month - 1 &&
+    d.getDate() === day
+  );
+};
+
+// MM/DD/YYYY -> Unix timestamp (seconds)
+const dateStringToUnix = (dateStr: string): number => {
+  const [month, day, year] = dateStr.split("/").map(Number);
+  const d = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+};
+
+// Unix timestamp (seconds) -> nice label
+const unixToDisplayDate = (ts?: number | null): string => {
+  if (!ts) return "No due date";
+  const d = new Date(ts * 1000);
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+};
+
+// Turn repeat rule from front end to match backend
+const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
+  if (!label || label === "None") return null;
+
+  const freqMap: Record<string, FrequencySpecifier> = {
+    Daily: "daily",
+    Weekly: "weekly",
+    Monthly: "monthly",
+    Yearly: "yearly",
+  };
+
+  const specifier = freqMap[label];
+  if (!specifier) return null;
+
+  return {
+    frequency: {
+      specifier,
+      value: 1,
+    },
+    duration: {
+      specifier: "forever",
+      value: null,
+    },
+  };
+};
+
+// Turn repeat rule from back end to a label for frontend
+const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
+  if (!rule || !rule.frequency || !rule.frequency.specifier) return null;
+
+  switch (rule.frequency.specifier) {
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+    case "yearly":
+      return "Yearly";
+    default:
+      return null;
+  }
+};
+
+// --- Task Item Component ---
+const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
     const anim = useRef(new Animated.Value(1)).current; // 1 => visible, 0 => hidden
 
     const handleDeletePress = () => {
-        // subtle exit animation (fade + collapse)
         Animated.timing(anim, {
-            toValue: 0,
-            duration: 220,
-            useNativeDriver: true,
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
         }).start(() => {
             onDelete(task.id);
         });
     };
 
-    const animatedStyle = {
-        opacity: anim,
-    } as any;
+    const animatedStyle = { opacity: anim } as any;
+
     const renderRightActions = (_progress: any, _dragX: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
-        
+
         return (
-            <Animated.View style={[{ opacity: anim }]}>
-                <RectButton 
-                    style={[
-                        styles.rightAction, 
-                        { 
-                            backgroundColor: '#ff4d4f',
-                            width: maxWidth,
-                        }
-                    ]} 
-                    onPress={handleDeletePress}
-                >
-                    <View style={styles.trashIconContainer}>
-                        <Ionicons name="trash-outline" size={20} color="#fff" />
-                    </View>
-                </RectButton>
-            </Animated.View>
+        <Animated.View style={[{ opacity: anim }]}>
+            <RectButton
+            style={[
+                styles.rightAction,
+                {
+                backgroundColor: "#ff4d4f",
+                width: maxWidth,
+                },
+            ]}
+            onPress={handleDeletePress}
+            >
+            <View style={styles.trashIconContainer}>
+                <Ionicons name="trash-outline" size={20} color="#fff" />
+            </View>
+            </RectButton>
+        </Animated.View>
         );
     };
+
+    const dueLabel = unixToDisplayDate(task.due_date);
+    const repeatLabel = formatRepeatRule(task.repeat_rule);
 
     return (
         <ReanimatedSwipeable
             renderRightActions={renderRightActions}
             overshootRight={false}
             rightThreshold={40}
-            friction={2}>
-            <Animated.View style={[styles.taskCard, animatedStyle, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-                <View style={styles.taskTextContent}>
-                    <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>{task.title}</Text>
-                    <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>
-                        {task.dueDate}
-                        {task.repeat ? ` • ${task.repeat}` : ''}
-                    </Text>
-                </View>
-                <View style={styles.rightControls}>
-                    <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
-                        <View style={[
-                            styles.checkboxBox,
-                            { borderColor: theme.secondaryText, backgroundColor: task.completed ? theme.primary : 'transparent' }
-                        ]}>
-                            {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.text} />}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </Animated.View>
+            friction={2}
+        >
+            <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(task.id)}>
+                <Animated.View
+                style={[
+                    styles.taskCard,
+                    animatedStyle,
+                    { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                ]}
+                >
+                    <View style={styles.taskTextContent}>
+                        <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>
+                            {task.name}
+                        </Text>
+                        <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>
+                            {dueLabel}
+                            {repeatLabel ? ` • ${repeatLabel}` : ""}
+                        </Text>
+                    </View>
+                    <View style={styles.rightControls}>
+                        <TouchableOpacity
+                            style={styles.checkbox}
+                            onPress={() => onToggle(task.id)}
+                        >
+                            <View
+                                style={[
+                                    styles.checkboxBox,
+                                    {
+                                        borderColor: theme.secondaryText,
+                                        backgroundColor: task.completed ? theme.primary : "transparent",
+                                    },
+                                ]}
+                            >
+                                {task.completed && (
+                                    <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            </TouchableOpacity>
         </ReanimatedSwipeable>
     );
 };
@@ -96,7 +202,7 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
         borderColor: theme.primary,
     };
     const textStyle = {
-    color: isActive ? theme.text : theme.secondaryText,
+        color: isActive ? theme.text : theme.secondaryText,
     };
 
     return (
@@ -111,18 +217,26 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
     );
 };
 
-
 export default function TasksScreen() {
+    // pull tasks from Zustand
+    const userId = useUserStore((s) => s.userId);
+    const tasks = useTasksStore((s) => s.tasks);
+    const insertTask = useTasksStore((s) => s.insertTask);
+    const updateTask = useTasksStore((s) => s.updateTask);
+    const removeTask = useTasksStore((s) => s.removeTask);
+
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
-    const [tasks, setTasks] = useState<any[]>([]);
     const router = useRouter();
+
     const [date, setDate] = useState(new Date());
     const display = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
     const filtered = tasks.filter(
-        t => !selectedCategory || t.category === selectedCategory
+        (t) => !selectedCategory || t.cat === selectedCategory
     );
+
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
@@ -136,33 +250,40 @@ export default function TasksScreen() {
     
     // Form states
     const [newCategoryName, setNewCategoryName] = useState("");
-    const [newTask, setNewTask] = useState({
+    const [newTask, setNewTask] = useState<{
+        title: string;
+        description: string;
+        category: string;
+        repeatLabel: string; // "None" | "Daily" | "Weekly" | ...
+        dueDate: string; // MM/DD/YYYY
+    }>({
         title: "",
         description: "",
         category: "",
+        repeatLabel: "",
+        dueDate: "",
     });
 
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
     const [taskNameError, setTaskNameError] = useState("");
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const userId   = useUserStore(s => s.userId);
     const [loading, setLoading] = useState(false);
 
     // Animation helpers
     const fadeIn = () => {
         Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
         }).start();
     };
 
     const fadeOut = (onComplete: () => void) => {
         Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
         }).start(onComplete);
     };
 
@@ -214,84 +335,123 @@ export default function TasksScreen() {
         }
     };
 
-    // Date validation helper
-    const isValidDateFormat = (date: string) => {
-        const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-        if (!dateRegex.test(date)) return false;
-        
-        const [month, day, year] = date.split('/').map(Number);
-        const dateObj = new Date(year, month - 1, day);
-        return dateObj.getMonth() === month - 1 && 
-               dateObj.getDate() === day && 
-               dateObj.getFullYear() === year;
+    const handleEditTask = (id: string) => {
+        console.log(id);
+        setIsNewTaskModalVisible(true);
+        setDateError("");
+        fadeIn();
     };
 
+    // Toggle completion using the store
     const handleToggleTask = (id: string) => {
-        setTasks(prev =>
-            prev.map(task =>
-            task.id === id ? { ...task, completed: !task.completed } : task
-            )
-        );
+        const t = tasks.find((task) => task.id === id);
+        if (!t) return;
+        updateTask(id, { completed: !t.completed });
     };
 
-    const handleDeleteTask = (id: string) => {
-        setTasks(prev => prev.filter(t => t.id !== id));
+    // Delete Task
+    const handleDeleteTask = async (id: string) => {
+        const existing = tasks.find((t) => t.id === id);
+        if (existing) {
+            console.log(`Deleting Task: ${existing?.name}`)
+        }
+        
+        // Optimistically remove from UI
+        removeTask(id);
+
+        const res = await tasksApi.remove(id);
+
+        if (!res.ok) {
+            console.log("Failed to delete task:", res.status, res.message, res.detail);
+            // roll back in Zustand if delete failed
+            if (existing) {
+                insertTask(existing);
+            }
+            return;
+        }
+        console.log(`Task Deleted`)
     };
 
     // Calculate tasks completed (for the header)
-    const completedCount = tasks.filter(t => t.completed).length;
+    const completedCount = tasks.filter((t) => t.completed).length;
 
     const createTask = async () => {
         const title = newTask.title.trim();
+        const dueDateRaw = newTask.dueDate.trim();
+        const repeatRule = buildRepeatRuleFromLabel(newTask.repeatLabel);
+
         if (!title) {
             setTaskNameError("Task name is required");
             return;
         }
+        if (!dueDateRaw) {
+            setDateError("Due date is required");
+            return;
+        }
+        if (!isValidDateFormat(dueDateRaw)) {
+            setDateError("Invalid date format. Use MM/DD/YYYY");
+            return;
+        }
+
         if (!userId) {
             console.log("NO user id");
             router.replace("/login");
             return;
         }
+
         setLoading(true);
+        setDateError("");
+        const dueTimestamp = dateStringToUnix(dueDateRaw);
+
         try {
             const payload = {
                 user_id: userId,
                 name: title,
                 desc: newTask.description?.trim() || "",
-                cat: newTask.category ?? null,
-                due_date: 0, 
+                cat: newTask.category || null,
+                due_date: dueTimestamp,
+                repeat_rule: repeatRule,
             };
 
             const res = await tasksApi.create(payload);
             if (!res.ok || !res.data) {
-                console.log("Failed to create task:");
-                setDateError("Failed to create task");
+                console.log("Failed to create task:", res.status, res.message, res.detail);
+                setDateError(
+                    typeof res.message === "string"
+                    ? res.message
+                    : "Failed to create task"
+                );
                 return;
             }
 
-            console.log(`Task Created: Task name: ${res.data.name}, description: ${res.data.desc}, category: ${res.data.cat}`);
-            const created = res.data; // contains { id, user_id, name, desc, cat, ... }
+            const created = res.data; // { id, user_id, name, desc, cat, repeat, due_date, ... }
 
-            // Add new task to local state
-            setTasks(prev => [
-                ...prev,
-                {
-                    id: created.id,              // server ID (string)
-                    title: created.name,
-                    category: created.cat || "General",
-                    dueDate: "No due date",
+            console.log(
+                `Task Created: Task ID: ${created.id}, Task name: ${created.name}, description: ${created.desc}, category: ${created.cat}, 
+                    repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, due_date: ${unixToDisplayDate(created.due_date)}`
+            );
+
+            if (created.id) {
+                // Persist in Zustand
+                insertTask({
+                    ...created,
                     completed: false,
-                },
-            ]);
+                });
+            }
+
             // reset + close
-            setNewTask({ title: "", description: "", category: "" });
+            setNewTask({
+                title: "",
+                description: "",
+                category: "",
+                repeatLabel: "",
+                dueDate: "",
+            });
             fadeOut(() => setIsNewTaskModalVisible(false));
-        } 
-        finally {
-            setLoading(false);
+        } finally {
+        setLoading(false);
         }
     };
-    
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -299,39 +459,66 @@ export default function TasksScreen() {
             <HeaderBar
                 title="Tasks"
                 showTitle={false}
-                onNotificationPress={() => { /* navigation.navigate('Notifications') */ }}
-                onSettingsPress={() => { router.push("../settings") }}
+                onNotificationPress={() => {}}
+                onSettingsPress={() => {
+                router.push("../settings");
+                }}
             />
 
             {/* Content ScrollView */}
-            <ScrollView contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}>
-
+            <ScrollView
+                contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}
+            >
                 {/* 2. Date Selector */}
                 <View style={styles.dateSelectorSection}>
-                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()-1))}>
+                    <TouchableOpacity
+                        onPress={() =>
+                            setDate(
+                                (d) =>
+                                new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
+                            )
+                        }
+                    >
                         <Ionicons name="chevron-back" size={30} color={theme.text} />
                     </TouchableOpacity>
 
-                    <View style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}>
-                        <Text style={[styles.dateText, { color: theme.secondaryText }]}>{display}</Text>
+                    <View
+                        style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}
+                    >
+                        <Text style={[styles.dateText, { color: theme.secondaryText }]}>
+                            {display}
+                        </Text>
                     </View>
 
-                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()+1))}>
+                    <TouchableOpacity
+                        onPress={() =>
+                            setDate(
+                                (d) =>
+                                new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+                            )
+                        }
+                    >
                         <Ionicons name="chevron-forward" size={30} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.tasksCompletedText, { color: theme.cardBackground }]}>
+                <Text
+                    style={[styles.tasksCompletedText, { color: theme.cardBackground }]}
+                >
                     {completedCount} Tasks Completed
                 </Text>
 
                 {/* 3. Categories Header and Tags */}
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Categories</Text>
-                    <TouchableOpacity onPress={() => {
-                        setIsNewCategoryModalVisible(true);
-                        fadeIn();
-                    }}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                        Categories
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setIsNewCategoryModalVisible(true);
+                            fadeIn();
+                        }}
+                    >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
@@ -351,55 +538,75 @@ export default function TasksScreen() {
                             onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
                         />
                         <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
+                        style={[
+                            styles.modalContent,
+                            {
+                                backgroundColor: theme.border,
+                                transform: [
+                                    {
                                         scale: fadeAnim.interpolate({
                                             inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
+                                            outputRange: [0.95, 1],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        <Pressable
+                            accessible={true}
+                            accessibilityLabel="Close new category"
+                            onPress={() =>
+                                fadeOut(() => setIsNewCategoryModalVisible(false))
+                            }
+                            style={styles.modalCloseButton}
                         >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close new category"
-                                onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Category</Text>
-                            
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={newCategoryName}
-                                    onChangeText={setNewCategoryName}
-                                    placeholder="Enter category name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                            </View>
+                            <Text style={styles.modalCloseText}>✕</Text>
+                        </Pressable>
+                        <Text
+                            style={[styles.modalTitle, { color: theme.background }]}
+                        >
+                            New Category
+                        </Text>
 
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                                onPress={() => {
-                                    if (newCategoryName.trim()) {
-                                        setCategoriesList(prev => [...prev, newCategoryName.trim()]);
-                                        setNewCategoryName("");
-                                        fadeOut(() => setIsNewCategoryModalVisible(false));
-                                    }
-                                }}
+                        <View style={styles.inputContainer}>
+                            <Text
+                                style={[styles.inputLabel, { color: theme.background }]}
                             >
-                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Category</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
+                                Category Name
+                            </Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    { color: theme.background, borderColor: theme.background },
+                                ]}
+                                value={newCategoryName}
+                                onChangeText={setNewCategoryName}
+                                placeholder="Enter category name"
+                                placeholderTextColor={theme.background + "80"}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                            onPress={() => {
+                                if (newCategoryName.trim()) {
+                                    setCategoriesList((prev) => [
+                                        ...prev,
+                                        newCategoryName.trim(),
+                                    ]);
+                                    setNewCategoryName("");
+                                    fadeOut(() => setIsNewCategoryModalVisible(false));
+                                }
+                            }}
+                        >
+                            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
+                                Add Category
+                            </Text>
+                        </TouchableOpacity>
                     </Animated.View>
-                </Modal>
+                </Animated.View>
+            </Modal>
 
                 <ScrollView
                     horizontal
@@ -526,193 +733,290 @@ export default function TasksScreen() {
                     <TouchableOpacity onPress={() => {
                         setIsNewTaskModalVisible(true);
                         setDateError("");
+                        setTaskNameError("");
                         fadeIn();
-                    }}>
-                        <Ionicons name="add-circle-outline" size={24} color={theme.text} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* New Task Modal */}
-                <Modal
-                    transparent={true}
-                    visible={isNewTaskModalVisible}
-                    onRequestClose={() => {
-                        fadeOut(() => setIsNewTaskModalVisible(false));
                     }}
-                    animationType="none"
                 >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
+                    <Ionicons name="add-circle-outline" size={24} color={theme.text} />
+                </TouchableOpacity>
+            </View>
+
+            {/* New Task Modal */}
+            <Modal
+                transparent={true}
+                visible={isNewTaskModalVisible}
+                onRequestClose={() => {
+                    fadeOut(() => setIsNewTaskModalVisible(false));
+                }}
+                animationType="none"
+            >
+                <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                    <Pressable
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
+                    />
+                    <Animated.View
+                        style={[
+                            styles.modalContent,
+                            {
+                                backgroundColor: theme.border,
+                                transform: [
+                                    {
                                         scale: fadeAnim.interpolate({
                                             inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
+                                            outputRange: [0.95, 1],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        <Pressable
+                            accessible={true}
+                            accessibilityLabel="Close new task"
+                            onPress={() =>
+                                fadeOut(() => setIsNewTaskModalVisible(false))
+                            }
+                            style={styles.modalCloseButton}
                         >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close new task"
-                                onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
-                                style={styles.modalCloseButton}
+                            <Text style={styles.modalCloseText}>✕</Text>
+                        </Pressable>
+                        <Text
+                            style={[styles.modalTitle, { color: theme.background }]}
+                        >
+                            New Task
+                        </Text>
+
+                        {/* Task Name */}
+                        <View style={styles.inputContainer}>
+                            <Text
+                                style={[styles.inputLabel, { color: theme.background }]}
                             >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Task</Text>
-                            
-                            {/* Task Name */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        { 
-                                            color: theme.background, 
-                                            borderColor: taskNameError ? '#ff4d4f' : theme.background 
+                                Task Name
+                            </Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    {
+                                        color: theme.background,
+                                        borderColor: taskNameError
+                                            ? "#ff4d4f"
+                                            : theme.background,
+                                    },
+                                ]}
+                                value={newTask.title}
+                                onChangeText={(text) => {
+                                    setTaskNameError("");
+                                    setNewTask((prev) => ({ ...prev, title: text }));
+                                }}
+                                placeholder="Enter task name"
+                                placeholderTextColor={theme.background + "80"}
+                            />
+                            {taskNameError ? (
+                                <Text style={styles.errorText}>{taskNameError}</Text>
+                            ) : null}
+                        </View>
+
+                        {/* Description */}
+                        <View style={styles.inputContainer}>
+                            <Text
+                                style={[styles.inputLabel, { color: theme.background }]}
+                            >
+                                Description
+                            </Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    { color: theme.background, borderColor: theme.background },
+                                ]}
+                                value={newTask.description}
+                                onChangeText={(text) =>
+                                    setNewTask((prev) => ({ ...prev, description: text }))
+                                }
+                                placeholder="What’s this task about?"
+                                placeholderTextColor={theme.background + "80"}
+                                multiline
+                            />
+                        </View>
+
+                        {/* Category */}
+                        <View style={styles.inputContainer}>
+                            <Text
+                                style={[styles.inputLabel, { color: theme.background }]}
+                            >
+                                Category
+                            </Text>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.categoryScroll}
+                            >
+                                {categoriesList.map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[
+                                            styles.categoryOption,
+                                            {
+                                                backgroundColor:
+                                                    newTask.category === cat
+                                                    ? theme.primary
+                                                    : "transparent",
+                                                borderColor: theme.background,
+                                            },
+                                        ]}
+                                        onPress={() =>
+                                            setNewTask((prev) => ({ ...prev, category: cat }))
                                         }
-                                    ]}
-                                    value={newTask.title}
-                                    onChangeText={(text) => {
-                                        setTaskNameError("");
-                                        setNewTask(prev => ({ ...prev, title: text }))
-                                    }}
-                                    placeholder="Enter task name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                                {taskNameError ? ( <Text style={styles.errorText}>{taskNameError} </Text> ) : null}
-                            </View>
-
-                            {/* Description */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Description</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={newTask.description}
-                                    onChangeText={(text) => setNewTask(prev => ({ ...prev, description: text }))}
-                                    placeholder="What’s this task about?"
-                                    placeholderTextColor={theme.background + '80'}
-                                    multiline
-                                />
-                            </View>
-
-                            {/* Category */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                                    {categoriesList.map((cat) => (
-                                        <TouchableOpacity
-                                            key={cat}
+                                    >
+                                        <Text
                                             style={[
-                                                styles.categoryOption,
+                                                styles.categoryOptionText,
                                                 {
-                                                    backgroundColor: newTask.category === cat ? theme.primary : 'transparent',
-                                                    borderColor: theme.background
-                                                }
+                                                    color:
+                                                    newTask.category === cat
+                                                        ? "#fff"
+                                                        : theme.background,
+                                                },
                                             ]}
-                                            onPress={() => setNewTask(prev => ({ ...prev, category: cat }))}
+                                        >
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        {/* Repeat Dropdown */}
+                        <View style={styles.inputContainer}>
+                            <Text
+                                style={[styles.inputLabel, { color: theme.background }]}
+                            >
+                                Repeat
+                            </Text>
+                            <Pressable
+                                style={[
+                                    styles.dropdown,
+                                    { borderColor: theme.background },
+                                ]}
+                                onPress={() => setIsRepeatOpen((o) => !o)}
+                            >
+                                <Text
+                                    style={[
+                                        styles.dropdownText,
+                                        { color: theme.background },
+                                    ]}
+                                >
+                                    {newTask.repeatLabel  || "None"}
+                                </Text>
+                                <Ionicons
+                                    name="chevron-down"
+                                    size={18}
+                                    color={theme.background}
+                                />
+                            </Pressable>
+                            {isRepeatOpen && (
+                                <View
+                                    style={[
+                                        styles.dropdownMenu,
+                                        {
+                                            backgroundColor: theme.cardBackground,
+                                            borderColor: theme.background,
+                                        },
+                                    ]}
+                                >
+                                    {["None", "Daily", "Weekly", "Monthly", "Yearly"].map(
+                                    (opt) => (
+                                        <TouchableOpacity
+                                            key={opt}
+                                            style={styles.dropdownItem}
+                                            onPress={() => {
+                                                const value =
+                                                opt === "None" ? "" : opt;
+                                                setNewTask((prev) => ({
+                                                    ...prev,
+                                                    repeatLabel: value,
+                                                }));
+                                                setIsRepeatOpen(false);
+                                            }}
                                         >
                                             <Text
                                                 style={[
-                                                    styles.categoryOptionText,
-                                                    { color: newTask.category === cat ? '#fff' : theme.background }
+                                                    styles.dropdownItemText,
+                                                    { color: theme.secondaryText },
                                                 ]}
                                             >
-                                                {cat}
+                                                {opt}
                                             </Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-
-                            {/* Repeat Dropdown 
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
-                                <Pressable
-                                    style={[styles.dropdown, { borderColor: theme.background }]}
-                                    onPress={() => setIsRepeatOpen((o) => !o)}
-                                >
-                                    <Text style={[styles.dropdownText, { color: theme.background }]}>{newTask.repeat || 'None'}</Text>
-                                    <Ionicons name="chevron-down" size={18} color={theme.background} />
-                                </Pressable>
-                                {isRepeatOpen && (
-                                    <View style={[styles.dropdownMenu, { backgroundColor: theme.cardBackground, borderColor: theme.background }] }>
-                                        {['None','Daily','Weekly','Monthly','Yearly'].map((opt) => (
-                                            <TouchableOpacity
-                                                key={opt}
-                                                style={styles.dropdownItem}
-                                                onPress={() => {
-                                                    const value = opt === 'None' ? '' : opt;
-                                                    setNewTask(prev => ({ ...prev, repeat: value }));
-                                                    setIsRepeatOpen(false);
-                                                }}
-                                            >
-                                                <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>{opt}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
+                                    )
                                 )}
                             </View>
-                            */}
-                            
-                            {/* Due Date 
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Due Date (MM/DD/YYYY)</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={newTask.dueDate}
-                                    onChangeText={(text) => {
-                                        setNewTask(prev => ({ ...prev, dueDate: text }));
-                                        setDateError("");
-                                    }}
-                                    placeholder="MM/DD/YYYY"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                                {dateError ? (
-                                    <Text style={styles.errorText}>{dateError}</Text>
-                                ) : null}
-                            </View>
-                            */}
+                        )}
+                    </View>
 
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }, loading && { opacity: 0.6 }]}
-                                disabled={loading}
-                                onPress={createTask}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator />
-                                ) : (
-                                    <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Task</Text>
-                                )}
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
-
-                {/* 5. To-Do List Items */}
-                <View style={styles.taskListContainer}>
-                    {filtered.map((task) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            theme={theme}
-                            onToggle={handleToggleTask}
-                            onDelete={handleDeleteTask}
+                    {/* Due Date */}
+                    <View style={styles.inputContainer}>
+                        <Text
+                            style={[styles.inputLabel, { color: theme.background }]}
+                        >
+                            Due Date (MM/DD/YYYY)
+                        </Text>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    color: theme.background,
+                                    borderColor: dateError ? "#ff4d4f" : theme.background,
+                                },
+                            ]}
+                            value={newTask.dueDate}
+                            onChangeText={(text) => {
+                                setNewTask((prev) => ({ ...prev, dueDate: text }));
+                                setDateError("");
+                            }}
+                            placeholder="MM/DD/YYYY"
+                            placeholderTextColor={theme.background + "80"}
                         />
-                    ))}
-                </View>
+                        {dateError ? (
+                            <Text style={styles.errorText}>{dateError}</Text>
+                        ) : null}
+                    </View>
 
+                    <TouchableOpacity
+                        style={[
+                            styles.saveButton,
+                            { backgroundColor: theme.primary },
+                            loading && { opacity: 0.6 },
+                        ]}
+                        disabled={loading}
+                        onPress={createTask}
+                    >
+                        {loading ? (
+                            <ActivityIndicator />
+                        ) : (
+                            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
+                                Add Task
+                            </Text>
+                        )}
+                        </TouchableOpacity>
+                    </Animated.View>
+                </Animated.View>
+            </Modal>
+
+            {/* 5. To-Do List Items */}
+            <View style={styles.taskListContainer}>
+                {filtered.map((task) => (
+                    <TaskItem
+                        key={task.id}
+                        task={task}
+                        theme={theme}
+                        onPress={handleEditTask}
+                        onToggle={handleToggleTask}
+                        onDelete={handleDeleteTask}
+                    />
+                ))}
+            </View>
             </ScrollView>
-
         </View>
     );
 }
@@ -720,7 +1024,6 @@ export default function TasksScreen() {
 // -------------------------------------------------------------------
 // --- STYLES ---
 // -------------------------------------------------------------------
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -728,25 +1031,25 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
     },
     modalContent: {
-        width: '85%',
+        width: "85%",
         borderRadius: 15,
         padding: 20,
         elevation: 5,
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
     modalTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginBottom: 20,
-        textAlign: 'center',
+        textAlign: "center",
     },
     inputContainer: {
         marginBottom: 15,
@@ -754,7 +1057,7 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 16,
         marginBottom: 5,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     input: {
         borderWidth: 1,
@@ -764,7 +1067,7 @@ const styles = StyleSheet.create({
         minHeight: 40,
     },
     categoryScroll: {
-        flexDirection: 'row',
+        flexDirection: "row",
         marginBottom: 5,
     },
     categoryOption: {
@@ -776,20 +1079,20 @@ const styles = StyleSheet.create({
     },
     categoryOptionText: {
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     saveButton: {
         padding: 15,
         borderRadius: 8,
-        alignItems: 'center',
+        alignItems: "center",
         marginTop: 10,
     },
     saveButtonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: "bold",
     },
     errorText: {
-        color: '#ff4d4f',
+        color: "#ff4d4f",
         fontSize: 14,
         marginTop: 5,
     },
@@ -798,19 +1101,19 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
     },
     dropdownText: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     dropdownMenu: {
         borderWidth: 1,
         borderRadius: 8,
         marginTop: 8,
-        overflow: 'hidden',
+        overflow: "hidden",
     },
     dropdownItem: {
         paddingHorizontal: 12,
@@ -820,7 +1123,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     modalCloseButton: {
-        position: 'absolute',
+        position: "absolute",
         top: 10,
         right: 10,
         padding: 6,
@@ -829,10 +1132,9 @@ const styles = StyleSheet.create({
     },
     modalCloseText: {
         fontSize: 18,
-        fontWeight: '700',
-        color: '#1D3B53', // Dark blue from app theme
+        fontWeight: "700",
+        color: "#1D3B53",
     },
-    // --- Header Bar Styles ---
     headerBar: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -841,8 +1143,7 @@ const styles = StyleSheet.create({
         paddingBottom: 15,
         borderBottomLeftRadius: 15,
         borderBottomRightRadius: 15,
-        // Match the rounded header bar design from your other screens
-        width: '100%',
+        width: "100%",
         zIndex: 10,
     },
     screenTitle: {
@@ -852,17 +1153,13 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: 8,
     },
-
-    // --- Content ScrollView (Main Vertical) ---
     contentScrollView: {
         paddingHorizontal: width * 0.05,
     },
-
-    // --- Date Selector ---
     dateSelectorSection: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
         marginVertical: 20,
     },
     dateBox: {
@@ -870,32 +1167,29 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 20,
         marginHorizontal: 15,
-        // The Figma width was 150px, we use flex to make it adaptable
     },
     dateText: {
         fontSize: 24,
-        fontWeight: '700',
+        fontWeight: "700",
     },
     tasksCompletedText: {
-        textAlign: 'center',
+        textAlign: "center",
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: "700",
         marginBottom: 20,
     },
-
-    // --- Sections and Categories ---
     sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         marginBottom: 10,
     },
     sectionTitle: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: "700",
     },
     categoryTagsContainer: {
-        flexDirection: 'row',
+        flexDirection: "row",
         paddingVertical: 5,
         marginBottom: 20,
     },
@@ -908,18 +1202,16 @@ const styles = StyleSheet.create({
     },
     categoryText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: "600",
     },
-
-    // --- Task List ---
     taskListContainer: {
         gap: 10,
-        paddingBottom: 20, // Final padding before the bottom menu starts
+        paddingBottom: 20,
     },
     taskCard: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         borderRadius: 5,
         padding: 15,
         minHeight: 50,
@@ -931,27 +1223,27 @@ const styles = StyleSheet.create({
     },
     taskTitle: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: "600",
     },
     taskDueDate: {
         fontSize: 10,
-        fontWeight: '600',
+        fontWeight: "600",
         marginTop: 2,
     },
     checkbox: {
-        padding: 5, // Tappable area
+        padding: 5,
     },
     checkboxBox: {
         width: 20,
         height: 20,
         borderRadius: 3,
         borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
     },
     rightControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
     deleteButton: {
         padding: 8,
@@ -959,15 +1251,15 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     rightAction: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%', // Match parent height
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
     },
     trashIconContainer: {
         width: 40,
         height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
     },
     contextMenuContent: {
         backgroundColor: '#fff',

@@ -22,7 +22,13 @@ export const usersApi = {
   async me(): Promise<ApiResult<SimpleUser>> {
     try {
       const res = await api.get(paths.me);
-      return {ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
+
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -35,7 +41,12 @@ export const usersApi = {
   async getById(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
       const res = await api.get(fillId(paths.byId, userId));
-      return {ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -48,7 +59,12 @@ export const usersApi = {
   async remove(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
       const res = await api.delete(fillId(paths.byId, userId));
-      return { ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -70,7 +86,12 @@ export const usersApi = {
       if (body.email !== undefined) payload.email = body.email;
       
       const res = await api.patch(paths.update, payload);
-      return { ok: true, status: res.status, data: res.data };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;

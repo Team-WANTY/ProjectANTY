@@ -32,7 +32,12 @@ export const profileApi = {
   async getById(userId: string): Promise<ApiResult<SimpleProfile>> {
     try {
       const res = await api.get<SimpleProfile>(fillId(paths.byId, userId));
-      return { ok: true, status: res.status, data: res.data };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -48,7 +53,12 @@ export const profileApi = {
     try {
       const payload: ProfileUpdateBody = { user_id: userId, ...body };
       const res = await api.patch<SimpleProfile>(fillId(paths.byId, userId), payload);
-      return { ok: true, status: res.status, data: res.data };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -65,7 +75,13 @@ export const profileApi = {
   async remove(userId: string): Promise<ApiResult<void>> {
     try {
       const res = await api.delete(fillId(paths.byId, userId));
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        detail: res.data?.detail,
+        data: res.data 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;

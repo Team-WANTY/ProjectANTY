@@ -13,9 +13,13 @@ function fillId(tpl: string, id: string) {
   return tpl.replace("{user_id}", encodeURIComponent(id));
 }
 
+function fillTaskId(tpl: string, taskId: string) {
+  return tpl.replace("{task_id}", encodeURIComponent(taskId));
+}
+
 // Frequency and Duration Specifiers
-export type FrequencySpecifier = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
-export type DurationSpecifier = "FOREVER" | "NUMBER_OF_TIMES" | "UNTIL_DATE";
+export type FrequencySpecifier = "daily" | "weekly" | "monthly" | "yearly";
+export type DurationSpecifier = "forever" | "number_of_times" | "until_date";
 
 export type RepeatDuration = {
   specifier?: DurationSpecifier | null; // default FOREVER
@@ -35,13 +39,24 @@ export type RepeatRule = {
   duration?: RepeatDuration | null;
 };
 
+/**
+ * backend Task model:
+ * - id: string 
+ * - user_id: string
+ * - name: string
+ * - desc: string
+ * - cat: string | null
+ * - due_date: Unix timestamp in SECONDS
+ * - repeat_rule: RepeatRule | null
+ */
+
 export type Task = {
-  id?: string | null;
+  id: string;                 
   user_id: string;
   name: string;
   desc: string;
   cat?: string | null;
-  due_date?: number | null; 
+  due_date: number;           
   repeat_rule?: RepeatRule | null;
 };
 
@@ -62,7 +77,13 @@ export const tasksApi = {
   async create(task: NewTask): Promise<ApiResult<Task>> {
     try {
       const res = await api.post<Task>(paths.root, task);
-      return {ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
+
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -80,7 +101,12 @@ export const tasksApi = {
   async getByID(taskId: string): Promise<ApiResult<Task>> {
     try {
       const res = await api.get<Task>(`${paths.root}?task_id=${encodeURIComponent(taskId)}`);
-      return {ok: true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -98,8 +124,19 @@ export const tasksApi = {
     try {
       const url = `${paths.root}?user_id=${encodeURIComponent(userId)}&quantity=${encodeURIComponent(String(quantity))}`;
       const res = await api.get<Task[] | Task>(url);
-      const data = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
-      return { ok: true, status: res.status, data};
+      const raw = res.data;
+      const data: Task[] = Array.isArray(raw)
+        ? raw
+        : raw
+        ? [raw]
+        : [];
+
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -115,12 +152,17 @@ export const tasksApi = {
   // PATCH /tasks requires user_id in the JSON body
   async update(body: TaskUpdateBody): Promise<ApiResult<Task>> {
     try {
-      const id = (body as any).id;
+      const id = body.id;
       if (!id) {
         return { ok: false, status: 400, message: "id field is required in body" };
       }
-      const res = await api.patch<Task>(fillId(paths.root, id), body);
-      return { ok: true, status: res.status, data: res.data };
+      const res = await api.patch<Task>(paths.root, body);
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       const status = error?.response?.status;
@@ -136,8 +178,14 @@ export const tasksApi = {
   // Delete /tasks/{task_id}
   async remove(taskId: string): Promise<ApiResult<Task>> {
     try {
-      const res = await api.delete(fillId(paths.byId, taskId));
-      return { ok: true, status: res.status, data: res.data}; 
+      const url = fillTaskId(paths.byId, taskId);
+      const res = await api.delete<Task>(url);
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       const status = error?.response?.status;
