@@ -732,6 +732,71 @@ export default function TasksScreen() {
                     ))}
                 </ScrollView>
 
+                {/* Edit Category Modal */}
+                <Modal
+                    transparent={true}
+                    visible={isEditCategoryModalVisible}
+                    onRequestClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                    animationType="none"
+                >
+                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                        <Pressable
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: theme.border,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                accessible={true}
+                                accessibilityLabel="Close edit category"
+                                onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                                style={styles.modalCloseButton}
+                            >
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </Pressable>
+                            <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
+                            
+                            <View style={[styles.inputContainer, { marginBottom: 16 }]}>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={editCategoryName}
+                                    onChangeText={setEditCategoryName}
+                                    placeholder="Enter category name"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                            </View>
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.saveButton, { backgroundColor: theme.primary, flex: 1 }]}
+                                    onPress={handleSaveEditCategory}
+                                >
+                                    <Text style={[styles.saveButtonText, { color: '#fff' }]}>Save Changes</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity
+                                    style={[styles.deleteButton, { backgroundColor: '#ff4d4f' }]}
+                                    onPress={handleDeleteCategory}
+                                >
+                                    <Ionicons name="trash" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
+
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
