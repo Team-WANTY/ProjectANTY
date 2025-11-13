@@ -117,7 +117,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
 };
 
 // --- Category Tag Component ---
-const CategoryTag = ({ category, theme, isActive, onPress }: any) => {
+const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) => {
     const tagStyle = {
         backgroundColor: isActive ? theme.primary : theme.border,
         borderColor: theme.primary,
@@ -127,7 +127,12 @@ const CategoryTag = ({ category, theme, isActive, onPress }: any) => {
     };
 
     return (
-        <TouchableOpacity style={[styles.categoryTag, tagStyle]} onPress={onPress}>
+        <TouchableOpacity 
+            style={[styles.categoryTag, tagStyle]} 
+            onPress={onPress}
+            onLongPress={onLongPress}
+            delayLongPress={1000}
+        >
             <Text style={[styles.categoryText, textStyle]}>{category}</Text>
         </TouchableOpacity>
     );
@@ -144,6 +149,12 @@ export default function TasksScreen() {
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
     const [categoriesList, setCategoriesList] = useState(categories);
+    
+    // Category context menu states
+    const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
+    const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState<string | null>(null);
+    const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
+    const [editCategoryName, setEditCategoryName] = useState("");
     
     // Form states
     const [newCategoryName, setNewCategoryName] = useState("");
@@ -173,6 +184,54 @@ export default function TasksScreen() {
             duration: 200,
             useNativeDriver: true,
         }).start(onComplete);
+    };
+
+    // Category handlers
+    const handleCategoryLongPress = (category: string) => {
+        setSelectedCategoryForMenu(category);
+        setCategoryMenuVisible(true);
+        fadeIn();
+    };
+
+    const handleEditCategory = () => {
+        if (selectedCategoryForMenu) {
+            setEditCategoryName(selectedCategoryForMenu);
+            fadeOut(() => {
+                setCategoryMenuVisible(false);
+                setTimeout(() => {
+                    setIsEditCategoryModalVisible(true);
+                    fadeIn();
+                }, 100);
+            });
+        }
+    };
+
+    const handleDeleteCategory = () => {
+        if (selectedCategoryForMenu) {
+            setCategoriesList(prev => prev.filter(cat => cat !== selectedCategoryForMenu));
+            // Also clear the selection if the deleted category was selected
+            if (selectedCategory === selectedCategoryForMenu) {
+                setSelectedCategory(null);
+            }
+            fadeOut(() => setCategoryMenuVisible(false));
+        }
+    };
+
+    const handleSaveEditCategory = () => {
+        if (selectedCategoryForMenu && editCategoryName.trim()) {
+            setCategoriesList(prev => 
+                prev.map(cat => cat === selectedCategoryForMenu ? editCategoryName.trim() : cat)
+            );
+            // Update selectedCategory if it was the edited one
+            if (selectedCategory === selectedCategoryForMenu) {
+                setSelectedCategory(editCategoryName.trim());
+            }
+            fadeOut(() => {
+                setIsEditCategoryModalVisible(false);
+                setEditCategoryName("");
+                setSelectedCategoryForMenu(null);
+            });
+        }
     };
 
     // Date validation helper
@@ -337,9 +396,112 @@ export default function TasksScreen() {
                             theme={theme}
                             isActive={cat === selectedCategory}
                             onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onLongPress={() => handleCategoryLongPress(cat)}
                         />
                     ))}
                 </ScrollView>
+
+                {/* Category Context Menu Modal */}
+                <Modal
+                    transparent={true}
+                    visible={categoryMenuVisible}
+                    onRequestClose={() => fadeOut(() => setCategoryMenuVisible(false))}
+                    animationType="none"
+                >
+                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                        <Pressable
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => fadeOut(() => setCategoryMenuVisible(false))}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.contextMenuContent,
+                                {
+                                    backgroundColor: theme.cardBackground,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <TouchableOpacity
+                                style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                                onPress={handleEditCategory}
+                            >
+                                <Ionicons name="pencil" size={20} color="#fff" />
+                                <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity
+                                style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                                onPress={handleDeleteCategory}
+                            >
+                                <Ionicons name="trash" size={20} color="#fff" />
+                                <Text style={[styles.contextMenuText, { color: '#fff' }]}>Delete</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
+
+                {/* Edit Category Modal */}
+                <Modal
+                    transparent={true}
+                    visible={isEditCategoryModalVisible}
+                    onRequestClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                    animationType="none"
+                >
+                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                        <Pressable
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                        />
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: theme.border,
+                                    transform: [{
+                                        scale: fadeAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.95, 1]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                accessible={true}
+                                accessibilityLabel="Close edit category"
+                                onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                                style={styles.modalCloseButton}
+                            >
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </Pressable>
+                            <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
+                            
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
+                                <TextInput
+                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
+                                    value={editCategoryName}
+                                    onChangeText={setEditCategoryName}
+                                    placeholder="Enter category name"
+                                    placeholderTextColor={theme.background + '80'}
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                                onPress={handleSaveEditCategory}
+                            >
+                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Save Changes</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </Animated.View>
+                </Modal>
 
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
@@ -818,5 +980,30 @@ const styles = StyleSheet.create({
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    contextMenuContent: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 8,
+        width: '50%',
+        maxWidth: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        gap: 8,
+    },
+    contextMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 14,
+        gap: 8,
+        borderRadius: 8,
+    },
+    contextMenuText: {
+        fontSize: 15,
+        fontWeight: '600',
     },
 });
