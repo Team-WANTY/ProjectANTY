@@ -32,7 +32,7 @@ class ProfileDB:
                 f"Successfully created profile: {created_profile.model_dump()}"
             )
             return created_profile
-        except exceptions.ResourceExistsError:
+        except exceptions.CosmosResourceExistsError:
             logger.warning(
                 f"Error while creating profile: {new_profile.model_dump()}, already exists"
             )
@@ -52,7 +52,7 @@ class ProfileDB:
             profile = Profile.model_validate(item, extra="ignore")
             logger.debug(f"Got from user ID '{user_id}': {profile.model_dump()}")
             return profile
-        except exceptions.ResourceNotFoundError:
+        except exceptions.CosmosResourceNotFoundError:
             logger.warning(
                 f"Error while getting profile from user ID '{user_id}', not found"
             )

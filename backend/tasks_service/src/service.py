@@ -22,14 +22,17 @@ class TasksService:
         await authorize_operation(getter, task.user_id)
         return task
 
-    async def get_tasks_by_user_id(self, user_id: str, qty: int, getter: UserAuthInfo):
+    async def get_tasks_by_user_id(
+        self, user_id: str, qty: int, cont_token, getter: UserAuthInfo
+    ):
         await authorize_operation(getter, user_id)
-        return await self.task_db.get_tasks_by_user_id(user_id, qty)
+        return await self.task_db.get_tasks_by_user_id(user_id, qty, cont_token)
 
     async def update_task(self, task_update: TaskUpdate, updater: UserAuthInfo) -> Task:
         task = await self.get_task_by_id(task_update.id, updater)
         await authorize_operation(updater, task.user_id)
-        return await self.task_db.update_task(task_update)
+        updated_task = await self.task_db.update_task(task_update)
+        return task if updated_task is None else updated_task  # updates could be empty
 
     async def delete_task(self, task_id: str, deleter: UserAuthInfo):
         task = await self.get_task_by_id(task_id, deleter)

@@ -6,6 +6,7 @@ from shared.db import now_timestamp
 from shared.models.auth import UserAuthInfo
 
 from src.database import AuthDB
+from src.dependencies import get_auth_service
 from src.main import app
 from src.models import UserCreate
 from src.service import AuthService
@@ -18,15 +19,27 @@ def client():
 
 
 @pytest.fixture
-def mock_auth_db():
-    """Fixture for mocked AuthDB"""
+def mock_container():
+    """Fixture for mocked Cosmos container"""
     return AsyncMock()
 
 
 @pytest.fixture
-def auth_service(mock_auth_db):
+def mock_db():
+    """Fixture for mocked DB"""
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_auth_service(mock_db):
     """Fixture for AuthService instance"""
-    return AuthService(mock_auth_db)
+    return AuthService(mock_db)
+
+
+@pytest.fixture
+def mock_auth_db(mock_container):
+    """Fixture for AuthDB instance with mocked container"""
+    return AuthDB(mock_container)
 
 
 @pytest.fixture
@@ -58,18 +71,6 @@ def sample_superuser():
 
 
 @pytest.fixture
-def mock_container():
-    """Fixture for mocked Cosmos container"""
-    return AsyncMock()
-
-
-@pytest.fixture
-def auth_db(mock_container):
-    """Fixture for AuthDB instance with mocked container"""
-    return AuthDB(mock_container)
-
-
-@pytest.fixture
 def sample_user_create():
     """Fixture for sample UserCreate data"""
     return UserCreate(
@@ -77,3 +78,13 @@ def sample_user_create():
         username="testuser",
         plain_text_password="SecurePassword123!",
     )
+
+
+@pytest.fixture
+def mock_service():
+    return AsyncMock()
+
+
+@pytest.fixture(autouse=True)
+def dependency_overrides(mock_service):
+    app.dependency_overrides[get_auth_service] = lambda: mock_service
