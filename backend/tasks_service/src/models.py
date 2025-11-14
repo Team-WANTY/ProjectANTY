@@ -97,4 +97,4 @@ class TaskUpdate(BaseModel):
 
 class PaginatedTasks(BaseModel):
     continuation_token: str | None = None
-    tasks: list[Task]
+    tasks: list[TaskInDB]

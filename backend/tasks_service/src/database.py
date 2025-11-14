@@ -1,4 +1,5 @@
 import logging
+from json import JSONDecodeError, dumps, loads
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
@@ -12,8 +13,7 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 
-from src.models import Task, TaskInDB, TaskUpdate, PaginatedTasks
-from json import dumps, loads, JSONDecodeError
+from src.models import PaginatedTasks, Task, TaskInDB, TaskUpdate
 
 logger = logging.getLogger("tasks_service")
 
@@ -56,12 +56,12 @@ class TaskDB:
             raise GeneralQueryError()
 
     async def get_tasks_by_user_id(
-        self, user_id: str, quantity:int, cont_token:str | None = None
-    ) -> tuple[list[TaskInDB], str | None]:
-        def normalize_continuation_token(raw: str | None) -> dict | None:
+        self, user_id: str, quantity: int, cont_token: str | None = None
+    ) -> PaginatedTasks:
+        def normalize_continuation_token(raw: str | None) -> str | None:
             if not raw:
                 return None
-            
+
             try:
                 parsed = loads(raw)
             except JSONDecodeError:
@@ -69,7 +69,11 @@ class TaskDB:
 
             if isinstance(parsed, dict):
                 return dumps(parsed)
-            elif isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+            elif (
+                isinstance(parsed, list)
+                and len(parsed) > 0
+                and isinstance(parsed[0], dict)
+            ):
                 return dumps(parsed[0])
 
             return None
@@ -89,14 +93,14 @@ class TaskDB:
                     tasks.append(TaskInDB.model_validate(item, extra="ignore"))
                 break  # do only one page
             new_cont_token = normalize_continuation_token(pager.continuation_token)
-            return PaginatedTasks(continuation_token=new_cont_token, tasks=tasks) # return continuation token, function can be recalled with the continuation token to get the next list of items
+            return PaginatedTasks(
+                continuation_token=new_cont_token, tasks=tasks
+            )  # return continuation token, function can be recalled with the continuation token to get the next list of items
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            print("ERROR!:",e)
+            print("ERROR!:", e)
             raise GeneralQueryError()
-
-    
 
     async def update_task(self, task_upate: TaskUpdate) -> TaskInDB | None:
         patch_operations = []

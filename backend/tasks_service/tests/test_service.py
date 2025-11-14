@@ -131,7 +131,10 @@ class TestServiceGetTasksByUserID:
             mock_authorizer.side_effect = AuthError()
             with pytest.raises(AuthError):
                 await mock_tasks_service.get_tasks_by_user_id(
-                    "user123", 10, cont_token=None, getter=different_sample_user_auth_info
+                    "user123",
+                    10,
+                    cont_token=None,
+                    getter=different_sample_user_auth_info,
                 )
 
 

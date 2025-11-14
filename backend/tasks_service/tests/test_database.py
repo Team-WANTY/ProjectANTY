@@ -252,12 +252,14 @@ class TestDBGetTasksByUserID:
         fake_items = [
             AsyncIteratorMock([sample_task_in_db]),
             AsyncIteratorMock([sample_task_in_db, sample_task_in_db]),
-            AsyncIteratorMock([sample_task_in_db, sample_task_in_db, sample_task_in_db]),
+            AsyncIteratorMock(
+                [sample_task_in_db, sample_task_in_db, sample_task_in_db]
+            ),
         ]
 
         # Mock the pager
         pager = AsyncIteratorMock(fake_items)
-        pager.continuation_token = None
+        pager.continuation_token = None  # ty: ignore
 
         # Mock query_items + by_page()
         mock_iterable = MagicMock()
@@ -279,7 +281,9 @@ class TestDBGetTasksByUserID:
         # Fake data from Cosmos
         fake_items = [
             AsyncIteratorMock([sample_task_in_db, sample_task_in_db]),
-            AsyncIteratorMock([sample_task_in_db, sample_task_in_db, sample_task_in_db]),
+            AsyncIteratorMock(
+                [sample_task_in_db, sample_task_in_db, sample_task_in_db]
+            ),
         ]
 
         # Mock the pager

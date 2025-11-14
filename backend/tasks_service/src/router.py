@@ -57,7 +57,9 @@ async def get_task(
 ):
     if task_id is not None:
         try:
-            return await tasks_service.get_task_by_id(task_id, current_user)
+            return await tasks_service.get_task_by_id(
+                task_id, current_user
+            )  # TODO return full record?
         except RecordNotFoundError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
         except AuthError:
@@ -71,7 +73,7 @@ async def get_task(
         try:
             return await tasks_service.get_tasks_by_user_id(
                 user_id, quantity, continuation_token, current_user
-            )
+            )  # TODO return full records?
         except AuthError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except RecordNotFoundError:

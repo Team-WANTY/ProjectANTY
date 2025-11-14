@@ -9,7 +9,7 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 
-from src.models import TaskUpdate, PaginatedTasks
+from src.models import PaginatedTasks, TaskUpdate
 
 
 class TestRouterCreateTask:
@@ -61,7 +61,9 @@ class TestRouterGetTasks:
     async def test_get_task_by_id_success(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_task_by_id.return_value = PaginatedTasks(tasks=[sample_task_in_db], continuation_token=None)
+        mock_service.get_task_by_id.return_value = PaginatedTasks(
+            tasks=[sample_task_in_db], continuation_token=None
+        )
 
         response = client.get("/", params={"task_id": "task123"})
 
@@ -103,7 +105,9 @@ class TestRouterGetTasks:
     async def test_get_tasks_by_user_id_success(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_tasks_by_user_id.return_value = PaginatedTasks(tasks=[sample_task_in_db, sample_task_in_db], continuation_token=None)
+        mock_service.get_tasks_by_user_id.return_value = PaginatedTasks(
+            tasks=[sample_task_in_db, sample_task_in_db], continuation_token=None
+        )
 
         response = client.get("/", params={"user_id": "user123"})
 
