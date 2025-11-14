@@ -50,6 +50,12 @@ const unixToDisplayDate = (ts?: number | null): string => {
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 };
 
+// Helper to compare selected date to tasks' due_date
+const unixToDate = (ts?: number | null): Date | null => {
+  if (!ts) return null;
+  return new Date(ts * 1000);
+};
+
 // Turn repeat rule from front end to match backend
 const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
   if (!label || label === "None") return null;
@@ -224,9 +230,37 @@ export default function TasksScreen() {
     const display = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-    const filtered = tasks.filter(
-        (t) => !selectedCategory || t.cat === selectedCategory
-    );
+    // Filter Tasks for selected Date
+    const filtered = tasks.filter((t) => {
+        const taskDate = unixToDate(t.due_date);
+        const matchDate = !taskDate
+        ? true
+        : (
+            taskDate.getFullYear() === date.getFullYear() &&
+            taskDate.getMonth() === date.getMonth() &&
+            taskDate.getDate() === date.getDate()
+        );
+
+        const matchCategory = !selectedCategory || t.cat === selectedCategory;
+
+        return matchDate && matchCategory;
+    });
+
+    // Sort the filtered tasks
+    const sorted = filtered.sort((a, b) => {
+        const aNoDate = !a.due_date || a.due_date === 0;
+        const bNoDate = !b.due_date || b.due_date === 0;
+
+        // If A has no date and B has one -> A should go after B
+        if (aNoDate && !bNoDate) return 1;
+
+        // If B has no date and A has one -> B should go after A
+        if (!aNoDate && bNoDate) return -1;
+
+        // If both no-date or both dated -> keep original order
+        return  a.name.localeCompare(b.name);
+    });
+    
 
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
@@ -815,7 +849,7 @@ export default function TasksScreen() {
             
             {/* 5. To-Do List Items */}
             <View style={styles.taskListContainer}>
-                {filtered.map((task) => (
+                {sorted.map((task) => (
                     <TaskItem
                         key={task.id}
                         task={task}

@@ -40,6 +40,11 @@ export type RepeatRule = {
   duration?: RepeatDuration | null;
 };
 
+export type PaginatedTasks = {
+  continuation_token: string | null;
+  tasks: Task[];
+};
+
 /**
  * backend Task model:
  * - id: string 
@@ -122,25 +127,24 @@ export const tasksApi = {
     }
   },
 
-  // GET /task by userID
-  async getByUserID(userId: string, quantity = 10): Promise<ApiResult<Task[]>> {
+  // GET /task by userID with paginated option
+  async getByUserID(userId: string, quantity = 10, continuationToken?: string | null): Promise<ApiResult<PaginatedTasks>> {
     try {
-      const url = `${paths.root}?user_id=${encodeURIComponent(userId)}&quantity=${encodeURIComponent(String(quantity))}`;
-      const res = await api.get<Task[] | Task>(url);
-      const raw = res.data;
-      const data: Task[] = Array.isArray(raw)
-        ? raw
-        : raw
-        ? [raw]
-        : [];
+      const params = new URLSearchParams();
+      params.set("user_id", userId);
+      params.set("quantity", String(quantity));
+      if (continuationToken) {
+        params.set("continuation_token", continuationToken);
+      }
+      const url = `${paths.root}?${params.toString()}`;
+      const res = await api.get<PaginatedTasks>(url);
 
-      return { 
-        ok: true, 
-        status: res.status, 
-        message: res.statusText || "Request successful", 
-        data
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Request Successful",
+        data: res.data,
       };
-
     } 
     catch (error: any) {
       const status = error?.response?.status;
