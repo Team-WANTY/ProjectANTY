@@ -19,6 +19,10 @@ http:
     tasks:
       rule: "PathPrefix(`/tasks`)"
       service: tasks-service
+    
+    friends:
+      rule: "PathPrefix(`/friends`)"
+      service: friends-service
 
   services:
     auth-service:
@@ -45,3 +49,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://tasks-service:8000"
+
+    friends-service:
+      loadBalancer:
+        servers:
+          - url: "http://friends-service:8000"

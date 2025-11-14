@@ -29,6 +29,14 @@ services:
       - "8000"
     restart: unless-stopped
   
+  friends-service:
+    build:
+      dockerfile: friends_service/Dockerfile.dev
+    container_name: friends-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+  
   redirect-service:
     build:
       dockerfile: redirect_service/Dockerfile.dev
