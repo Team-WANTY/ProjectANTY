@@ -26,9 +26,7 @@ class ImageDB:
                 body=new_image.model_dump()
             )
             created_image = Image.model_validate(item, extra="ignore")
-            logger.debug(
-                f"Successfully created image: {created_image.model_dump()}"
-            )
+            logger.debug(f"Successfully created image: {created_image.model_dump()}")
             return created_image
         except exceptions.ResourceExistsError:
             logger.warning(

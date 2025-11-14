@@ -36,6 +36,4 @@ logger.debug("Connected to Azure CosmosDB and got images container")
 
 @lru_cache
 def get_image_service() -> ImageService:
-    return ImageService(
-        ImageDB(profiles_container), BlobStorage(blob_client)
-    )
+    return ImageService(ImageDB(profiles_container), BlobStorage(blob_client))

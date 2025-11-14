@@ -16,31 +16,40 @@ from shared.models.auth import UserAuthInfo
 from src.dependencies import get_image_service
 from src.models import Image
 from src.service import ImageService
+from PIL import UnidentifiedImageError
 
 logger = logging.getLogger("image_service")
 
 images_router = APIRouter()
-interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
+# interservice_scheme = APIKeyHeader(name="X-Interservice-Key") #TODO necessary?
+
 
 @images_router.post(
-    "/avatar",
+    "/{container_name}",
     response_model=Image,
     status_code=status.HTTP_201_CREATED,
     tags=["images"],
 )
-async def avatar_upload(
+async def image_upload(
     user_id: str,
     file: UploadFile,
+    container_name: str,
     image_service: ImageService = Depends(get_image_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth)
+    current_user: UserAuthInfo = Depends(get_current_user_auth),
 ) -> Image:
-    AVATAR_CONTAINER = 'avatars'
     try:
         data = await file.read()
-        created_image = await image_service.upload_img(AVATAR_CONTAINER, data, user_id, current_user)
-        return created_image.model_dump()
+        created_image = await image_service.upload_img(
+            container_name, data, user_id, current_user
+        )
+        return created_image
     except HTTPException as e:
         raise e
+    except UnidentifiedImageError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Data uploaded was not a valid image",
+        )
     except RecordAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Image exists"
@@ -51,7 +60,8 @@ async def avatar_upload(
             detail="Error creating image",
         )
 
-@images_router.get("/avatar", response_model=str, tags=["images"])
+
+@images_router.get("/{image_id}", response_model=str, tags=["images"])
 async def get_avatar(
     image_id: str, image_service: ImageService = Depends(get_image_service)
 ):
@@ -66,10 +76,11 @@ async def get_avatar(
             detail="Error querying profile",
         )
 
+
 @images_router.delete(
-    "/avatar", status_code=status.HTTP_204_NO_CONTENT, tags=["images"]
+    "/{image_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["images"]
 )
-async def delete_avatar(
+async def delete_image(
     image_id: str,
     image_service: ImageService = Depends(get_image_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),
