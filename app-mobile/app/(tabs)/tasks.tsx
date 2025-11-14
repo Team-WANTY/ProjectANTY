@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
     Animated,Modal, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +18,6 @@ import { EditTaskModal } from "@/components/task-edit-modal";
 
 const { width } = Dimensions.get("window");
 
-// Mock Categories
-const categories = ["Personal", "School", "Routine", "Work", "Errands"];
 
 // MM/DD/YYYY -> valid?
 const isValidDateFormat = (dateStr: string) => {
@@ -265,8 +263,25 @@ export default function TasksScreen() {
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
-    const [categoriesList, setCategoriesList] = useState(categories);
+    const [categoriesList, setCategoriesList] = useState<string[]>([]);
     
+    // derive categories from tasks whenever tasks change
+    useEffect(() => {
+    const fromTasks = Array.from(
+        new Set(
+        tasks
+            .map((t) => t.cat)
+            .filter((c): c is string => !!c)
+        )
+    ).sort();
+
+    // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
+    setCategoriesList((prev) => {
+        const merged = new Set([...prev, ...fromTasks]);
+        return Array.from(merged).sort();
+    });
+    }, [tasks]);
+
     // Category context menu states
     const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
     const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState<string | null>(null);
@@ -315,6 +330,54 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
+    // Update all tasks with a given category name -> new category name
+    const renameTasksCategory = async (oldName: string, newName: string) => {
+        // Find all tasks that is in that category
+        const tasksToUpdate = tasks.filter((t) => t.cat === oldName);
+
+        // Optimistically update the local store
+        tasksToUpdate.forEach((t) => {
+            updateTask(t.id, { cat: newName });
+        });
+
+        // PATCH calls in the background sequentially
+        for (const t of tasksToUpdate) {
+            try {
+                const res = await tasksApi.update({id: t.id, cat: newName});
+                if (!res.ok) {
+                    console.log("Failed to update category on backend");
+                }
+            }
+            catch (error) {
+                console.log("Network error");
+            }
+        }
+    };
+
+    // Set cat to null in all relevant when deleting a category
+    const clearTasksCategory = async (name: string) => {
+        // Find all tasks that is in that category
+        const tasksToUpdate = tasks.filter((t) => t.cat === name);
+
+        // Optimistically update the local store
+        tasksToUpdate.forEach((t) => {
+            updateTask(t.id, { cat: null });
+        });
+
+        // PATCH calls in the background sequentially
+        for (const t of tasksToUpdate) {
+            try {
+                const res = await tasksApi.update({id: t.id, cat:null});
+                if (!res.ok) {
+                    console.log("Failed to delete category on backend");
+                }
+            }
+            catch (error) {
+                console.log("Network error");
+            }
+        }
+    };
+
     // Category handlers
     const handleCategoryLongPress = (category: string) => {
         setSelectedCategoryForMenu(category);
@@ -336,31 +399,46 @@ export default function TasksScreen() {
     };
 
     const handleDeleteCategory = () => {
-        if (selectedCategoryForMenu) {
-            setCategoriesList(prev => prev.filter(cat => cat !== selectedCategoryForMenu));
-            // Also clear the selection if the deleted category was selected
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(null);
-            }
-            fadeOut(() => setCategoryMenuVisible(false));
+        if (!selectedCategoryForMenu) return;
+        const toDelete = selectedCategoryForMenu;
+
+        // Update UI categories
+        setCategoriesList((prev) => prev.filter((cat) => cat !== toDelete));
+
+        // Clear selection if needed
+        if (selectedCategory === toDelete) {
+            setSelectedCategory(null);
         }
+        
+        // Delete category in the background
+        clearTasksCategory(toDelete).catch((error) => {
+            console.log("Failed to delete category", error);
+        });
+
+        fadeOut(() => setIsEditCategoryModalVisible(false));
     };
 
     const handleSaveEditCategory = () => {
-        if (selectedCategoryForMenu && editCategoryName.trim()) {
-            setCategoriesList(prev => 
-                prev.map(cat => cat === selectedCategoryForMenu ? editCategoryName.trim() : cat)
-            );
-            // Update selectedCategory if it was the edited one
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(editCategoryName.trim());
-            }
-            fadeOut(() => {
-                setIsEditCategoryModalVisible(false);
-                setEditCategoryName("");
-                setSelectedCategoryForMenu(null);
-            });
+        if (!selectedCategoryForMenu) return;
+
+        const oldName = selectedCategoryForMenu;
+        const newName = editCategoryName.trim();
+        if (!newName) return;
+
+        // Update UI categories
+        setCategoriesList((prev) => prev.map((cat) => (cat === oldName ? newName : cat)));
+
+        // Update current selection if needed
+        if (selectedCategory === oldName) {
+            setSelectedCategory(newName);
         }
+
+        // Update category in the background
+        renameTasksCategory(oldName, newName).catch((error) => {
+            console.log("Failed to update category", error);
+        });
+
+        fadeOut(() => setIsEditCategoryModalVisible(false));
     };
 
     const handleEditTask = (id: string) => {
