@@ -1,18 +1,15 @@
 import logging
-import uuid
+from io import BytesIO
 
 from azure.storage.blob.aio import BlobServiceClient
+from PIL import Image
+from shared.db import generate_id
 from shared.exceptions.db import (
     RecordCreationError,
     RecordDeletionError,
-    RecordAlreadyExistsError,
 )
-from shared.db import generate_id
 
 from src.models import Blob
-
-from io import BytesIO
-from PIL import Image
 
 logger = logging.getLogger("image_service")
 

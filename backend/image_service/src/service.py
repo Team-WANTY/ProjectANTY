@@ -1,8 +1,8 @@
 import logging
 
 from shared.auth import authorize_operation
-from shared.models.auth import UserAuthInfo
 from shared.exceptions.db import RecordAlreadyExistsError, RecordCreationError
+from shared.models.auth import UserAuthInfo
 
 from src.blob_store import BlobStorage
 from src.database import ImageDB
