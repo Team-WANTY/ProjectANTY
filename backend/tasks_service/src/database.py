@@ -12,7 +12,8 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 
-from src.models import Task, TaskInDB, TaskUpdate
+from src.models import Task, TaskInDB, TaskUpdate, PaginatedTasks
+from json import dumps, loads, JSONDecodeError
 
 logger = logging.getLogger("tasks_service")
 
@@ -33,9 +34,9 @@ class TaskDB:
             item: CosmosDict = await self.container.create_item(
                 body=new_task_in_db.model_dump()
             )
-            created_task = Task.model_validate(item, extra="ignore")
+            created_task = TaskInDB.model_validate(item, extra="ignore")
             return created_task
-        except exceptions.ResourceExistsError:
+        except exceptions.CosmosResourceExistsError:
             raise RecordAlreadyExistsError()
         except Exception as e:
             logger.debug(f"Error: {e}")
@@ -47,42 +48,57 @@ class TaskDB:
                 item=task_id, partition_key=task_id
             )
             print(item)
-            task = Task.model_validate(item, extra="ignore")
+            task = TaskInDB.model_validate(item, extra="ignore")
             return task
-        except exceptions.ResourceNotFoundError:
+        except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception:
             raise GeneralQueryError()
 
     async def get_tasks_by_user_id(
-        self, user_id: str, continuation_token=None, quantity=10
-    ) -> tuple[list[Task], str | None]:
-        query = "SELECT * FROM c WHERE c.user_id == @user_id"
+        self, user_id: str, quantity:int, cont_token:str | None = None
+    ) -> tuple[list[TaskInDB], str | None]:
+        def normalize_continuation_token(raw: str | None) -> dict | None:
+            if not raw:
+                return None
+            
+            try:
+                parsed = loads(raw)
+            except JSONDecodeError:
+                return None
+
+            if isinstance(parsed, dict):
+                return dumps(parsed)
+            elif isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+                return dumps(parsed[0])
+
+            return None
+
+        query = "SELECT * FROM c WHERE c.user_id = @user_id"
         parameters: list[dict[str, object]] = [{"name": "@user_id", "value": user_id}]
         try:
             result_iterable = self.container.query_items(
                 query=query,
                 parameters=parameters,
                 max_item_count=quantity,
-                continuation_token=continuation_token,
             )
-            pager = result_iterable.by_page()
-            await pager.__anext__()
-            cont_token = pager.continuation_token
-            tasks: list[Task] = [
-                Task.model_validate(item, extra="ignore")
-                async for item in await pager.__anext__()
-            ]
-            return (
-                tasks,
-                cont_token,
-            )  # return continuation token, function can be recalled with the continuation token to get the next list of items
+            pager = result_iterable.by_page(cont_token)
+            tasks: list[TaskInDB] = []
+            async for page in pager:
+                async for item in page:
+                    tasks.append(TaskInDB.model_validate(item, extra="ignore"))
+                break  # do only one page
+            new_cont_token = normalize_continuation_token(pager.continuation_token)
+            return PaginatedTasks(continuation_token=new_cont_token, tasks=tasks) # return continuation token, function can be recalled with the continuation token to get the next list of items
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            print("ERROR!:",e)
             raise GeneralQueryError()
 
-    async def update_task(self, task_upate: TaskUpdate) -> Task:
+    
+
+    async def update_task(self, task_upate: TaskUpdate) -> TaskInDB | None:
         patch_operations = []
         try:
             if task_upate.name is not None:
@@ -118,11 +134,14 @@ class TaskDB:
                     }
                 )
 
+            if len(patch_operations) == 0:
+                return None
+
             patch_operations.append(
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": int(now_timestamp()),
+                    "value": now_timestamp(),
                 }
             )
 
@@ -131,13 +150,11 @@ class TaskDB:
                 partition_key=task_upate.id,
                 patch_operations=patch_operations,
             )
-            print(item)
-            task = Task.model_validate(item, extra="ignore")
+            task = TaskInDB.model_validate(item, extra="ignore")
             return task
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception as e:
-            print(f"ERROR: {e}")
+        except Exception:
             raise RecordUpdateError()
 
     async def delete_task(self, task_id: str):

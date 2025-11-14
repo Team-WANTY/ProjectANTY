@@ -14,7 +14,7 @@ from shared.exceptions.db import (
 from shared.models.auth import UserAuthInfo
 
 from src.dependencies import get_tasks_service
-from src.models import Task, TaskUpdate
+from src.models import PaginatedTasks, Task, TaskUpdate
 from src.service import TasksService
 
 logger = logging.getLogger("tasks_service")
@@ -32,7 +32,7 @@ async def create_task(
 ):
     try:
         created_task = await tasks_service.create_task(new_task, current_user)
-        return created_task
+        return created_task.to_base()
     except AuthError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     except RecordAlreadyExistsError:
@@ -46,22 +46,20 @@ async def create_task(
         )
 
 
-@tasks_router.get("/", response_model=Task, tags=["tasks"])
+@tasks_router.get("/", response_model=PaginatedTasks, tags=["tasks"])
 async def get_task(
-    task_id: str = "",
-    user_id: str = "",
+    task_id: str | None = None,
+    user_id: str | None = None,
+    continuation_token: str | None = None,
     quantity: int = 10,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),
 ):
-    # Try task_id first, if it fails or doesn't exist try user_id
-    task_id_fail = False
     if task_id is not None:
         try:
-            task = await tasks_service.get_task_by_id(task_id, current_user)
-            return task
+            return await tasks_service.get_task_by_id(task_id, current_user)
         except RecordNotFoundError:
-            task_id_fail = True
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
         except AuthError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except GeneralQueryError:
@@ -69,12 +67,11 @@ async def get_task(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error getting task by ID",
             )
-    if task_id_fail and user_id is not None:
+    if user_id is not None:
         try:
-            task = await tasks_service.get_tasks_by_user_id(
-                user_id, quantity, current_user
+            return await tasks_service.get_tasks_by_user_id(
+                user_id, quantity, continuation_token, current_user
             )
-            return task
         except AuthError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except RecordNotFoundError:
@@ -106,9 +103,7 @@ async def update_task(
         )
 
 
-@tasks_router.delete(
-    "/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"]
-)
+@tasks_router.delete("/", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
 async def delete_task(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),
