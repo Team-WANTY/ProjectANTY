@@ -4,7 +4,6 @@ from httpx import AsyncClient
 
 from exceptions.auth import AuthError
 from models.auth import UserAuthInfo
-from models.users import UserInDB
 from settings import settings
 
 oauth2_scheme = OAuth2PasswordBearer(f"{settings.AUTH_EXTERNAL_URL}/login")
