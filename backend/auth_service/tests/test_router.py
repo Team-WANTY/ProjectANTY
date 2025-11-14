@@ -157,7 +157,6 @@ class TestGetCurrentUserAuth:
         assert e.value.status_code == 401
 
 
-
 class TestRegister:
     """Tests for /register endpoint"""
 

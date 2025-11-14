@@ -194,7 +194,6 @@ class TestGetUserAuthByEmail:
             await mock_auth_db.get_user_auth_by_email("nonexistent@gmail.com")
 
 
-
 class TestUpdateAuth:
     """Tests for update_auth method"""
 
