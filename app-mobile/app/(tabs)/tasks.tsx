@@ -6,15 +6,17 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import { RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
-
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 
 import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
 import { useUserStore } from "@/services/stores/users-store";
 import { useTasksStore } from "@/services/stores/tasks-store";
+
 import { NewTaskModal  } from "@/components/task-create-modal";
 import { EditTaskModal } from "@/components/task-edit-modal";
+import { CategoryCreateModal } from "@/components/category-create-modal";
+import { CategoryEditModal } from "@/components/category-edit-modal";
 
 const { width } = Dimensions.get("window");
 
@@ -440,6 +442,18 @@ export default function TasksScreen() {
 
         fadeOut(() => setIsEditCategoryModalVisible(false));
     };
+    
+    const handleSaveNewCategory = () => {
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) return;
+
+        setCategoriesList((prev) => [
+            ...prev,
+            trimmed,
+        ]);
+        setNewCategoryName("");
+        fadeOut(() => setIsNewCategoryModalVisible(false));
+    };
 
     const handleEditTask = (id: string) => {
         const taskToEdit = tasks.find((t) => t.id === id);
@@ -668,93 +682,9 @@ export default function TasksScreen() {
                     >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
-                </View>
-
-                {/* New Category Modal */}
-                <Modal
-                    transparent={true}
-                    visible={isNewCategoryModalVisible}
-                    onRequestClose={() => {
-                        fadeOut(() => setIsNewCategoryModalVisible(false));
-                    }}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
-                        />
-                        <Animated.View
-                        style={[
-                            styles.modalContent,
-                            {
-                                backgroundColor: theme.border,
-                                transform: [
-                                    {
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1],
-                                        }),
-                                    },
-                                ],
-                            },
-                        ]}
-                    >
-                        <Pressable
-                            accessible={true}
-                            accessibilityLabel="Close new category"
-                            onPress={() =>
-                                fadeOut(() => setIsNewCategoryModalVisible(false))
-                            }
-                            style={styles.modalCloseButton}
-                        >
-                            <Text style={styles.modalCloseText}>✕</Text>
-                        </Pressable>
-                        <Text
-                            style={[styles.modalTitle, { color: theme.background }]}
-                        >
-                            New Category
-                        </Text>
-
-                        <View style={styles.inputContainer}>
-                            <Text
-                                style={[styles.inputLabel, { color: theme.background }]}
-                            >
-                                Category Name
-                            </Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    { color: theme.background, borderColor: theme.background },
-                                ]}
-                                value={newCategoryName}
-                                onChangeText={setNewCategoryName}
-                                placeholder="Enter category name"
-                                placeholderTextColor={theme.background + "80"}
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                            onPress={() => {
-                                if (newCategoryName.trim()) {
-                                    setCategoriesList((prev) => [
-                                        ...prev,
-                                        newCategoryName.trim(),
-                                    ]);
-                                    setNewCategoryName("");
-                                    fadeOut(() => setIsNewCategoryModalVisible(false));
-                                }
-                            }}
-                        >
-                            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-                                Add Category
-                            </Text>
-                        </TouchableOpacity>
-                    </Animated.View>
-                </Animated.View>
-            </Modal>
-
+                </View>  
+                
+                {/* Horizontal Scroll for Categories */}
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -772,6 +702,90 @@ export default function TasksScreen() {
                     ))}
                 </ScrollView>
 
+                {/* Tasks List Header */}
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
+                        <TouchableOpacity onPress={() => {
+                            setIsNewTaskModalVisible(true);
+                            setDateError("");
+                            setTaskNameError("");
+                            fadeIn();
+                        }}
+                    >
+                        <Ionicons name="add-circle-outline" size={24} color={theme.text} />
+                    </TouchableOpacity>
+                </View>
+   
+                {/* 5. To-Do List Items */}
+                <View style={styles.taskListContainer}>
+                    {sorted.map((task) => (
+                        <TaskItem
+                            key={task.id}
+                            task={task}
+                            theme={theme}
+                            onPress={handleEditTask}
+                            onToggle={handleToggleTask}
+                            onDelete={handleDeleteTask}
+                        />
+                    ))}
+                </View>
+            </ScrollView>
+
+                <CategoryCreateModal
+                    visible={isNewCategoryModalVisible}
+                    fadeAnim={fadeAnim}
+                    theme={theme}
+                    value={newCategoryName}
+                    onChangeValue={setNewCategoryName}
+                    onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                    onSubmit={handleSaveNewCategory}
+                />
+
+                <CategoryEditModal
+                    visible={isEditCategoryModalVisible}
+                    fadeAnim={fadeAnim}
+                    theme={theme}
+                    value={editCategoryName}
+                    onChangeValue={setEditCategoryName}
+                    onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                    onSubmit={handleSaveEditCategory}
+                />
+
+                <NewTaskModal
+                    visible={isNewTaskModalVisible}
+                    theme={theme}
+                    categoriesList={categoriesList}
+                    newTask={newTask}
+                    setNewTask={setNewTask}
+                    isRepeatOpen={isRepeatOpen}
+                    setIsRepeatOpen={setIsRepeatOpen}
+                    dateError={dateError}
+                    taskNameError={taskNameError}
+                    loading={loading}
+                    onClose={() => {
+                        setIsNewTaskModalVisible(false);
+                    }}
+                    onSubmit={createTask}
+                />
+
+                <EditTaskModal
+                    visible={isEditTaskModalVisible}
+                    theme={theme}
+                    categoriesList={categoriesList}
+                    editingTask={editingTask}
+                    setEditingTask={setEditingTask}
+                    isRepeatOpen={isRepeatOpen}
+                    setIsRepeatOpen={setIsRepeatOpen}
+                    dateError={dateError}
+                    setDateError={setDateError}
+                    loading={loading}
+                    onSave={updateExistingTask}
+                    onRequestClose={() => {
+                        setIsEditTaskModalVisible(false);
+                        setEditingTask(null);
+                    }}
+                />
+                
                 {/* Category Context Menu Modal */}
                 <Modal
                     transparent={true}
@@ -816,129 +830,6 @@ export default function TasksScreen() {
                         </Animated.View>
                     </Animated.View>
                 </Modal>
-
-                {/* Edit Category Modal */}
-                <Modal
-                    transparent={true}
-                    visible={isEditCategoryModalVisible}
-                    onRequestClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close edit category"
-                                onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
-                            
-                            {/* Task Name */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={editCategoryName}
-                                    onChangeText={setEditCategoryName}
-                                    placeholder="Enter category name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                            </View>
-                            
-
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                                onPress={handleSaveEditCategory}
-                            >
-                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Save Changes</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
-
-                {/* Tasks List Header */}
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
-                    <TouchableOpacity onPress={() => {
-                        setIsNewTaskModalVisible(true);
-                        setDateError("");
-                        setTaskNameError("");
-                        fadeIn();
-                    }}
-                >
-                    <Ionicons name="add-circle-outline" size={24} color={theme.text} />
-                </TouchableOpacity>
-            </View>
-
-            <NewTaskModal
-                visible={isNewTaskModalVisible}
-                theme={theme}
-                categoriesList={categoriesList}
-                newTask={newTask}
-                setNewTask={setNewTask}
-                isRepeatOpen={isRepeatOpen}
-                setIsRepeatOpen={setIsRepeatOpen}
-                dateError={dateError}
-                taskNameError={taskNameError}
-                loading={loading}
-                onClose={() => {
-                    setIsNewTaskModalVisible(false);
-                }}
-                onSubmit={createTask}
-            />
-
-            <EditTaskModal
-                visible={isEditTaskModalVisible}
-                theme={theme}
-                categoriesList={categoriesList}
-                editingTask={editingTask}
-                setEditingTask={setEditingTask}
-                isRepeatOpen={isRepeatOpen}
-                setIsRepeatOpen={setIsRepeatOpen}
-                dateError={dateError}
-                setDateError={setDateError}
-                loading={loading}
-                onSave={updateExistingTask}
-                onRequestClose={() => {
-                    setIsEditTaskModalVisible(false);
-                    setEditingTask(null);
-                }}
-            />
-            
-            {/* 5. To-Do List Items */}
-            <View style={styles.taskListContainer}>
-                {sorted.map((task) => (
-                    <TaskItem
-                        key={task.id}
-                        task={task}
-                        theme={theme}
-                        onPress={handleEditTask}
-                        onToggle={handleToggleTask}
-                        onDelete={handleDeleteTask}
-                    />
-                ))}
-            </View>
-            </ScrollView>
         </View>
     );
 }
