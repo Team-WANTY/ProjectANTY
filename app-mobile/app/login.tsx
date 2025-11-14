@@ -3,9 +3,9 @@ import { Checkbox } from "react-native-paper";
 import { View, Text, TextInput, Dimensions, StyleSheet, Image, Pressable, ActivityIndicator} from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-import { authApi } from "@/services/auth-api";
-import { usersApi } from "@/services/users-api";
+import { authApi } from "@/services/api/auth-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
+import { safeBootstrap } from "@/services/bootstrap/bootstrap";
 
 export default function LoginScreen() {
     const { theme } = useTheme();
@@ -31,13 +31,7 @@ export default function LoginScreen() {
             }
             // Debugging
             console.log("Logged in Successfully");
-            const me = await usersApi.me();
-                if (!me.ok) {
-                setMessage(me.message);
-                return;
-            }
-            console.log("Validated user sucessfully");
-            console.log("Welcome:", me.data.username);
+            await safeBootstrap();
             router.replace("/home");
         } 
         catch (error: any) {

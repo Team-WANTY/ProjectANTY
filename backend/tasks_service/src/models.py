@@ -23,7 +23,6 @@ class RepeatDuration(BaseModel):
     - NUMBER_OF_TIMES: value = how many times to repeat
     - UNTIL_DATE: value = timestamp until which to repeat
     """
-
     specifier: DurationSpecifier | None = DurationSpecifier.FOREVER
     value: int | None = None
 
@@ -53,7 +52,6 @@ class RepeatRule(BaseModel):
     frequency: how often to repeat
     duration: when to stop repetition
     """
-
     frequency: RepeatFrequency | None = None
     duration: RepeatDuration | None = None
 
@@ -67,7 +65,6 @@ class Task(BaseModel):
     - due_date: timestamp when task is due (repetition starts here)
     - repeat_rule: how to repeat, if at all
     """
-
     id: str | None = None
     user_id: str
     name: str

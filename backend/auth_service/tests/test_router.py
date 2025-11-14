@@ -157,6 +157,7 @@ class TestGetCurrentUserAuth:
         assert e.value.status_code == 401
 
 
+
 class TestRegister:
     """Tests for /register endpoint"""
 
@@ -428,7 +429,6 @@ class TestVerifyToken:
 class TestRefreshToken:
     """Tests for /refresh endpoint"""
 
-    # @pytest.mark.xfail  # TODO cannot easily set cookies with test client
     def test_refresh_token_success(self, client, sample_user_auth_info, mock_service):
         """Test successful token refresh"""
         decoded_token = Token(
@@ -455,7 +455,6 @@ class TestRefreshToken:
         assert response.status_code == 401
         assert "No refresh token" in response.json()["detail"]
 
-    # @pytest.mark.xfail  # TODO cannot easily set cookies with test client
     def test_refresh_wrong_token_type(self, client, mock_service):
         """Test refresh with access token instead of refresh token"""
         decoded_token = Token(
