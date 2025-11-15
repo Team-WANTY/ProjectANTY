@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
-    Animated,Modal, TextInput, Pressable, ActivityIndicator } from "react-native";
+    Modal, TextInput, Pressable, ActivityIndicator, Animated as RNAnimated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import  Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
+
 import { RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
@@ -100,12 +102,26 @@ const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
   }
 };
 
+// Task Animation
+function TaskItemWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
+      layout={LinearTransition.springify().duration(1000)} // Animation here
+      style={{ width: "100%" }}
+    >
+      {children}
+    </Animated.View>
+  )
+};
+
 // --- Task Item Component ---
 const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
-    const anim = useRef(new Animated.Value(1)).current; // 1 => visible, 0 => hidden
+    const anim = useRef(new RNAnimated.Value(1)).current; // 1 => visible, 0 => hidden
 
     const handleDeletePress = () => {
-        Animated.timing(anim, {
+        RNAnimated.timing(anim, {
         toValue: 0,
         duration: 220,
         useNativeDriver: true,
@@ -120,7 +136,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
 
         return (
-        <Animated.View style={[{ opacity: anim }]}>
+        <RNAnimated.View style={[{ opacity: anim }]}>
             <RectButton
             style={[
                 styles.rightAction,
@@ -135,7 +151,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
                 <Ionicons name="trash-outline" size={20} color="#fff" />
             </View>
             </RectButton>
-        </Animated.View>
+        </RNAnimated.View>
         );
     };
 
@@ -150,7 +166,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
             friction={2}
         >
             <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(task.id)}>
-                <Animated.View
+                <RNAnimated.View
                 style={[
                     styles.taskCard,
                     animatedStyle,
@@ -186,7 +202,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
                             </View>
                         </TouchableOpacity>
                     </View>
-                </Animated.View>
+                </RNAnimated.View>
             </TouchableOpacity>
         </ReanimatedSwipeable>
     );
@@ -247,19 +263,27 @@ export default function TasksScreen() {
     });
 
     // Sort the filtered tasks
-    const sorted = filtered.sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
+        const aCompleted = !!a.completed;
+        const bCompleted = !!b.completed;
+
+        // Incomplete first, completed last
+        if (aCompleted !== bCompleted) {
+            return aCompleted ? 1 : -1; // a goes after b if a is completed
+        }
+
+        // Within each group, has due date first, no due date last
         const aNoDate = !a.due_date || a.due_date === 0;
         const bNoDate = !b.due_date || b.due_date === 0;
 
-        // If A has no date and B has one -> A should go after B
         if (aNoDate && !bNoDate) return 1;
-
-        // If B has no date and A has one -> B should go after A
         if (!aNoDate && bNoDate) return -1;
 
-        // If both no-date or both dated -> keep original order
-        return  a.name.localeCompare(b.name);
+        // If both have dates (or both no date and same completed status),
+        // fall back to name to make the order stable
+        return a.name.localeCompare(b.name);
     });
+
     
 
     // Modal states
@@ -312,12 +336,12 @@ export default function TasksScreen() {
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
     const [taskNameError, setTaskNameError] = useState("");
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new RNAnimated.Value(0)).current;
     const [loading, setLoading] = useState(false);
 
     // Animation helpers
     const fadeIn = () => {
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
         toValue: 1,
         duration: 200,
         useNativeDriver: true,
@@ -325,7 +349,7 @@ export default function TasksScreen() {
     };
 
     const fadeOut = (onComplete: () => void) => {
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
@@ -719,117 +743,118 @@ export default function TasksScreen() {
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
                     {sorted.map((task) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            theme={theme}
-                            onPress={handleEditTask}
-                            onToggle={handleToggleTask}
-                            onDelete={handleDeleteTask}
-                        />
+                        <TaskItemWrapper key={task.id}>
+                            <TaskItem
+                                task={task}
+                                theme={theme}
+                                onPress={handleEditTask}
+                                onToggle={handleToggleTask}
+                                onDelete={handleDeleteTask}
+                            />
+                        </TaskItemWrapper>
                     ))}
                 </View>
             </ScrollView>
 
-                <CategoryCreateModal
-                    visible={isNewCategoryModalVisible}
-                    fadeAnim={fadeAnim}
-                    theme={theme}
-                    value={newCategoryName}
-                    onChangeValue={setNewCategoryName}
-                    onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
-                    onSubmit={handleSaveNewCategory}
-                />
+            <CategoryCreateModal
+                visible={isNewCategoryModalVisible}
+                fadeAnim={fadeAnim}
+                theme={theme}
+                value={newCategoryName}
+                onChangeValue={setNewCategoryName}
+                onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                onSubmit={handleSaveNewCategory}
+            />
 
-                <CategoryEditModal
-                    visible={isEditCategoryModalVisible}
-                    fadeAnim={fadeAnim}
-                    theme={theme}
-                    value={editCategoryName}
-                    onChangeValue={setEditCategoryName}
-                    onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                    onSubmit={handleSaveEditCategory}
-                />
+            <CategoryEditModal
+                visible={isEditCategoryModalVisible}
+                fadeAnim={fadeAnim}
+                theme={theme}
+                value={editCategoryName}
+                onChangeValue={setEditCategoryName}
+                onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                onSubmit={handleSaveEditCategory}
+            />
 
-                <NewTaskModal
-                    visible={isNewTaskModalVisible}
-                    theme={theme}
-                    categoriesList={categoriesList}
-                    newTask={newTask}
-                    setNewTask={setNewTask}
-                    isRepeatOpen={isRepeatOpen}
-                    setIsRepeatOpen={setIsRepeatOpen}
-                    dateError={dateError}
-                    taskNameError={taskNameError}
-                    loading={loading}
-                    onClose={() => {
-                        setIsNewTaskModalVisible(false);
-                    }}
-                    onSubmit={createTask}
-                />
+            <NewTaskModal
+                visible={isNewTaskModalVisible}
+                theme={theme}
+                categoriesList={categoriesList}
+                newTask={newTask}
+                setNewTask={setNewTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                taskNameError={taskNameError}
+                loading={loading}
+                onClose={() => {
+                    setIsNewTaskModalVisible(false);
+                }}
+                onSubmit={createTask}
+            />
 
-                <EditTaskModal
-                    visible={isEditTaskModalVisible}
-                    theme={theme}
-                    categoriesList={categoriesList}
-                    editingTask={editingTask}
-                    setEditingTask={setEditingTask}
-                    isRepeatOpen={isRepeatOpen}
-                    setIsRepeatOpen={setIsRepeatOpen}
-                    dateError={dateError}
-                    setDateError={setDateError}
-                    loading={loading}
-                    onSave={updateExistingTask}
-                    onRequestClose={() => {
-                        setIsEditTaskModalVisible(false);
-                        setEditingTask(null);
-                    }}
-                />
-                
-                {/* Category Context Menu Modal */}
-                <Modal
-                    transparent={true}
-                    visible={categoryMenuVisible}
-                    onRequestClose={() => fadeOut(() => setCategoryMenuVisible(false))}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setCategoryMenuVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.contextMenuContent,
-                                {
-                                    backgroundColor: theme.cardBackground,
-                                    transform: [{
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
+            <EditTaskModal
+                visible={isEditTaskModalVisible}
+                theme={theme}
+                categoriesList={categoriesList}
+                editingTask={editingTask}
+                setEditingTask={setEditingTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                setDateError={setDateError}
+                loading={loading}
+                onSave={updateExistingTask}
+                onRequestClose={() => {
+                    setIsEditTaskModalVisible(false);
+                    setEditingTask(null);
+                }}
+            />
+            
+            {/* Category Context Menu Modal */}
+            <Modal
+                transparent={true}
+                visible={categoryMenuVisible}
+                onRequestClose={() => fadeOut(() => setCategoryMenuVisible(false))}
+                animationType="none"
+            >
+                <RNAnimated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                    <Pressable
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => fadeOut(() => setCategoryMenuVisible(false))}
+                    />
+                    <RNAnimated.View
+                        style={[
+                            styles.contextMenuContent,
+                            {
+                                backgroundColor: theme.cardBackground,
+                                transform: [{
+                                    scale: fadeAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0.95, 1]
+                                    })
+                                }]
+                            }
+                        ]}
+                    >
+                        <TouchableOpacity
+                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                            onPress={handleEditCategory}
                         >
-                            <TouchableOpacity
-                                style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
-                                onPress={handleEditCategory}
-                            >
-                                <Ionicons name="pencil" size={20} color="#fff" />
-                                <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity
-                                style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
-                                onPress={handleDeleteCategory}
-                            >
-                                <Ionicons name="trash" size={20} color="#fff" />
-                                <Text style={[styles.contextMenuText, { color: '#fff' }]}>Delete</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
+                            <Ionicons name="pencil" size={20} color="#fff" />
+                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                            onPress={handleDeleteCategory}
+                        >
+                            <Ionicons name="trash" size={20} color="#fff" />
+                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Delete</Text>
+                        </TouchableOpacity>
+                    </RNAnimated.View>
+                </RNAnimated.View>
+            </Modal>
         </View>
     );
 }
