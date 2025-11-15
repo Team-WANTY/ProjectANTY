@@ -18,10 +18,10 @@ from src.service import UsersService
 async def get_current_user(
     current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
     users_service: UsersService = Depends(get_users_service),
-) -> UserBase:
+) -> UserInDB:
     """Get current authenticated and active user from JWT token"""
     try:
-        user_in_db = await users_service.get_user_by_id(str(current_user_auth.id))
+        user_in_db = await users_service.get_user_by_id(current_user_auth.id)
     except RecordNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Current user not found"
@@ -65,22 +65,22 @@ async def get_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal query error",
         )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
 
 
 @users_router.patch("/", response_model=UserInDB, tags=["users"])
 async def update_user(
     user_update: UserUpdate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
     users_service: UsersService = Depends(get_users_service),
 ) -> UserInDB:
     """Update user (own profile or superuser can update any)"""
-    if current_user.id != user_update.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
-        )
     try:
         return await users_service.update_user(
-            user_update, current_user
+            user_update, current_user_auth
         )  # TODO should return full record since authorization needed?
     except AuthError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -96,6 +96,10 @@ async def update_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error querying old user record",
         )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
 
 
 @users_router.delete(
@@ -103,13 +107,13 @@ async def update_user(
 )
 async def delete_user(
     user_id: str,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
     users_service: UsersService = Depends(get_users_service),
 ):
     """Delete user"""
     try:
         await users_service.delete_user(
-            user_id, current_user
+            user_id, current_user_auth
         )  # TODO should return full record since authorization needed?
     except AuthError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -119,4 +123,8 @@ async def delete_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error deleting user",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )

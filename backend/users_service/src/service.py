@@ -2,6 +2,7 @@ import logging
 
 from pydantic import EmailStr
 from shared.auth import authorize_operation
+from shared.models.auth import UserAuthInfo
 from shared.models.users import UserInDB
 
 from src.database import UsersDB
@@ -36,7 +37,9 @@ class UsersService:
         logger.debug(f"Successfully got user with email '{email}'")
         return user_in_db
 
-    async def update_user(self, user_update: UserUpdate, updater: UserInDB) -> UserInDB:
+    async def update_user(
+        self, user_update: UserUpdate, updater: UserAuthInfo
+    ) -> UserInDB:
         """Update user"""
         logger.debug(
             f"Checking if {updater.id} is authorized to update {user_update.id}"
@@ -50,7 +53,7 @@ class UsersService:
         logger.debug(f"Successfully updated user with ID '{user_update.id}'")
         return updated_user_in_db
 
-    async def delete_user(self, user_id: str, deleter: UserInDB) -> None:
+    async def delete_user(self, user_id: str, deleter: UserAuthInfo) -> None:
         """Delete user"""
         logger.debug(f"Checking if {deleter.id} is authorized to delete {user_id}")
         await authorize_operation(deleter, user_id)

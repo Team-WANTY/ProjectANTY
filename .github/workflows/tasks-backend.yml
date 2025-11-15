@@ -1,4 +1,4 @@
-name: Users Backend Pipelines
+name: Tasks Backend Pipelines
 
 on:
   push:
@@ -8,10 +8,9 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  users-backend:
+  tasks-backend:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
-    environment: "ANTY Backend Environment"
 
     steps:
       - name: Checkout code.
@@ -20,15 +19,9 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Users checks.
-        env:
-          COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
-          COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
-          COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
-          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
-          INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
+      - name: Tasks checks.
         run: |
-          cd backend/users_service
+          cd backend/tasks_service
           uv sync --dev
           uv run ruff check
           uv run ty check

@@ -3,14 +3,17 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tasks_service"
+name = "image_service"
 version = "0.1.0"
-description = "FastAPI microservice for task management."
+description = "FastAPI microservice for serving images."
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi[standard]>=0.119.0",
-    "aiohttp>=3.13.0",
+    "python-dotenv>=1.1.1",
+    "aiohttp>=3.13.0,<4",
+    "pillow>=12.0.0",
     "azure-cosmos>=4.14.0",
+    "azure-storage-blob>=12.27.1,<13",
     "shared"
 ]
 
@@ -26,7 +29,6 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-subtests>=0.14.2",
-    "pytest-env>=1.2.0",
     "ruff>=0.14.0",
     "ty>=0.0.1a21",
 ]
@@ -65,19 +67,3 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
-
-[tool.pytest.ini_options]
-addopts = "-p no:warnings"
-pythonpath = "../"
-python_files = "test_*.py"
-testpaths = [
-    "tests",
-]
-
-[tool.pytest_env]
-AUTH_SERVICE_URL="http://localhost:8000"
-AUTH_EXTERNAL_URL="http://external-service"
-INTERSERVICE_KEY="supersecret"
-COSMOSDB_ENDPOINT="https://localhost:8081"
-COSMOSDB_KEY="fake-key"
-COSMOSDB_DATABASE_NAME="testdb"

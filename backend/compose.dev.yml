@@ -21,6 +21,14 @@ services:
       - "8000"
     restart: unless-stopped
   
+  image-service:
+    build:
+      dockerfile: image_service/Dockerfile.dev
+    container_name: image-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+  
   profiles-service:
     build:
       dockerfile: profiles_service/Dockerfile.dev
