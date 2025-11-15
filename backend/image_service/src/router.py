@@ -20,7 +20,6 @@ from src.service import ImageService
 logger = logging.getLogger("image_service")
 
 images_router = APIRouter()
-# interservice_scheme = APIKeyHeader(name="X-Interservice-Key") #TODO necessary?
 
 
 @images_router.post(

@@ -30,10 +30,10 @@ client = CosmosClient(
     shared_settings.COSMOSDB_KEY,
 )
 database = client.get_database_client(shared_settings.COSMOSDB_DATABASE_NAME)
-profiles_container = database.get_container_client("images")
+images_container = database.get_container_client("images")
 logger.debug("Connected to Azure CosmosDB and got images container")
 
 
 @lru_cache
 def get_image_service() -> ImageService:
-    return ImageService(ImageDB(profiles_container), BlobStorage(blob_client))
+    return ImageService(ImageDB(images_container), BlobStorage(blob_client))
