@@ -121,11 +121,7 @@ export default function ProfileScreen() {
             }
             
             if(usernameChanged) {
-                useUserStore.getState().setUser({
-                    id: userId,
-                    username: trimmedUsername,
-                    email: email ?? "",
-                });
+                useUserStore.getState().setUser({ username: trimmedUsername});
             }
             if(bioChanged) {
                 useProfileStore.getState().setProfile({ bio: trimmedBio});
