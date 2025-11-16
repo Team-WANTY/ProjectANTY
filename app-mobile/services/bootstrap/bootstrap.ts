@@ -20,7 +20,7 @@ export async function loadProfile(userId?: string) {
   const result = await profileApi.getById(id);
   if (!result.ok) {
     if (result.status === 404) {
-      useProfileStore.getState().setProfile({ bio: null });
+      useProfileStore.getState().clear();
       return null;
     }
     throw new Error(result.message ?? "Failed to load profile");

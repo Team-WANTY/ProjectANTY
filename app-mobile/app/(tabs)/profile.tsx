@@ -11,18 +11,24 @@ import {
     Modal,
     Pressable,
     Animated,
+    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 import { HeaderBar } from "@/components/header-bar";
+import * as ImagePicker from "expo-image-picker";
 
 import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
+import { imagesApi } from "@/services/api/image-api";
+import { EditProfileModal} from "@/components/profile-edit-modal"
+import { changeAvatar } from "@/services/actions/profile-actions";
+import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -64,17 +70,22 @@ export default function ProfileScreen() {
 
     // Pull user and profile from Zustand
     const username = useUserStore((s) => s.username);
-    const email    = useUserStore(s => s.email);
     const userId   = useUserStore(s => s.userId);
     const bio = useProfileStore((s) => s.bio);
+    const avatarUrl = useProfileStore((s) => s.avatarUrl);
+    const isAvatarUploading = useProfileStore((s) => s.isAvatarUploading);
 
     // ---------- MODAL STATE ----------
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-    const [editUsername, setEditUsername] = useState(username);
-    const [editBio, setEditBio] = useState(bio);
+    const [isPhotoSheetVisible, setIsPhotoSheetVisible] = useState(false);
+    const [editUsername, setEditUsername] = useState<string>(username ?? "");
+    const [editBio, setEditBio] = useState<string>(bio ?? "");
     const fadeAnim = useState(new Animated.Value(0))[0];
     const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    
+
+
 
     function openEditModal() {
         setEditUsername(username ?? "");
@@ -89,56 +100,105 @@ export default function ProfileScreen() {
         );
     }
 
-    async function handleSave() {
-        if (!userId) {
-            setErrorMsg("Missing user id.");
-            return;
-        }
-
-        const trimmedUsername = (editUsername ?? "").trim();
-        const trimmedBio = (editBio ?? "").trim();
-
-        const usernameChanged = trimmedUsername !== (username ?? "");
-        const bioChanged = trimmedBio !== (bio ?? "");
-
-        if (!usernameChanged && !bioChanged) {
-            closeEditModal();
-            return;
-        }
-
+    const handleProfileSave = (newUsername: string, newBio: string) => {
         setSaving(true);
         setErrorMsg(null);
-
-        try {
-            const ops: Promise<any>[] = [];
-            if (bioChanged) // Call profiles service to update
-                ops.push(profileApi.update(userId, {bio: trimmedBio}));
-            if (usernameChanged) // Call user service to update
-                ops.push(usersApi.update({ id: userId, username: trimmedUsername }));
-
-            const results = await Promise.all(ops);
-            for (const r of results) {
-                if (r?.ok === false) throw new Error(r?.message || "Failed to save changes.");
-            }
-            
-            if(usernameChanged) {
-                useUserStore.getState().setUser({ username: trimmedUsername});
-            }
-            if(bioChanged) {
-                useProfileStore.getState().setProfile({ bio: trimmedBio});
-            }
-            closeEditModal();
-
-        } catch (err: any) {
-            const msg =
-                err?.response?.data?.detail ||
-                err?.message ||
-                "Failed to save changes. Please try again.";
-            setErrorMsg(msg);
-        } finally {
-            setSaving(false);
+        // Determine what changed
+        const usernameChanged = newUsername !== (username ?? "");
+        const bioChanged = newBio !== (bio ?? "");
+        
+        // Optimistically update Zustand store FIRST 
+        if (usernameChanged) {
+            useUserStore.getState().setUser({ username: newUsername });
         }
-    }
+        if (bioChanged) {
+            useProfileStore.getState().setProfile({ bio: newBio });
+        }
+        
+        // Close modal 
+        closeEditModal();  
+
+        (async () => {
+                try {
+                // API calls sequentially
+                if (usernameChanged) {
+                    const res = await usersApi.update({ id: userId!, username: newUsername });
+                    if (!res.ok) console.log("Failed to update username on backend");
+                }
+
+                if (bioChanged) {
+                    const res = await profileApi.update(userId!, { bio: newBio });
+                    if (!res.ok) console.log("Failed to update bio on backend");
+                }
+            } 
+            catch (err) {
+                console.log("Network error while updating profile");
+            }
+            finally {
+                setSaving(false);
+            }
+        })();
+
+        /*
+        * TODO
+        * rollback incase api call fails
+        * display error on UI whhen api call fails
+        * retry logic
+        * background queue systems when backend is working again
+        */
+    };
+ 
+
+    async function handleChangePhoto(userId: string, closeEditModal: () => void) {
+        // Pick image
+        const picked = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: "images",
+            allowsEditing: true,
+            quality: 0.7,
+        });
+
+        if (picked.canceled) return;
+
+        const asset = picked.assets[0];
+
+        const rnFile = {
+            uri: asset.uri,
+            name: "avatar.jpg",
+            type: "image/jpeg",
+        };
+
+        // Optimistic UI: Update Zustand avatar immediately
+        useProfileStore.getState().setProfile({
+            avatarUrl: asset.uri, // temporary local preview
+        });
+
+        closeEditModal();
+
+        // Upload in background
+        try {
+            const uploadRes = await imagesApi.upload("images", userId, rnFile);
+
+            if (!uploadRes.ok) {
+            console.log("Image upload failed.");
+            return;
+            }
+
+            const record = uploadRes.data; // { id, blob_url}
+
+            // Save avatar_image_id to profile service
+            await profileApi.update(userId, {
+                avatar_image_id: record.id,
+            });
+
+            // Replace temporary local URI with real CDN URL
+            useProfileStore.getState().setProfile({
+            avatarUrl: record.url,
+            });
+        }
+        catch (err) {
+            console.log("Network error uploading avatar", err);
+        }
+    };
 
     // -------------------------------------------------------
     const HEADER_BACKGROUND_HEIGHT = screenWidth * 0.495;
@@ -168,7 +228,22 @@ export default function ProfileScreen() {
                         />
                     </View>
 
-                    <Image source={{ uri: userData.profilePicture }} style={styles.profileImage} />
+                    <View style={styles.avatarWrapper}>
+                        <Image
+                            source={
+                                avatarUrl
+                                    ? { uri: avatarUrl }
+                                    : require("../../assets/images/default-avatar.png")
+                            }
+                            style={styles.profileImage}
+                        />
+                        {isAvatarUploading && (
+                            <View style={styles.avatarSpinnerOverlay}>
+                                <ActivityIndicator />
+                            </View>
+                        )}
+                    </View>
+
 
                     <View style={styles.userInfo}>
                         <Text style={styles.displayUsername}>{username}</Text>
@@ -187,117 +262,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* ---------- EDIT PROFILE MODAL ---------- */}
-                <Modal
-                    transparent
-                    animationType="none"
-                    visible={isEditModalVisible}
-                    onRequestClose={closeEditModal}
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable style={StyleSheet.absoluteFill} onPress={closeEditModal} />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [
-                                        {
-                                            scale: fadeAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [0.95, 1],
-                                            }),
-                                        },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Pressable
-                                accessible
-                                accessibilityLabel="Close edit profile"
-                                onPress={closeEditModal}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>
-                                Edit Profile
-                            </Text>
-
-                            {/* Username */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>
-                                    Username
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        { color: theme.background, borderColor: theme.background },
-                                    ]}
-                                    value={editUsername}
-                                    onChangeText={setEditUsername}
-                                    placeholder="Enter username"
-                                    placeholderTextColor={theme.background + "80"}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            {/* Bio */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>
-                                    Bio
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        {
-                                            color: theme.background,
-                                            borderColor: theme.background,
-                                            minHeight: 80,
-                                            textAlignVertical: "top",
-                                        },
-                                    ]}
-                                    value={editBio}
-                                    onChangeText={setEditBio}
-                                    placeholder="Tell us about yourself..."
-                                    placeholderTextColor={theme.background + "80"}
-                                    multiline
-                                    numberOfLines={4}
-                                />
-                            </View>
-
-                            {errorMsg && (
-                                <Text
-                                    style={{
-                                        marginTop: 6,
-                                        marginBottom: 6,
-                                        color: "#b00020",
-                                        textAlign: "center",
-                                    }}
-                                >
-                                    {errorMsg}
-                                </Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveButton,
-                                    {
-                                        backgroundColor: theme.primary || theme.text,
-                                        opacity: saving ? 0.6 : 1,
-                                    },
-                                ]}
-                                onPress={handleSave}
-                                disabled={saving}
-                            >
-                                <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-                                    {saving ? "Saving..." : "Save Changes"}
-                                </Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
+                
             </View>
 
             {/* 2. SCROLLABLE CONTENT AREA */}
@@ -372,6 +337,39 @@ export default function ProfileScreen() {
                     </ScrollView>
                 </View>
             </ScrollView>
+            
+            {/* ---------- EDIT PROFILE MODAL ---------- */}
+            <EditProfileModal
+                visible={isEditModalVisible}
+                username={username}
+                bio={bio}
+                saving={saving}
+                errorMsg={errorMsg}
+                onClose={() => setIsEditModalVisible(false)}
+                onSave={handleProfileSave}
+                onChangePhoto={() => setIsPhotoSheetVisible(true)}
+            />
+
+            <EditPhotoModal
+                visible={isPhotoSheetVisible}
+                onClose={() => setIsPhotoSheetVisible(false)}
+                onChooseFromLibrary={() => {
+                    if (!userId) return;
+                    changeAvatar(
+                    userId,
+                    () => setIsEditModalVisible(false),
+                    "library"
+                    );
+                }}
+                onTakePhoto={() => {
+                    if (!userId) return;
+                    changeAvatar(
+                    userId,
+                    () => setIsEditModalVisible(false),
+                    "camera"
+                    );
+                }}
+            />
         </View>
     );
 }
@@ -551,6 +549,20 @@ function getStyles(theme: any) {
         },
         friendsLink: {
             textDecorationLine: "underline",
+        },
+        avatarWrapper: {
+            position: "relative",
+        },
+        avatarSpinnerOverlay: {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.25)",
+            borderRadius: IMAGE_SIZE / 2,
         },
     });
 }

@@ -8,10 +8,6 @@ const paths = {
   byId: "/tasks/{task_id}", // DELETE 
 } as const;
 
-// helper to fill {user_id}
-function fillId(tpl: string, id: string) {
-  return tpl.replace("{user_id}", encodeURIComponent(id));
-}
 
 function fillTaskId(tpl: string, taskId: string) {
   return tpl.replace("{task_id}", encodeURIComponent(taskId));

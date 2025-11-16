@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, File
 from PIL import UnidentifiedImageError
 from shared.auth import get_current_user_auth
 from shared.exceptions.auth import AuthError
@@ -29,9 +29,9 @@ images_router = APIRouter()
     tags=["images"],
 )
 async def image_upload(
-    user_id: str,
-    file: UploadFile,
     container_name: str,
+    user_id: str,
+    file: UploadFile = File(...),
     image_service: ImageService = Depends(get_image_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),
 ) -> Image:

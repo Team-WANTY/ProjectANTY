@@ -1,4 +1,4 @@
-// app-mobile/services/auth-api.ts
+// app-mobile/services/api/auth-api.ts
 import { api } from "../http/client";
 import type { ApiResult } from "../../../common/http/types";
 import { toMessage } from "../../../common/http/types";
