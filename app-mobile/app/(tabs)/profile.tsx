@@ -27,8 +27,9 @@ import { profileApi } from "@/services/api/profiles-api";
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 // --- Mock Data ---
+// Note: friendsCount will be fetched from backend when integrated
 const userData = {
-    friends: 3,
+    friendsCount: 3, // This will be dynamic from backend
     likes: 0,
     profilePicture: "../../assets/images/default-avatar.png",
 };
@@ -172,7 +173,11 @@ export default function ProfileScreen() {
                     <View style={styles.userInfo}>
                         <Text style={styles.displayUsername}>{username}</Text>
                         <View style={styles.socialStats}>
-                            <Text style={styles.socialText}>{userData.friends} Friends</Text>
+                            <TouchableOpacity onPress={() => router.push("../friends" as any)}>
+                                <Text style={styles.socialText}>
+                                    {userData.friendsCount} <Text style={styles.friendsLink}>Friends</Text>
+                                </Text>
+                            </TouchableOpacity>
                             <Text style={styles.socialText}>{userData.likes} Likes</Text>
                         </View>
                     </View>
@@ -543,6 +548,9 @@ function getStyles(theme: any) {
             fontWeight: "bold",
             textAlign: "center",
             lineHeight: 10,
+        },
+        friendsLink: {
+            textDecorationLine: "underline",
         },
     });
 }
