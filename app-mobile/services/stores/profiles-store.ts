@@ -4,15 +4,17 @@ import { persist, createJSONStorage  } from "zustand/middleware";
 import { storage } from "../storage/async-storage";
 
 type ProfileUpdate = {
-  id?: string;
-  bio?: string;
-  avatarUrl?: string;
+  userId?: string;
+  bio?: string | null;
+  avatarImageId?: string | null;
+  avatarUrl?: string | null;
 };
 
 type ProfileState = {
   userId: string | null;
   bio: string | null;
   avatarUrl: string | null;
+  avatarImageId: string | null;
   lastProfileSaveAt: number | null;
 
   isAvatarUploading: boolean;
@@ -28,15 +30,15 @@ export const useProfileStore = create<ProfileState>()(
       userId: null,
       bio: null,
       avatarUrl: null,
+       avatarImageId: null,
       lastProfileSaveAt: null,
       isAvatarUploading: false,
       setAvatarUploading: (val) => set({ isAvatarUploading: val }),
 
-      setProfile: ({ id, bio, avatarUrl }) =>
+      setProfile: (update) =>
         set((state) => ({
-          userId: id ?? state.userId,
-          bio: bio ?? state.bio,
-          avatarUrl: avatarUrl ?? state.avatarUrl,
+          ...state,
+          ...update,
           lastProfileSaveAt: Date.now(),
         })),
         
@@ -44,6 +46,7 @@ export const useProfileStore = create<ProfileState>()(
         userId: null, 
         bio: null, 
         avatarUrl: null, 
+        avatarImageId: null,
         lastProfileSaveAt: null, 
         isAvatarUploading: false,
       }),

@@ -16,7 +16,7 @@ function fillId(tpl: string, id: string) {
 // PATCH body must include user_id per backend 
 export type ProfileUpdateBody = {
   bio?: string;
-  avatar_image_id?: string;
+  avatar_image_id?: string | null;
 
   // future fields
   unlocked_badges?: string[];

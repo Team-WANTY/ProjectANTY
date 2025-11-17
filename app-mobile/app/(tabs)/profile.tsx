@@ -26,7 +26,7 @@ import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
 import { EditProfileModal} from "@/components/profile-edit-modal"
-import { changeAvatar } from "@/services/actions/profile-actions";
+import { changeAvatar } from "@/services/actions/avatar-update";
 import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
 
 
@@ -84,7 +84,6 @@ export default function ProfileScreen() {
     const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
-
 
 
     function openEditModal() {
@@ -147,57 +146,79 @@ export default function ProfileScreen() {
         * background queue systems when backend is working again
         */
     };
- 
-
-    async function handleChangePhoto(userId: string, closeEditModal: () => void) {
-        // Pick image
-        const picked = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: "images",
-            allowsEditing: true,
-            quality: 0.7,
-        });
-
-        if (picked.canceled) return;
-
-        const asset = picked.assets[0];
-
-        const rnFile = {
-            uri: asset.uri,
-            name: "avatar.jpg",
-            type: "image/jpeg",
-        };
-
-        // Optimistic UI: Update Zustand avatar immediately
-        useProfileStore.getState().setProfile({
-            avatarUrl: asset.uri, // temporary local preview
-        });
-
-        closeEditModal();
-
-        // Upload in background
-        try {
-            const uploadRes = await imagesApi.upload("images", userId, rnFile);
-
-            if (!uploadRes.ok) {
-            console.log("Image upload failed.");
+    
+    const handleRemoveAvatar = () => {
+        if (!userId) return;
+        
+        const {
+            avatarImageId: currentAvatarId,
+            setProfile,
+            setAvatarUploading,
+        } = useProfileStore.getState();
+        
+        // If there is no avatar, return
+        if (!currentAvatarId) {
+            console.log("No avatar to delete");
             return;
+        }
+
+        console.log("Deleting avatar in Zustand store");
+        // Clear avatar in UI optimistically 
+        setProfile({
+            userId,
+            avatarUrl: null,
+            avatarImageId: null,
+        });
+
+        setIsPhotoSheetVisible(false);
+
+        // If there's nothing to delete on backend, we're done
+        if (!currentAvatarId) {
+            return;
+        }
+
+        // Background work: DELETE /images + PATCH /profiles
+        (async () => {
+            try {
+                setAvatarUploading(true);
+                
+                console.log("Calling DELETE /images");
+                // DELETE /images/
+                const deleteRes = await imagesApi.remove(currentAvatarId);
+                if (!deleteRes.ok) {
+                    console.warn(
+                        "[ProfileScreen.handleRemoveAvatar] FAILED deleting image",
+                        deleteRes.status,
+                        deleteRes.message
+                    );
+                    // TODO
+                    // requeue & retry logic
+                }
+
+                console.log("Calling PATCH /profiles");
+                // PATCH /profiles/
+                const patchRes = await profileApi.update(userId, {
+                    avatar_image_id: null,
+                });
+                if (!patchRes.ok) {
+                    console.warn(
+                        "[ProfileScreen.handleRemoveAvatar] FAILED patching profile (avatar_image_id = null)",
+                        patchRes.status,
+                        patchRes.message
+                    );
+                    // TODO
+                    // requeue & retry logic
+                }
+                console.log("[handleRemoveAvatar] Avatar deleted in store and backend");
+            } catch (err) {
+                console.warn(
+                    "[ProfileScreen.handleRemoveAvatar] Unexpected background error",
+                    err
+                );
+            } finally {
+                setAvatarUploading(false);
             }
-
-            const record = uploadRes.data; // { id, blob_url}
-
-            // Save avatar_image_id to profile service
-            await profileApi.update(userId, {
-                avatar_image_id: record.id,
-            });
-
-            // Replace temporary local URI with real CDN URL
-            useProfileStore.getState().setProfile({
-            avatarUrl: record.url,
-            });
-        }
-        catch (err) {
-            console.log("Network error uploading avatar", err);
-        }
+        })();
     };
 
     // -------------------------------------------------------
@@ -229,14 +250,21 @@ export default function ProfileScreen() {
                     </View>
 
                     <View style={styles.avatarWrapper}>
-                        <Image
-                            source={
-                                avatarUrl
-                                    ? { uri: avatarUrl }
-                                    : require("../../assets/images/default-avatar.png")
-                            }
-                            style={styles.profileImage}
-                        />
+                        {avatarUrl ? (
+                            <Image source={{ uri: avatarUrl }} style={styles.profileImage} />
+                        ) : (
+                            <View
+                                style={[
+                                    styles.avatarFallback,
+                                    { backgroundColor: theme.primary },
+                                ]}
+                            >
+                                <Text style={styles.avatarInitial}>
+                                    {username?.[0]?.toUpperCase() ?? "?"}
+                                </Text>
+                            </View>
+                        )}
+
                         {isAvatarUploading && (
                             <View style={styles.avatarSpinnerOverlay}>
                                 <ActivityIndicator />
@@ -370,9 +398,7 @@ export default function ProfileScreen() {
                     "camera"
                     );
                 }}
-                onRemoveAvatar={()=> {
-                    return;
-                }}
+                onRemoveAvatar={handleRemoveAvatar}
             />
         </View>
     );
@@ -385,7 +411,7 @@ export default function ProfileScreen() {
 const SWOOSH_FACTOR = 0.55;
 const PADDING_HORIZONTAL = screenWidth * 0.05;
 const HEADER_BACKGROUND_HEIGHT = screenWidth * SWOOSH_FACTOR;
-const IMAGE_SIZE = screenWidth * 0.18;
+const IMAGE_SIZE = screenWidth * 0.25;
 
 function getStyles(theme: any) {
     return StyleSheet.create({
@@ -468,12 +494,9 @@ function getStyles(theme: any) {
             paddingTop: screenHeight * 0.01,
         },
         profileImage: {
-            width: IMAGE_SIZE,
-            height: IMAGE_SIZE,
+            width: "100%",
+            height: "100%",
             borderRadius: IMAGE_SIZE / 2,
-            borderWidth: 2,
-            borderColor: "#fff",
-            marginRight: PADDING_HORIZONTAL * 0.5,
         },
         userInfo: { flex: 1 },
         displayUsername: {
@@ -555,6 +578,12 @@ function getStyles(theme: any) {
             textDecorationLine: "underline",
         },
         avatarWrapper: {
+            width: IMAGE_SIZE,
+            height: IMAGE_SIZE,
+            borderRadius: IMAGE_SIZE / 2,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: PADDING_HORIZONTAL * 0.5,
             position: "relative",
         },
         avatarSpinnerOverlay: {
@@ -567,6 +596,18 @@ function getStyles(theme: any) {
             justifyContent: "center",
             backgroundColor: "rgba(0,0,0,0.25)",
             borderRadius: IMAGE_SIZE / 2,
+        },
+        avatarFallback: {
+            width: "100%",
+            height: "100%",
+            borderRadius: IMAGE_SIZE / 2,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        avatarInitial: {
+            fontSize: 46,
+            fontWeight: "700",
+            color: "white",
         },
     });
 }

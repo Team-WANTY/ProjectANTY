@@ -5,6 +5,7 @@ import { useUserStore } from "../stores/users-store";
 import { useProfileStore } from "../stores/profiles-store";
 import { tasksApi } from "../api/tasks-api";
 import { useTasksStore } from "../stores/tasks-store";
+import { imagesApi } from "../api/image-api";
 
 
 export async function loadUser() {
@@ -25,8 +26,37 @@ export async function loadProfile(userId?: string) {
     }
     throw new Error(result.message ?? "Failed to load profile");
   }
-  useProfileStore.getState().setProfile(result.data);
-  return result.data;
+  
+  const raw = result.data as any;
+  const newAvatarId: string | null = raw.avatar_image_id ?? null;
+
+  // pull store values
+  const {
+    avatarImageId: currentId,
+    avatarUrl: currentUrl,
+  } = useProfileStore.getState();
+
+  let avatarUrl: string | null = currentUrl ?? null;
+
+  // Only fetch if changed or not previously resolved
+  if (newAvatarId && newAvatarId !== currentId) {
+    try {
+      const img = await imagesApi.getUrl(newAvatarId);
+      if (img.ok) avatarUrl = img.data;
+    } catch (e) {
+      console.warn("Failed to resolve avatar", e);
+    }
+  }
+
+  // Update store
+  useProfileStore.getState().setProfile({
+    userId: id,
+    bio: raw.bio ?? null,
+    avatarUrl,
+    avatarImageId: newAvatarId,
+  });
+
+  return { ...raw, avatarUrl };
 }
 export async function loadTasks(userId?: string){
   const id = userId ?? useUserStore.getState().userId;
