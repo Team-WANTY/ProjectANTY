@@ -343,6 +343,7 @@ export default function ProfileScreen() {
                 visible={isEditModalVisible}
                 username={username}
                 bio={bio}
+                avatarUrl={avatarUrl}
                 saving={saving}
                 errorMsg={errorMsg}
                 onClose={() => setIsEditModalVisible(false)}
@@ -357,7 +358,7 @@ export default function ProfileScreen() {
                     if (!userId) return;
                     changeAvatar(
                     userId,
-                    () => setIsEditModalVisible(false),
+                    () => setIsPhotoSheetVisible(false),
                     "library"
                     );
                 }}
@@ -365,9 +366,12 @@ export default function ProfileScreen() {
                     if (!userId) return;
                     changeAvatar(
                     userId,
-                    () => setIsEditModalVisible(false),
+                    () => setIsPhotoSheetVisible(false),
                     "camera"
                     );
+                }}
+                onRemoveAvatar={()=> {
+                    return;
                 }}
             />
         </View>

@@ -55,6 +55,7 @@ export async function changeAvatar(
     }
 
     const asset = pickerResult.assets?.[0];
+    console.log("PICKED ASSET", JSON.stringify(asset, null, 2));
     if (!asset || !asset.uri) {
       throw new Error("No image selected.");
     }
@@ -76,7 +77,7 @@ export async function changeAvatar(
     if (!uploadRes.ok || !uploadRes.data) {
       throw new Error(uploadRes.message ?? "Image upload failed.");
     }
-
+    console.log("Image uploaded successfully");
     const image = uploadRes.data; // { id, container, url, uploader_user_id }
 
     // Tell profile-service which image to use
@@ -93,7 +94,7 @@ export async function changeAvatar(
     setProfile({
       avatarUrl: image.url,
     });
-
+    console.log("Image stored successfully");
     closeModal();
   } catch (err: any) {
     console.error("Error changing avatar:", err);

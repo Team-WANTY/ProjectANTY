@@ -43,6 +43,9 @@ export const imagesApi = {
 
       const base = fillContainer(paths.byContainer, container);
       const url = `${base}?user_id=${encodeURIComponent(userId)}`;
+
+      const start = Date.now();
+      console.log("[UPLOAD] Starting upload at", new Date(start).toISOString());
       const res = await api.post<ImageRecord>(url, form, {
         // override any JSON defaults and let RN handle the boundary
         headers: {
@@ -51,8 +54,13 @@ export const imagesApi = {
           "Content-Type": "multipart/form-data",
         },
         transformRequest: (data) => data, // don't JSON.stringify FormData
+        timeout: 60000,
       });
-
+      
+      const end = Date.now();
+      console.log(
+        `[UPLOAD] Upload finished. Duration: ${(end - start) / 1000}s`
+      );
       return {
         ok: true,
         status: res.status,
@@ -63,8 +71,19 @@ export const imagesApi = {
     catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
-      console.log("image upload error", status, JSON.stringify(data, null, 2));
 
+      console.log(
+        "image upload RAW error:",
+        error?.message,
+        error?.code,
+        error?.toJSON ? error.toJSON() : null
+      );
+
+      console.log(
+        "image upload error",
+        status,
+        data ? JSON.stringify(data, null, 2) : data
+      );
       const msg =
         status === 400 ? "Invalid image data"
         : status === 401 ? "Not authenticated"

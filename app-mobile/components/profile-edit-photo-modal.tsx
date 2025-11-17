@@ -5,7 +5,6 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
   Pressable,
 } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
@@ -15,6 +14,7 @@ export type EditPhotoModalProps = {
   onClose: () => void;
   onChooseFromLibrary: () => void;
   onTakePhoto: () => void;
+  onRemoveAvatar: () => void; // parent handles removing avatar
 };
 
 export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
@@ -22,6 +22,7 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
   onClose,
   onChooseFromLibrary,
   onTakePhoto,
+  onRemoveAvatar,
 }) => {
   const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -48,6 +49,11 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
 
   const handleClose = () => fadeOut(onClose);
 
+  const sheetTranslateY = fadeAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [40, 0],
+  });
+
   return (
     <Modal
       transparent
@@ -55,84 +61,118 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
       animationType="none"
       onRequestClose={handleClose}
     >
-      {/* Overlay with fade */}
+      {/* Dim overlay */}
       <Animated.View
         style={[
           styles.modalOverlay,
-          {
-            opacity: fadeAnim,
-          },
+          { opacity: fadeAnim },
         ]}
       >
-        {/* Backdrop press to close */}
+        {/* Tap outside to close */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
 
-        {/* Bottom sheet container */}
+        {/* Sliding bottom sheet */}
         <Animated.View
           style={[
             styles.bottomSheetContainer,
             {
-              backgroundColor: theme.border,
-              transform: [
-                {
-                  translateY: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [40, 0],
-                  }),
-                },
-              ],
+              backgroundColor: theme.inputBackground,
+              transform: [{ translateY: sheetTranslateY }],
             },
           ]}
         >
-          <View style={styles.bottomSheetHandle} />
+          <View
+            style={[
+              styles.bottomSheetHandle,
+              { backgroundColor: "rgba(255,255,255,0.4)" },
+            ]}
+          />
 
+          {/* Title */}
           <Text
             style={[
               styles.bottomSheetTitle,
-              { color: theme.background },
+              { color: theme.text },
             ]}
           >
-            Change profile photo
+            Avatar
           </Text>
 
-          <TouchableOpacity
-            style={styles.bottomSheetButton}
-            onPress={() => {
-              fadeOut(onChooseFromLibrary);
-            }}
+          {/* "Choose from gallery" row */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.optionRow,
+              styles.optionRowTop,
+              {
+                backgroundColor: pressed
+                  ? theme.cardBackground
+                  : theme.background,
+                borderBottomColor: theme.border,
+              },
+            ]}
+            onPress={() => fadeOut(onChooseFromLibrary)}
           >
             <Text
               style={[
-                styles.bottomSheetButtonText,
-                { color: theme.background },
+                styles.optionText,
+                { color: theme.text },
               ]}
             >
               Choose from gallery
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
-            style={styles.bottomSheetButton}
-            onPress={() => {
-              fadeOut(onTakePhoto);
-            }}
+          {/* "Take a photo" row */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.optionRow,
+              {
+                backgroundColor: pressed
+                  ? theme.cardBackground
+                  : theme.background,
+                borderBottomColor: theme.border,
+              },
+            ]}
+            onPress={() => fadeOut(onTakePhoto)}
           >
             <Text
               style={[
-                styles.bottomSheetButtonText,
-                { color: theme.background },
+                styles.optionText,
+                { color: theme.text },
               ]}
             >
               Take a photo
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
-            style={[styles.bottomSheetButton, styles.bottomSheetCancel]}
-            onPress={handleClose}
+          {/* "Remove Avatar" row */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.optionRow,
+              styles.optionRowBottom,
+              {
+                backgroundColor: pressed
+                  ? theme.cardBackground
+                  : theme.background,
+                borderBottomColor: theme.border,
+              },
+            ]}
+            onPress={() => fadeOut(onRemoveAvatar)}
           >
-            <Text style={styles.bottomSheetCancelText}>Cancel</Text>
-          </TouchableOpacity>
+            <Text
+              style={[
+                styles.optionText,
+                {
+                  color: "#d00",
+                  fontWeight: "600",
+                },
+              ]}
+            >
+              Remove Avatar
+            </Text>
+          </Pressable>
+
+          
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -150,7 +190,7 @@ const styles = StyleSheet.create({
   bottomSheetContainer: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 32,
+    paddingBottom: 12,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
@@ -159,27 +199,29 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.4)",
+    marginBottom: 8,
   },
   bottomSheetTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-    textAlign: "left",
+    fontWeight: "700",
+    marginBottom: 16,
+    textAlign: "center",
   },
-  bottomSheetButton: {
+  optionRow: {
     paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  bottomSheetButtonText: {
+  optionRowTop: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  optionRowBottom: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderBottomWidth: 0,
+  },
+  optionText: {
     fontSize: 16,
-  },
-  bottomSheetCancel: {
-    marginTop: 8,
-  },
-  bottomSheetCancelText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#d00",
   },
 });
