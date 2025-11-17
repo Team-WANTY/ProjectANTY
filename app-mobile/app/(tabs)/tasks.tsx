@@ -527,7 +527,8 @@ export default function TasksScreen() {
     };
 
     // Calculate tasks completed (for the header)
-    const completedCount = tasks.filter((t) => t.completed).length;
+    const completedCount = filtered.filter((t) => t.completed).length;
+
 
     const createTask = async () => {
         const title = newTask.title.trim();
