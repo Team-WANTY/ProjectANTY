@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from PIL import UnidentifiedImageError
 from shared.auth import get_current_user_auth
 from shared.exceptions.auth import AuthError
