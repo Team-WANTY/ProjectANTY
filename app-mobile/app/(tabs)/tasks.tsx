@@ -1,118 +1,210 @@
-import React, { useState, useRef } from "react";
-import { 
-    View, 
-    Text, 
-    ScrollView, 
-    StyleSheet, 
-    Dimensions, 
-    TouchableOpacity, 
-    Animated,
-    Modal,
-    TextInput,
-    Pressable
-} from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
+    Modal, TextInput, Pressable, ActivityIndicator, Animated as RNAnimated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Swipeable, RectButton } from 'react-native-gesture-handler';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import  Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
+
+import { RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
-
 import { useTheme } from "@/context/ThemeContext";
-import { HeaderBar } from "@/components/header-bar"
+import { HeaderBar } from "@/components/header-bar";
+
+import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
+import { useUserStore } from "@/services/stores/users-store";
+import { useTasksStore } from "@/services/stores/tasks-store";
+
+import { NewTaskModal  } from "@/components/task-create-modal";
+import { EditTaskModal } from "@/components/task-edit-modal";
+import { CategoryCreateModal } from "@/components/category-create-modal";
+import { CategoryEditModal } from "@/components/category-edit-modal";
 
 const { width } = Dimensions.get("window");
 
-// --- Mock Data ---
-const taskList = [
-    { id: 1, title: "Buy work clothes",       dueDate: "9/17/2025",     category: "Work",       completed: false , dateISO: "2025-09-17"},
-    { id: 2, title: "Distributed Network HW", dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
-    { id: 3, title: "Exercise",               dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
-    { id: 4, title: "Research Paper Draft",   dueDate: "9/17/2025",     category: "School",     completed: false , dateISO: "2025-09-17"},
-    { id: 5, title: "Groceries",              dueDate: "9/17/2025",     category: "Personal",   completed: false , dateISO: "2025-09-17"},
-    { id: 6, title: "Coding Challenge",       dueDate: "9/17/2025",     category: "Routine",    completed: false , dateISO: "2025-09-17"},
-    { id: 7, title: "Meal Prep",              dueDate: "9/17/2025",     category: "Errands",    completed: false , dateISO: "2025-09-17"},
-    { id: 8, title: "Go Buy some meat",       dueDate: "9/18/2025",     category: "Errands",    completed: false , dateISO: "2025-09-18"},
-];
 
-// Mock Categories
-const categories = ["Personal", "School", "Routine", "Work", "Errands"];
+// MM/DD/YYYY -> valid?
+const isValidDateFormat = (dateStr: string) => {
+  const dateRegex =
+    /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+  if (!dateRegex.test(dateStr)) return false;
 
-// pad helper
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-// date function
-const formatDate = (d: Date) => {
-    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; // for task filtering, ex 2025-09-18
-    const display = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`; // UI display, ex 9/17/2025
-    return { iso, display };
+  const [month, day, year] = dateStr.split("/").map(Number);
+  const d = new Date(year, month - 1, day);
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month - 1 &&
+    d.getDate() === day
+  );
 };
 
-// --- Task Item Component --
-const TaskItem = ({ task, theme, onToggle, onDelete }: any) => {
-    const anim = useRef(new Animated.Value(1)).current; // 1 => visible, 0 => hidden
+// MM/DD/YYYY -> Unix timestamp (seconds)
+const dateStringToUnix = (dateStr: string): number => {
+  const [month, day, year] = dateStr.split("/").map(Number);
+  const d = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+};
+
+// Unix timestamp (seconds) -> nice label
+const unixToDisplayDate = (ts?: number | null): string => {
+  if (!ts) return "No due date";
+  const d = new Date(ts * 1000);
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+};
+
+// Helper to compare selected date to tasks' due_date
+const unixToDate = (ts?: number | null): Date | null => {
+  if (!ts) return null;
+  return new Date(ts * 1000);
+};
+
+// Turn repeat rule from front end to match backend
+const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
+  if (!label || label === "None") return null;
+
+  const freqMap: Record<string, FrequencySpecifier> = {
+    Daily: "daily",
+    Weekly: "weekly",
+    Monthly: "monthly",
+    Yearly: "yearly",
+  };
+
+  const specifier = freqMap[label];
+  if (!specifier) return null;
+
+  return {
+    frequency: {
+      specifier,
+      value: 1,
+    },
+    duration: {
+      specifier: "forever",
+      value: null,
+    },
+  };
+};
+
+// Turn repeat rule from back end to a label for frontend
+const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
+  if (!rule || !rule.frequency || !rule.frequency.specifier) return null;
+
+  switch (rule.frequency.specifier) {
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "monthly":
+      return "Monthly";
+    case "yearly":
+      return "Yearly";
+    default:
+      return null;
+  }
+};
+
+// Task Animation
+function TaskItemWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
+      layout={LinearTransition.springify().duration(1000)} // Animation here
+      style={{ width: "100%" }}
+    >
+      {children}
+    </Animated.View>
+  )
+};
+
+// --- Task Item Component ---
+const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
+    const anim = useRef(new RNAnimated.Value(1)).current; // 1 => visible, 0 => hidden
 
     const handleDeletePress = () => {
-        // subtle exit animation (fade + collapse)
-        Animated.timing(anim, {
-            toValue: 0,
-            duration: 220,
-            useNativeDriver: true,
+        RNAnimated.timing(anim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
         }).start(() => {
             onDelete(task.id);
         });
     };
 
-    const animatedStyle = {
-        opacity: anim,
-    } as any;
+    const animatedStyle = { opacity: anim } as any;
+
     const renderRightActions = (_progress: any, _dragX: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
-        
+
         return (
-            <Animated.View style={[{ opacity: anim }]}>
-                <RectButton 
-                    style={[
-                        styles.rightAction, 
-                        { 
-                            backgroundColor: '#ff4d4f',
-                            width: maxWidth,
-                        }
-                    ]} 
-                    onPress={handleDeletePress}
-                >
-                    <View style={styles.trashIconContainer}>
-                        <Ionicons name="trash-outline" size={20} color="#fff" />
-                    </View>
-                </RectButton>
-            </Animated.View>
+        <RNAnimated.View style={[{ opacity: anim }]}>
+            <RectButton
+            style={[
+                styles.rightAction,
+                {
+                backgroundColor: "#ff4d4f",
+                width: maxWidth,
+                },
+            ]}
+            onPress={handleDeletePress}
+            >
+            <View style={styles.trashIconContainer}>
+                <Ionicons name="trash-outline" size={20} color="#fff" />
+            </View>
+            </RectButton>
+        </RNAnimated.View>
         );
     };
 
+    const dueLabel = unixToDisplayDate(task.due_date);
+    const repeatLabel = formatRepeatRule(task.repeat_rule);
+
     return (
-        <Swipeable
+        <ReanimatedSwipeable
             renderRightActions={renderRightActions}
             overshootRight={false}
             rightThreshold={40}
-            friction={2}>
-            <Animated.View style={[styles.taskCard, animatedStyle, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-                <View style={styles.taskTextContent}>
-                    <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>{task.title}</Text>
-                    <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>
-                        {task.dueDate}
-                        {task.repeat ? ` • ${task.repeat}` : ''}
-                    </Text>
-                </View>
-                <View style={styles.rightControls}>
-                    <TouchableOpacity style={styles.checkbox} onPress={() => onToggle(task.id)}>
-                        <View style={[
-                            styles.checkboxBox,
-                            { borderColor: theme.secondaryText, backgroundColor: task.completed ? theme.primary : 'transparent' }
-                        ]}>
-                            {task.completed && <Ionicons name="checkmark-sharp" size={16} color={theme.text} />}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </Animated.View>
-        </Swipeable>
+            friction={2}
+        >
+            <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(task.id)}>
+                <RNAnimated.View
+                style={[
+                    styles.taskCard,
+                    animatedStyle,
+                    { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                ]}
+                >
+                    <View style={styles.taskTextContent}>
+                        <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>
+                            {task.name}
+                        </Text>
+                        <Text style={[styles.taskDueDate, { color: theme.secondaryText }]}>
+                            {dueLabel}
+                            {repeatLabel ? ` • ${repeatLabel}` : ""}
+                        </Text>
+                    </View>
+                    <View style={styles.rightControls}>
+                        <TouchableOpacity
+                            style={styles.checkbox}
+                            onPress={() => onToggle(task.id)}
+                        >
+                            <View
+                                style={[
+                                    styles.checkboxBox,
+                                    {
+                                        borderColor: theme.secondaryText,
+                                        backgroundColor: task.completed ? theme.primary : "transparent",
+                                    },
+                                ]}
+                            >
+                                {task.completed && (
+                                    <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </RNAnimated.View>
+            </TouchableOpacity>
+        </ReanimatedSwipeable>
     );
 };
 
@@ -123,7 +215,7 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
         borderColor: theme.primary,
     };
     const textStyle = {
-    color: isActive ? theme.text : theme.secondaryText,
+        color: isActive ? theme.text : theme.secondaryText,
     };
 
     return (
@@ -138,52 +230,178 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
     );
 };
 
-
 export default function TasksScreen() {
+    // pull tasks from Zustand
+    const userId = useUserStore((s) => s.userId);
+    const tasks = useTasksStore((s) => s.tasks);
+    const insertTask = useTasksStore((s) => s.insertTask);
+    const updateTask = useTasksStore((s) => s.updateTask);
+    const removeTask = useTasksStore((s) => s.removeTask);
+
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
-    const [tasks, setTasks] = useState(taskList);
     const router = useRouter();
+
+    const [date, setDate] = useState(new Date());
+    const display = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    // Filter Tasks for selected Date
+    const filtered = tasks.filter((t) => {
+        const taskDate = unixToDate(t.due_date);
+        const matchDate = !taskDate
+        ? true
+        : (
+            taskDate.getFullYear() === date.getFullYear() &&
+            taskDate.getMonth() === date.getMonth() &&
+            taskDate.getDate() === date.getDate()
+        );
+
+        const matchCategory = !selectedCategory || t.cat === selectedCategory;
+
+        return matchDate && matchCategory;
+    });
+
+    // Sort the filtered tasks
+    const sorted = [...filtered].sort((a, b) => {
+        const aCompleted = !!a.completed;
+        const bCompleted = !!b.completed;
+
+        // Incomplete first, completed last
+        if (aCompleted !== bCompleted) {
+            return aCompleted ? 1 : -1; // a goes after b if a is completed
+        }
+
+        // Within each group, has due date first, no due date last
+        const aNoDate = !a.due_date || a.due_date === 0;
+        const bNoDate = !b.due_date || b.due_date === 0;
+
+        if (aNoDate && !bNoDate) return 1;
+        if (!aNoDate && bNoDate) return -1;
+
+        // If both have dates (or both no date and same completed status),
+        // fall back to name to make the order stable
+        return a.name.localeCompare(b.name);
+    });
+
     
+
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
-    const [categoriesList, setCategoriesList] = useState(categories);
+    const [categoriesList, setCategoriesList] = useState<string[]>([]);
     
+    // derive categories from tasks whenever tasks change
+    useEffect(() => {
+    const fromTasks = Array.from(
+        new Set(
+        tasks
+            .map((t) => t.cat)
+            .filter((c): c is string => !!c)
+        )
+    ).sort();
+
+    // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
+    setCategoriesList((prev) => {
+        const merged = new Set([...prev, ...fromTasks]);
+        return Array.from(merged).sort();
+    });
+    }, [tasks]);
+
     // Category context menu states
     const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
     const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState<string | null>(null);
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
     
+    const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
+    const [editingTask, setEditingTask] = useState<any | null>(null);
+
     // Form states
     const [newCategoryName, setNewCategoryName] = useState("");
-    const [newTask, setNewTask] = useState({
+    const [newTask, setNewTask] = useState<{
+        title: string;
+        description: string;
+        category: string;
+        repeatLabel: string; // "None" | "Daily" | "Weekly" | ...
+        dueDate: string; // MM/DD/YYYY
+    }>({
         title: "",
+        description: "",
         category: "",
+        repeatLabel: "",
         dueDate: "",
-        repeat: "",
     });
+
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
     const [taskNameError, setTaskNameError] = useState("");
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new RNAnimated.Value(0)).current;
+    const [loading, setLoading] = useState(false);
 
     // Animation helpers
     const fadeIn = () => {
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
+        RNAnimated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
         }).start();
     };
 
     const fadeOut = (onComplete: () => void) => {
-        Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
+        RNAnimated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
         }).start(onComplete);
+    };
+
+    // Update all tasks with a given category name -> new category name
+    const renameTasksCategory = async (oldName: string, newName: string) => {
+        // Find all tasks that is in that category
+        const tasksToUpdate = tasks.filter((t) => t.cat === oldName);
+
+        // Optimistically update the local store
+        tasksToUpdate.forEach((t) => {
+            updateTask(t.id, { cat: newName });
+        });
+
+        // PATCH calls in the background sequentially
+        for (const t of tasksToUpdate) {
+            try {
+                const res = await tasksApi.update({id: t.id, cat: newName});
+                if (!res.ok) {
+                    console.log("Failed to update category on backend");
+                }
+            }
+            catch (error) {
+                console.log("Network error");
+            }
+        }
+    };
+
+    // Set cat to null in all relevant when deleting a category
+    const clearTasksCategory = async (name: string) => {
+        // Find all tasks that is in that category
+        const tasksToUpdate = tasks.filter((t) => t.cat === name);
+
+        // Optimistically update the local store
+        tasksToUpdate.forEach((t) => {
+            updateTask(t.id, { cat: null });
+        });
+
+        // PATCH calls in the background sequentially
+        for (const t of tasksToUpdate) {
+            try {
+                const res = await tasksApi.update({id: t.id, cat:null});
+                if (!res.ok) {
+                    console.log("Failed to delete category on backend");
+                }
+            }
+            catch (error) {
+                console.log("Network error");
+            }
+        }
     };
 
     // Category handlers
@@ -207,183 +425,291 @@ export default function TasksScreen() {
     };
 
     const handleDeleteCategory = () => {
-        if (selectedCategoryForMenu) {
-            setCategoriesList(prev => prev.filter(cat => cat !== selectedCategoryForMenu));
-            // Also clear the selection if the deleted category was selected
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(null);
-            }
-            fadeOut(() => setCategoryMenuVisible(false));
+        if (!selectedCategoryForMenu) return;
+        const toDelete = selectedCategoryForMenu;
+
+        // Update UI categories
+        setCategoriesList((prev) => prev.filter((cat) => cat !== toDelete));
+
+        // Clear selection if needed
+        if (selectedCategory === toDelete) {
+            setSelectedCategory(null);
         }
+        
+        // Delete category in the background
+        clearTasksCategory(toDelete).catch((error) => {
+            console.log("Failed to delete category", error);
+        });
+
+        fadeOut(() => setIsEditCategoryModalVisible(false));
     };
 
     const handleSaveEditCategory = () => {
-        if (selectedCategoryForMenu && editCategoryName.trim()) {
-            setCategoriesList(prev => 
-                prev.map(cat => cat === selectedCategoryForMenu ? editCategoryName.trim() : cat)
-            );
-            // Update selectedCategory if it was the edited one
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(editCategoryName.trim());
-            }
-            fadeOut(() => {
-                setIsEditCategoryModalVisible(false);
-                setEditCategoryName("");
-                setSelectedCategoryForMenu(null);
-            });
-        }
-    };
+        if (!selectedCategoryForMenu) return;
 
-    // Date validation helper
-    const isValidDateFormat = (date: string) => {
-        const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-        if (!dateRegex.test(date)) return false;
-        
-        const [month, day, year] = date.split('/').map(Number);
-        const dateObj = new Date(year, month - 1, day);
-        return dateObj.getMonth() === month - 1 && 
-               dateObj.getDate() === day && 
-               dateObj.getFullYear() === year;
+        const oldName = selectedCategoryForMenu;
+        const newName = editCategoryName.trim();
+        if (!newName) return;
+
+        // Update UI categories
+        setCategoriesList((prev) => prev.map((cat) => (cat === oldName ? newName : cat)));
+
+        // Update current selection if needed
+        if (selectedCategory === oldName) {
+            setSelectedCategory(newName);
+        }
+
+        // Update category in the background
+        renameTasksCategory(oldName, newName).catch((error) => {
+            console.log("Failed to update category", error);
+        });
+
+        fadeOut(() => setIsEditCategoryModalVisible(false));
     };
     
-    // date state
-    const [date, setDate] = useState(new Date(2025, 8, 17)); // 0 indexed month so 0 - Jan, 1 - Feb... 
-    const { iso: selectedDate, display } = formatDate(date);
+    const handleSaveNewCategory = () => {
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) return;
 
-    // state: no category selected by default, show all tasks when no category selected
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-    // task filtering logic: filter by date, then filter by category
-    const filtered = tasks.filter(t => {
-        const dateMatch = t.dateISO === selectedDate;
-        const categoryMatch = !selectedCategory || t.category === selectedCategory; 
-        return dateMatch && categoryMatch;
-    });
-
-    const handleToggleTask = (id: number) => {
-        setTasks(prevTasks =>
-            prevTasks.map(task =>
-                task.id === id ? { ...task, completed: !task.completed } : task
-            )
-        );
+        setCategoriesList((prev) => [
+            ...prev,
+            trimmed,
+        ]);
+        setNewCategoryName("");
+        fadeOut(() => setIsNewCategoryModalVisible(false));
     };
 
-    const handleDeleteTask = (id: number) => {
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+    const handleEditTask = (id: string) => {
+        const taskToEdit = tasks.find((t) => t.id === id);
+        if (!taskToEdit) return;
+
+        setEditingTask({
+            id: taskToEdit.id,
+            title: taskToEdit.name,
+            description: taskToEdit.desc,
+            category: taskToEdit.cat ?? null,
+            repeatLabel: formatRepeatRule(taskToEdit.repeat_rule) || "",
+            dueDate: unixToDisplayDate(taskToEdit.due_date),
+        });
+
+        setIsEditTaskModalVisible(true);
+        setDateError("");
+    };
+
+    // Toggle completion using the store
+    const handleToggleTask = (id: string) => {
+        const t = tasks.find((task) => task.id === id);
+        if (!t) return;
+        updateTask(id, { completed: !t.completed });
+    };
+
+    // Delete Task
+    const handleDeleteTask = async (id: string) => {
+        const existing = tasks.find((t) => t.id === id);
+        if (existing) {
+            console.log(`Deleting Task: ${existing?.name}`)
+        }
+        
+        // Optimistically remove from UI
+        removeTask(id);
+
+        const res = await tasksApi.remove(id);
+
+        if (!res.ok) {
+            console.log("Failed to delete task:", res.status, res.message, res.detail);
+            // roll back in Zustand if delete failed
+            if (existing) {
+                insertTask(existing);
+            }
+            return;
+        }
+        console.log(`Task Deleted`)
     };
 
     // Calculate tasks completed (for the header)
-    const completedCount = tasks.filter(t => t.completed).length;
+    const completedCount = filtered.filter((t) => t.completed).length;
+
+
+    const createTask = async () => {
+        const title = newTask.title.trim();
+        const dueDateRaw = newTask.dueDate.trim();
+        const repeatRule = buildRepeatRuleFromLabel(newTask.repeatLabel);
+
+        if (!title) {
+            setTaskNameError("Task name is required");
+            return;
+        }
+        if (!dueDateRaw) {
+            setDateError("Due date is required");
+            return;
+        }
+        if (!isValidDateFormat(dueDateRaw)) {
+            setDateError("Invalid date format. Use MM/DD/YYYY");
+            return;
+        }
+
+        if (!userId) {
+            console.log("NO user id");
+            router.replace("/login");
+            return;
+        }
+
+        setLoading(true);
+        setDateError("");
+        const dueTimestamp = dateStringToUnix(dueDateRaw);
+
+        try {
+            const payload = {
+                user_id: userId,
+                name: title,
+                desc: newTask.description?.trim() || "",
+                cat: newTask.category || null,
+                due_date: dueTimestamp,
+                repeat_rule: repeatRule,
+            };
+
+            const res = await tasksApi.create(payload);
+            if (!res.ok || !res.data) {
+                console.log("Failed to create task:", res.status, res.message, res.detail);
+                setDateError(
+                    typeof res.message === "string"
+                    ? res.message
+                    : "Failed to create task"
+                );
+                return;
+            }
+
+            const created = res.data; // { id, user_id, name, desc, cat, repeat, due_date, ... }
+
+            console.log(
+                `Task Created: Task ID: ${created.id}, Task name: ${created.name}, description: ${created.desc}, category: ${created.cat}, 
+                    repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, due_date: ${unixToDisplayDate(created.due_date)}`
+            );
+
+            if (created.id) {
+                // Persist in Zustand
+                insertTask({
+                    ...created,
+                    completed: false,
+                });
+            }
+
+            // reset + close
+            setNewTask({
+                title: "",
+                description: "",
+                category: "",
+                repeatLabel: "",
+                dueDate: "",
+            });
+            fadeOut(() => setIsNewTaskModalVisible(false));
+        } finally {
+        setLoading(false);
+        }
+    };
+
+    const updateExistingTask = async () => {
+        if (!editingTask || !editingTask.title.trim()) return;
+        setLoading(true);
+        try {
+            const dueTimestamp = dateStringToUnix(editingTask.dueDate);
+            const repeatRule = buildRepeatRuleFromLabel(editingTask.repeatLabel);
+            
+            const res = await tasksApi.update({
+                id: editingTask.id,
+                name: editingTask.title,
+                desc: editingTask.description,
+                cat: editingTask.category,
+                due_date: dueTimestamp,
+                repeat_rule: repeatRule,
+                
+            });
+            if (res.ok && res.data) {
+                console.log("Task Updated");
+                updateTask(editingTask.id, res.data);
+                
+            } else {
+                console.log("Update failed", res.message);
+            }
+
+            fadeOut(() => setIsEditTaskModalVisible(false));
+            setEditingTask(null);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-
             {/* 1. Top Navigation Bar */}
             <HeaderBar
                 title="Tasks"
                 showTitle={false}
-                onNotificationPress={() => { /* navigation.navigate('Notifications') */ }}
-                onSettingsPress={() => { router.push("../settings") }}
+                onNotificationPress={() => {}}
+                onSettingsPress={() => {
+                router.push("../settings");
+                }}
             />
 
             {/* Content ScrollView */}
-            <ScrollView contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}>
-
+            <ScrollView
+                contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}
+            >
                 {/* 2. Date Selector */}
                 <View style={styles.dateSelectorSection}>
-                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()-1))}>
+                    <TouchableOpacity
+                        onPress={() =>
+                            setDate(
+                                (d) =>
+                                new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
+                            )
+                        }
+                    >
                         <Ionicons name="chevron-back" size={30} color={theme.text} />
                     </TouchableOpacity>
 
-                    <View style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}>
-                        <Text style={[styles.dateText, { color: theme.secondaryText }]}>{display}</Text>
+                    <View
+                        style={[styles.dateBox, { backgroundColor: theme.cardBackground }]}
+                    >
+                        <Text style={[styles.dateText, { color: theme.secondaryText }]}>
+                            {display}
+                        </Text>
                     </View>
 
-                    <TouchableOpacity onPress={() => setDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()+1))}>
+                    <TouchableOpacity
+                        onPress={() =>
+                            setDate(
+                                (d) =>
+                                new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+                            )
+                        }
+                    >
                         <Ionicons name="chevron-forward" size={30} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.tasksCompletedText, { color: theme.cardBackground }]}>
+                <Text
+                    style={[styles.tasksCompletedText, { color: theme.cardBackground }]}
+                >
                     {completedCount} Tasks Completed
                 </Text>
 
                 {/* 3. Categories Header and Tags */}
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Categories</Text>
-                    <TouchableOpacity onPress={() => {
-                        setIsNewCategoryModalVisible(true);
-                        fadeIn();
-                    }}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                        Categories
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setIsNewCategoryModalVisible(true);
+                            fadeIn();
+                        }}
+                    >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
-                </View>
-
-                {/* New Category Modal */}
-                <Modal
-                    transparent={true}
-                    visible={isNewCategoryModalVisible}
-                    onRequestClose={() => {
-                        fadeOut(() => setIsNewCategoryModalVisible(false));
-                    }}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close new category"
-                                onPress={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Category</Text>
-                            
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category Name</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={newCategoryName}
-                                    onChangeText={setNewCategoryName}
-                                    placeholder="Enter category name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                                onPress={() => {
-                                    if (newCategoryName.trim()) {
-                                        setCategoriesList(prev => [...prev, newCategoryName.trim()]);
-                                        setNewCategoryName("");
-                                        fadeOut(() => setIsNewCategoryModalVisible(false));
-                                    }
-                                }}
-                            >
-                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Category</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
-
+                </View>  
+                
+                {/* Horizontal Scroll for Categories */}
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -506,225 +832,132 @@ export default function TasksScreen() {
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
-                    <TouchableOpacity onPress={() => {
-                        setIsNewTaskModalVisible(true);
-                        setDateError("");
-                        fadeIn();
-                    }}>
+                        <TouchableOpacity onPress={() => {
+                            setIsNewTaskModalVisible(true);
+                            setDateError("");
+                            setTaskNameError("");
+                            fadeIn();
+                        }}
+                    >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
-
-                {/* New Task Modal */}
-                <Modal
-                    transparent={true}
-                    visible={isNewTaskModalVisible}
-                    onRequestClose={() => {
-                        fadeOut(() => setIsNewTaskModalVisible(false));
-                    }}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close new task"
-                                onPress={() => fadeOut(() => setIsNewTaskModalVisible(false))}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>New Task</Text>
-                            
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        { 
-                                            color: theme.background, 
-                                            borderColor: taskNameError ? '#ff4d4f' : theme.background 
-                                        }
-                                    ]}
-                                    value={newTask.title}
-                                    onChangeText={(text) => {
-                                        setTaskNameError("");
-                                        setNewTask(prev => ({ ...prev, title: text }))
-                                    }}
-                                    placeholder="Enter task name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                                {taskNameError ? (
-                                    <Text style={styles.errorText}>{taskNameError}</Text>
-                                ) : null}
-                            </View>
-
-                            {/* Description removed per request */}
-
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Category</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                                    {categoriesList.map((cat) => (
-                                        <TouchableOpacity
-                                            key={cat}
-                                            style={[
-                                                styles.categoryOption,
-                                                {
-                                                    backgroundColor: newTask.category === cat ? theme.primary : 'transparent',
-                                                    borderColor: theme.background
-                                                }
-                                            ]}
-                                            onPress={() => setNewTask(prev => ({ ...prev, category: cat }))}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.categoryOptionText,
-                                                    { color: newTask.category === cat ? '#fff' : theme.background }
-                                                ]}
-                                            >
-                                                {cat}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-
-                            {/* Repeat Dropdown */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
-                                <Pressable
-                                    style={[styles.dropdown, { borderColor: theme.background }]}
-                                    onPress={() => setIsRepeatOpen((o) => !o)}
-                                >
-                                    <Text style={[styles.dropdownText, { color: theme.background }]}>{newTask.repeat || 'None'}</Text>
-                                    <Ionicons name="chevron-down" size={18} color={theme.background} />
-                                </Pressable>
-                                {isRepeatOpen && (
-                                    <View style={[styles.dropdownMenu, { backgroundColor: theme.cardBackground, borderColor: theme.background }] }>
-                                        {['None','Daily','Weekly','Monthly','Yearly'].map((opt) => (
-                                            <TouchableOpacity
-                                                key={opt}
-                                                style={styles.dropdownItem}
-                                                onPress={() => {
-                                                    const value = opt === 'None' ? '' : opt;
-                                                    setNewTask(prev => ({ ...prev, repeat: value }));
-                                                    setIsRepeatOpen(false);
-                                                }}
-                                            >
-                                                <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>{opt}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                )}
-                            </View>
-
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>Due Date (MM/DD/YYYY)</Text>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={newTask.dueDate}
-                                    onChangeText={(text) => {
-                                        setNewTask(prev => ({ ...prev, dueDate: text }));
-                                        setDateError("");
-                                    }}
-                                    placeholder="MM/DD/YYYY"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                                {dateError ? (
-                                    <Text style={styles.errorText}>{dateError}</Text>
-                                ) : null}
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                                onPress={() => {
-                                    if (!newTask.title.trim()) {
-                                        setTaskNameError("Task name is required");
-                                        return;
-                                    }
-
-                                    // If no due date provided, accept and set to 'no due date'
-                                    let dueDateValue = newTask.dueDate.trim();
-                                    let dateISOValue = "";
-
-                                    if (dueDateValue === "") {
-                                        dueDateValue = "No due date";
-                                        // associate to currently selected date so it appears in today's list
-                                        dateISOValue = selectedDate;
-                                    } else {
-                                        if (!isValidDateFormat(dueDateValue)) {
-                                            setDateError("Please enter a valid date in MM/DD/YYYY format");
-                                            return;
-                                        }
-                                        const [month, day, year] = dueDateValue.split('/');
-                                        const dateObj = new Date(+year, +month - 1, +day);
-                                        dateISOValue = formatDate(dateObj).iso;
-                                    }
-
-                                    const newTaskItem = {
-                                        id: tasks.length + 1,
-                                        title: newTask.title.trim(),
-                                        category: newTask.category || "",
-                                        dueDate: dueDateValue,
-                                        dateISO: dateISOValue,
-                                        repeat: newTask.repeat || "",
-                                        completed: false
-                                    };
-
-                                    // Append to the tasks list
-                                    setTasks(prev => [...prev, newTaskItem]);
-
-                                    // Reset form
-                                    setNewTask({
-                                        title: "",
-                                        category: "",
-                                        dueDate: "",
-                                        repeat: "",
-                                    });
-                                    setTaskNameError("");
-
-                                    // Close modal with fade out
-                                    fadeOut(() => setIsNewTaskModalVisible(false));
-                                }}
-                            >
-                                <Text style={[styles.saveButtonText, { color: '#fff' }]}>Add Task</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
-
+   
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
-                    {filtered.map((task) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            theme={theme}
-                            onToggle={handleToggleTask}
-                            onDelete={handleDeleteTask}
-                        />
+                    {sorted.map((task) => (
+                        <TaskItemWrapper key={task.id}>
+                            <TaskItem
+                                task={task}
+                                theme={theme}
+                                onPress={handleEditTask}
+                                onToggle={handleToggleTask}
+                                onDelete={handleDeleteTask}
+                            />
+                        </TaskItemWrapper>
                     ))}
                 </View>
-
             </ScrollView>
 
+            <CategoryCreateModal
+                visible={isNewCategoryModalVisible}
+                fadeAnim={fadeAnim}
+                theme={theme}
+                value={newCategoryName}
+                onChangeValue={setNewCategoryName}
+                onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                onSubmit={handleSaveNewCategory}
+            />
+
+            <CategoryEditModal
+                visible={isEditCategoryModalVisible}
+                fadeAnim={fadeAnim}
+                theme={theme}
+                value={editCategoryName}
+                onChangeValue={setEditCategoryName}
+                onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                onSubmit={handleSaveEditCategory}
+            />
+
+            <NewTaskModal
+                visible={isNewTaskModalVisible}
+                theme={theme}
+                categoriesList={categoriesList}
+                newTask={newTask}
+                setNewTask={setNewTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                taskNameError={taskNameError}
+                loading={loading}
+                onClose={() => {
+                    setIsNewTaskModalVisible(false);
+                }}
+                onSubmit={createTask}
+            />
+
+            <EditTaskModal
+                visible={isEditTaskModalVisible}
+                theme={theme}
+                categoriesList={categoriesList}
+                editingTask={editingTask}
+                setEditingTask={setEditingTask}
+                isRepeatOpen={isRepeatOpen}
+                setIsRepeatOpen={setIsRepeatOpen}
+                dateError={dateError}
+                setDateError={setDateError}
+                loading={loading}
+                onSave={updateExistingTask}
+                onRequestClose={() => {
+                    setIsEditTaskModalVisible(false);
+                    setEditingTask(null);
+                }}
+            />
+            
+            {/* Category Context Menu Modal */}
+            <Modal
+                transparent={true}
+                visible={categoryMenuVisible}
+                onRequestClose={() => fadeOut(() => setCategoryMenuVisible(false))}
+                animationType="none"
+            >
+                <RNAnimated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                    <Pressable
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => fadeOut(() => setCategoryMenuVisible(false))}
+                    />
+                    <RNAnimated.View
+                        style={[
+                            styles.contextMenuContent,
+                            {
+                                backgroundColor: theme.cardBackground,
+                                transform: [{
+                                    scale: fadeAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0.95, 1]
+                                    })
+                                }]
+                            }
+                        ]}
+                    >
+                        <TouchableOpacity
+                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                            onPress={handleEditCategory}
+                        >
+                            <Ionicons name="pencil" size={20} color="#fff" />
+                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
+                            onPress={handleDeleteCategory}
+                        >
+                            <Ionicons name="trash" size={20} color="#fff" />
+                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Delete</Text>
+                        </TouchableOpacity>
+                    </RNAnimated.View>
+                </RNAnimated.View>
+            </Modal>
         </View>
     );
 }
@@ -732,7 +965,6 @@ export default function TasksScreen() {
 // -------------------------------------------------------------------
 // --- STYLES ---
 // -------------------------------------------------------------------
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -740,25 +972,25 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
     },
     modalContent: {
-        width: '85%',
+        width: "85%",
         borderRadius: 15,
         padding: 20,
         elevation: 5,
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
     modalTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginBottom: 20,
-        textAlign: 'center',
+        textAlign: "center",
     },
     inputContainer: {
         marginBottom: 15,
@@ -766,7 +998,7 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 16,
         marginBottom: 5,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     input: {
         borderWidth: 1,
@@ -776,7 +1008,7 @@ const styles = StyleSheet.create({
         minHeight: 40,
     },
     categoryScroll: {
-        flexDirection: 'row',
+        flexDirection: "row",
         marginBottom: 5,
     },
     categoryOption: {
@@ -788,20 +1020,20 @@ const styles = StyleSheet.create({
     },
     categoryOptionText: {
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     saveButton: {
         padding: 15,
         borderRadius: 8,
-        alignItems: 'center',
+        alignItems: "center",
         marginTop: 10,
     },
     saveButtonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: "bold",
     },
     errorText: {
-        color: '#ff4d4f',
+        color: "#ff4d4f",
         fontSize: 14,
         marginTop: 5,
     },
@@ -810,19 +1042,19 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
     },
     dropdownText: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: "500",
     },
     dropdownMenu: {
         borderWidth: 1,
         borderRadius: 8,
         marginTop: 8,
-        overflow: 'hidden',
+        overflow: "hidden",
     },
     dropdownItem: {
         paddingHorizontal: 12,
@@ -832,7 +1064,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     modalCloseButton: {
-        position: 'absolute',
+        position: "absolute",
         top: 10,
         right: 10,
         padding: 6,
@@ -841,10 +1073,9 @@ const styles = StyleSheet.create({
     },
     modalCloseText: {
         fontSize: 18,
-        fontWeight: '700',
-        color: '#1D3B53', // Dark blue from app theme
+        fontWeight: "700",
+        color: "#1D3B53",
     },
-    // --- Header Bar Styles ---
     headerBar: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -853,8 +1084,7 @@ const styles = StyleSheet.create({
         paddingBottom: 15,
         borderBottomLeftRadius: 15,
         borderBottomRightRadius: 15,
-        // Match the rounded header bar design from your other screens
-        width: '100%',
+        width: "100%",
         zIndex: 10,
     },
     screenTitle: {
@@ -864,17 +1094,13 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: 8,
     },
-
-    // --- Content ScrollView (Main Vertical) ---
     contentScrollView: {
         paddingHorizontal: width * 0.05,
     },
-
-    // --- Date Selector ---
     dateSelectorSection: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
         marginVertical: 20,
     },
     dateBox: {
@@ -882,32 +1108,29 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 20,
         marginHorizontal: 15,
-        // The Figma width was 150px, we use flex to make it adaptable
     },
     dateText: {
         fontSize: 24,
-        fontWeight: '700',
+        fontWeight: "700",
     },
     tasksCompletedText: {
-        textAlign: 'center',
+        textAlign: "center",
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: "700",
         marginBottom: 20,
     },
-
-    // --- Sections and Categories ---
     sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         marginBottom: 10,
     },
     sectionTitle: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: "700",
     },
     categoryTagsContainer: {
-        flexDirection: 'row',
+        flexDirection: "row",
         paddingVertical: 5,
         marginBottom: 20,
     },
@@ -920,18 +1143,16 @@ const styles = StyleSheet.create({
     },
     categoryText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: "600",
     },
-
-    // --- Task List ---
     taskListContainer: {
         gap: 10,
-        paddingBottom: 20, // Final padding before the bottom menu starts
+        paddingBottom: 20,
     },
     taskCard: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         borderRadius: 5,
         padding: 15,
         minHeight: 50,
@@ -943,27 +1164,27 @@ const styles = StyleSheet.create({
     },
     taskTitle: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: "600",
     },
     taskDueDate: {
         fontSize: 10,
-        fontWeight: '600',
+        fontWeight: "600",
         marginTop: 2,
     },
     checkbox: {
-        padding: 5, // Tappable area
+        padding: 5,
     },
     checkboxBox: {
         width: 20,
         height: 20,
         borderRadius: 3,
         borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
     },
     rightControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
     deleteButton: {
         padding: 8,
@@ -971,15 +1192,15 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     rightAction: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%', // Match parent height
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
     },
     trashIconContainer: {
         width: 40,
         height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
     },
     contextMenuContent: {
         backgroundColor: '#fff',

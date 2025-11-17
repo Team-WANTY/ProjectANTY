@@ -23,6 +23,7 @@ class RepeatDuration(BaseModel):
     - NUMBER_OF_TIMES: value = how many times to repeat
     - UNTIL_DATE: value = timestamp until which to repeat
     """
+
     specifier: DurationSpecifier | None = DurationSpecifier.FOREVER
     value: int | None = None
 
@@ -37,13 +38,11 @@ class RepeatFrequency(BaseModel):
         - YEARLY: specify day_of_month (1-31) and month_of_year (1-12)
     - value: amount to repeat (ex: every x days/weeks/months/year where x is value)
     """
+
     specifier: FrequencySpecifier | None = None
     value: int | None = Field(default=None, ge=1)
 
-    days_of_week: list[int] | None = Field(
-        default=None,
-        max_items=7
-    )
+    days_of_week: list[int] | None = Field(default=None, max_items=7)
     day_of_month: int | None = Field(default=None, ge=1, le=31)
     month_of_year: int | None = Field(default=None, ge=1, le=12)
 
@@ -54,6 +53,7 @@ class RepeatRule(BaseModel):
     frequency: how often to repeat
     duration: when to stop repetition
     """
+
     frequency: RepeatFrequency | None = None
     duration: RepeatDuration | None = None
 
@@ -67,6 +67,7 @@ class Task(BaseModel):
     - due_date: timestamp when task is due (repetition starts here)
     - repeat_rule: how to repeat, if at all
     """
+
     id: str | None = None
     user_id: str
     name: str
@@ -81,6 +82,9 @@ class TaskInDB(Task):
     created_at: int = -1
     updated_at: int = -1
 
+    def to_base(self):
+        return Task.model_validate(self.model_dump(), extra="ignore")
+
 
 class TaskUpdate(BaseModel):
     id: str
@@ -89,3 +93,8 @@ class TaskUpdate(BaseModel):
     cat: str | None = None
     due_date: int | None = None
     repeat_rule: RepeatRule | None = None
+
+
+class PaginatedTasks(BaseModel):
+    continuation_token: str | None = None
+    tasks: list[TaskInDB]
