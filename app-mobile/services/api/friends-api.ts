@@ -9,7 +9,7 @@ const paths = {
   outgoing: "/friends/requests/outgoing",
   me: "/friends/me",
   status: "/friends/status",
-  delete: "/{friend_id}",
+  delete: "/friends/{friend_id}",
 };
 
 

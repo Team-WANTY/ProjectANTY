@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     View,
     Text,
@@ -13,100 +13,209 @@ import {
     Pressable,
     ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect  } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 import { usersApi } from "@/services/api/users-api";
-import { friendsApi } from "@/services/api/friends-api";
-
+import { friendsApi, type Friendship } from "@/services/api/friends-api";
+import { profileApi } from "@/services/api/profiles-api";
+import { imagesApi } from "@/services/api/image-api";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-// Mock friends data - this will be replaced with backend data
-const mockFriends = [
-    {
-        id: 1,
-        username: "Tin Nguyen",
-        profilePicture: null,
-        mutualFriends: 5,
-    },
-    {
-        id: 2,
-        username: "Yunis Nabiyev",
-        profilePicture: null,
-        mutualFriends: 3,
-    },
-    {
-        id: 3,
-        username: "Nick Fan",
-        profilePicture: null,
-        mutualFriends: 8,
-    },
-];
+type FriendUserInfo = {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+};
+
+export type DisplayFriend = Friendship & {
+  user: FriendUserInfo;
+};
+
+// For /friends/me we assume owner_id === "me" and friend_id === "other user"
+async function resolveUserInfoForFriendship(
+  friendship: Friendship
+): Promise<FriendUserInfo> {
+  const userId = friendship.friend_id;
+
+  let username = "Unknown user";
+  let avatarUrl: string | null = null;
+
+  // Get username
+  const userRes = await usersApi.getById(userId);
+  if (userRes.ok && userRes.data) {
+    username = userRes.data.username;
+  }
+
+  // Get avatar_image_id from profile
+  const profileRes = await profileApi.getById(userId);
+  if (profileRes.ok && profileRes.data && profileRes.data.avatar_image_id) {
+    const avatarImageId = profileRes.data.avatar_image_id;
+
+    // Convert avatar_image_id -> URL
+    const imgRes = await imagesApi.getUrl(avatarImageId);
+    if (imgRes.ok && imgRes.data) {
+      avatarUrl = imgRes.data;
+    }
+  }
+
+  return { id: userId, username, avatarUrl };
+}
+
+async function enrichFriendship(
+  friendship: Friendship
+): Promise<DisplayFriend> {
+  const user = await resolveUserInfoForFriendship(friendship);
+  return { ...friendship, user };
+}
 
 // Friend Item Component
-const FriendItem = ({ friend, theme, onUnfriend, onViewProfile }: any) => {
-    const anim = useRef(new Animated.Value(1)).current;
-
-    const handleUnfriend = () => {
-        Animated.timing(anim, {
-            toValue: 0,
-            duration: 220,
-            useNativeDriver: true,
-        }).start(() => {
-            onUnfriend(friend.id);
-        });
-    };
-
-    const animatedStyle = {
-        opacity: anim,
-        transform: [{ scale: anim }],
-    };
-
-    return (
-        <Animated.View style={[styles.friendCard, { backgroundColor: theme.cardBackground }, animatedStyle]}>
-            <View style={styles.friendBanner}>
-                <View style={[styles.friendImage, { backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }]}>
-                    <Ionicons name="person" size={28} color="#fff" />
-                </View>
-                <View style={styles.friendInfo}>
-                    <TouchableOpacity onPress={() => onViewProfile(friend.id)} activeOpacity={0.7}>
-                        <Text style={[styles.friendName, { color: theme.text }]}>{friend.username}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <TouchableOpacity
-                style={[styles.unfriendButton, { backgroundColor: theme.primary }]}
-                onPress={handleUnfriend}
-            >
-                <Ionicons name="person-remove" size={18} color="#fff" />
-            </TouchableOpacity>
-        </Animated.View>
-    );
+type FriendItemProps = {
+  friend: DisplayFriend;
+  theme: any;
+  onUnfriend: (userId: string) => void;
+  onViewProfile: (userId: string) => void;
 };
+
+const FriendItem: React.FC<FriendItemProps> = ({
+  friend,
+  theme,
+  onUnfriend,
+  onViewProfile,
+}) => {
+  const anim = useRef(new Animated.Value(1)).current;
+
+  const handleUnfriend = () => {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      onUnfriend(friend.user.id); // still use friendship id here
+    });
+  };
+
+  const animatedStyle = {
+    opacity: anim,
+    transform: [{ scale: anim }],
+  };
+
+  const avatarLetter =
+    friend.user.username?.[0]?.toUpperCase() ?? "?";
+
+  return (
+    <Animated.View
+      style={[
+        styles.friendCard,
+        { backgroundColor: theme.cardBackground },
+        animatedStyle,
+      ]}
+    >
+      <View style={styles.friendBanner}>
+        {friend.user.avatarUrl ? (
+          <Image
+            source={{ uri: friend.user.avatarUrl }}
+            style={styles.friendImage}
+          />
+        ) : (
+          <View
+            style={[
+              styles.friendImage,
+              { backgroundColor: theme.primary, justifyContent: "center", alignItems: "center" },
+            ]}
+          >
+            <Text style={styles.friendInitial}>{avatarLetter}</Text>
+          </View>
+        )}
+
+        <View style={styles.friendInfo}>
+          <TouchableOpacity
+            onPress={() => onViewProfile(friend.user.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.friendName, { color: theme.text }]}>
+              {friend.user.username}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.unfriendButton, { backgroundColor: theme.primary }]}
+        onPress={handleUnfriend}
+      >
+        <Ionicons name="person-remove" size={18} color="#fff" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 
 export default function FriendsScreen() {
     const { theme } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const [friends, setFriends] = useState(mockFriends);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const [friends, setFriends] = useState<DisplayFriend[]>([]);
     const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
     const [friendUsername, setFriendUsername] = useState("");
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    
+    const [loading, setLoading] = useState(false);
+    const [errorText, setErrorText] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
 
-    const handleUnfriend = (friendId: number) => {
-        setFriends((prev) => prev.filter((f) => f.id !== friendId));
+    const loadFriends = async () => {
+        setLoading(true);
+        setErrorText(null);
+        try {
+            const res = await friendsApi.listFriends(50);
+            if (res.ok && res.data) {
+                const enriched: DisplayFriend[] = await Promise.all(
+                    res.data.friends.map((f) => enrichFriendship(f))
+                );
+                setFriends(enriched);
+            } 
+            else {
+                setErrorText(res.message || "Failed to load friends");
+            }
+        } 
+        catch (error) {
+            setErrorText("Failed to load friends");
+        } 
+        finally {
+            setLoading(false);
+        }
     };
 
-    const handleViewProfile = (friendId: number) => {
+    useEffect(() => {
+        loadFriends();
+    }, []);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadFriends();
+        }, [])
+    );
+    const handleUnfriend = async (friendId: string) => {
+        const res = await friendsApi.unfriend(friendId);
+        if (!res.ok) {
+            console.log("Failed to unfriend:", res.message);
+            console.log("FriendID:", friendId);
+        return;
+        }
+        console.log("[handleUnfriend] Success")
+        setFriends(prev => prev.filter(f => f.friend_id !== friendId));
+    };
+
+    const handleViewProfile = (userId: string) => {
         // Navigate to friend's profile - implement when backend is ready
-        console.log("View profile:", friendId);
+        console.log("View profile:", userId);
         // router.push(`/profile/${friendId}`);
     };
 
@@ -435,6 +544,11 @@ const styles = StyleSheet.create({
     friendName: {
         fontSize: 16,
         fontWeight: "600",
+    },
+    friendInitial: {
+        color: "#fff",
+        fontSize: 20,
+        fontWeight: "700",
     },
     unfriendButton: {
         width: 36,
