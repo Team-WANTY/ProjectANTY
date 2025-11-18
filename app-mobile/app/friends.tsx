@@ -11,6 +11,7 @@ import {
     Modal,
     TextInput,
     Pressable,
+    ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,8 @@ import DecorativeSwoosh from "@/components/decorative-swoosh";
 
 import { usersApi } from "@/services/api/users-api";
 import { friendsApi } from "@/services/api/friends-api";
+
+
 const { width: screenWidth } = Dimensions.get("window");
 
 // Mock friends data - this will be replaced with backend data
@@ -94,6 +97,8 @@ export default function FriendsScreen() {
     const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
     const [friendUsername, setFriendUsername] = useState("");
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [isSending, setIsSending] = useState(false);
+    const [addFriendError, setAddFriendError] = useState<string | null>(null);
 
     const handleUnfriend = (friendId: number) => {
         setFriends((prev) => prev.filter((f) => f.id !== friendId));
@@ -132,25 +137,64 @@ export default function FriendsScreen() {
     };
 
     const handleAddFriend = async ()  => {
-        const res = await usersApi.getByUsername(friendUsername);
-        if (!res.ok || !res.data) {
-            console.log("Failed to find user:", res.message);
+        if (isSending) return;
+        const trimmed = friendUsername.trim();
+        if (!trimmed) {
+            setAddFriendError("Please enter a username.");
             return;
         }
-       
-        const friend_id = res.data.id;
+        setIsSending(true);
+        setAddFriendError(null);
 
-        console.log("[handleAddFriend] Sending friend request to:", friendUsername);
+        try {
+            // GET other_user_id by looking up username
+            const res = await usersApi.getByUsername(friendUsername.trim());
+            if (!res.ok || !res.data) {
+                console.log("User not found:", res.message);
+                setAddFriendError(res.message || "User not found");
+                return;
+            }
 
-        const friendRes = await friendsApi.create({ to_user_id: friend_id });
-        if (!friendRes.ok) {
-            console.log("Failed to send friend request:", friendRes.message, friendRes.detail);
-            // (Later: show toast / error banner instead of just console.log)
-            return;
+            const friend_id = res.data.id;
+
+            console.log("[handleAddFriend] Sending friend request to:", friendUsername);
+
+            // Send friend request
+            const friendRes = await friendsApi.create({ to_user_id: friend_id });
+
+            if (!friendRes.ok) {
+                const status = friendRes.status;
+                if (status === 403) {
+                    if (friendRes.message.includes("Pending friend request already exist")) {
+                        setAddFriendError("Pending friend request already exist");
+                    } 
+                    else {
+                        setAddFriendError("Cannot send friend request.");
+                        console.log("Failed to send friend request: ", friendRes.message);
+                    }
+                } 
+                else if (status === 404) {
+                    setAddFriendError("User not found.");
+                } 
+                else {
+                    setAddFriendError(friendRes.message || "Failed to send friend request.");
+                }
+                return;
+            }
+
+            console.log("[handleAddFriend] Status:", friendRes.message);
+            console.log("Friend Request ID:", friendRes.data.id);
+            setAddFriendError(null);
+            setFriendUsername("");
+            closeAddFriendModal();
         }
-        console.log("[handleAddFriend] Status:", friendRes.message);
-        console.log("Friend Request ID:", friendRes.data.id);
-        closeAddFriendModal();
+        catch(err) {
+            console.log("Error sending friend request");
+            setAddFriendError("Network error. Please try again.");
+        }
+        finally {
+            setIsSending(false);
+        }
     };
 
     const SWOOSH_COMPONENT_HEIGHT = screenWidth * 0.495;
@@ -274,21 +318,47 @@ export default function FriendsScreen() {
                             <Text style={[styles.inputLabel, { color: theme.background }]}>
                                 Username
                             </Text>
-                            <TextInput
-                                style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                value={friendUsername}
-                                onChangeText={setFriendUsername}
-                                placeholder="Enter username"
-                                placeholderTextColor={theme.background + '80'}
-                            />
-                        </View>
 
-                        <TouchableOpacity
-                            style={[styles.addButton, { backgroundColor: theme.primary }]}
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    {
+                                        color: theme.background,
+                                        borderColor: addFriendError ? "red" : theme.background,
+                                    },
+                                ]}
+                                value={friendUsername}
+                                onChangeText={(text) => {
+                                    setFriendUsername(text);
+                                    if (addFriendError) setAddFriendError(null); // clear error while typing
+                                }}
+                                placeholder="Enter username"
+                                placeholderTextColor={theme.background + "80"}
+                            />
+
+                            {addFriendError && (
+                                <Text style={styles.errorText}>{addFriendError}</Text>
+                            )}
+                        </View>
+                        
+                        {/* Add Button */}
+                        <Pressable
+                            style={[
+                                styles.addButton,
+                                { backgroundColor: theme.primary },
+                                (isSending || !friendUsername.trim()) && { opacity: 0.6 }
+                                
+                            ]}
+                            disabled={isSending || !friendUsername.trim()}
                             onPress={handleAddFriend}
                         >
-                            <Text style={styles.addButtonText}>Send Request</Text>
-                        </TouchableOpacity>
+                            {isSending ? (
+                                <ActivityIndicator/>
+                            ) : (
+                                <Text style={styles.addButtonText}>Send Request</Text>
+                            )}
+                        </Pressable>
+
                     </Animated.View>
                 </Animated.View>
             </Modal>
@@ -445,4 +515,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "600",
     },
+    errorText: {
+        color: "red",
+        marginTop: 4,
+        fontSize: 12,
+    },
+
 });
