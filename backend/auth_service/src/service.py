@@ -4,11 +4,18 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from email_validator import EmailNotValidError, validate_email
+from httpx import AsyncClient
 from pwdlib import PasswordHash
 from shared.auth import authorize_operation
+from shared.exceptions.db import (
+    RecordAlreadyExistsError,
+    RecordCreationError,
+    RecordNotFoundError,
+)
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
+from shared.settings import settings as shared_settings
 
 from src.database import AuthDB
 from src.email import send_email
@@ -29,7 +36,27 @@ class AuthService:
 
     async def register_user(self, user_create: UserCreate) -> UserAuthInfo:
         logger.debug(f"Trying to register new user: {user_create.model_dump()}")
+
+        try:
+            await self.get_user_auth_by_username(user_create.username)
+            raise RecordAlreadyExistsError()
+        except RecordNotFoundError:
+            pass
+        try:
+            await self.get_user_auth_by_email(user_create.email)
+            raise RecordAlreadyExistsError()
+        except RecordNotFoundError:
+            pass
+
         user_auth_info = await self.db.create_user(user_create)
+
+        async with AsyncClient() as client:
+            response = await client.post(
+                f"{settings.PROFILES_SERVICE_URL}/{user_auth_info.id}",
+                headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
+            )
+            if response.status_code != 201:
+                raise RecordCreationError()
         logger.debug(f"Successfully registered new user: {user_auth_info.model_dump()}")
         return user_auth_info
 
@@ -82,6 +109,16 @@ class AuthService:
         user_auth_info = await self.db.get_user_auth_by_id(user_id)
         logger.debug(
             f"Successfully got user with ID '{user_id}': {user_auth_info.model_dump()}"
+        )
+        return user_auth_info
+
+    async def get_user_auth_by_username(self, username: str) -> UserAuthInfo:
+        logger.debug(
+            f"Trying to resolve and get user record with username '{username}'"
+        )
+        user_auth_info = await self.db.get_user_auth_by_username(username)
+        logger.debug(
+            f"Successfully got user with username '{username}': {user_auth_info.model_dump()}"
         )
         return user_auth_info
 

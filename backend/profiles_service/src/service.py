@@ -1,6 +1,7 @@
 import logging
 
 from shared.auth import authorize_operation
+from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
 from shared.models.auth import UserAuthInfo
 
 from src.database import ProfileDB
@@ -14,6 +15,12 @@ class ProfileService:
         self.db = profile_db
 
     async def create_profile(self, user_id: str):
+        try:
+            await self.db.get_profile(user_id)
+            raise RecordAlreadyExistsError()
+        except RecordNotFoundError:
+            pass
+
         new_profile = Profile(id=user_id)
         profile = await self.db.create_profile(new_profile)
         return profile
