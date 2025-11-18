@@ -20,6 +20,9 @@ http:
       rule: "PathPrefix(`/tasks`)"
       service: tasks-service
     
+    friends:
+      rule: "PathPrefix(`/friends`)"
+      service: friends-service
     images:
       rule: "PathPrefix(`/images`)"
       service: image-service
@@ -54,3 +57,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://tasks-service:8000"
+
+    friends-service:
+      loadBalancer:
+        servers:
+          - url: "http://friends-service:8000"
