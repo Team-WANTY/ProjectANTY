@@ -28,6 +28,7 @@ jobs:
           AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
           AUTH_EXTERNAL_URL: ''
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
+          PROFILES_SERVICE_URL: ${{ vars.PROFILES_SERVICE_URL }}
 
           TOKEN_PUBLIC_KEY: ''
           TOKEN_PRIVATE_KEY: ''
