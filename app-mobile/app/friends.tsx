@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
+import { usersApi } from "@/services/api/users-api";
+import { friendsApi } from "@/services/api/friends-api";
 const { width: screenWidth } = Dimensions.get("window");
 
 // Mock friends data - this will be replaced with backend data
@@ -103,7 +105,8 @@ export default function FriendsScreen() {
         // router.push(`/profile/${friendId}`);
     };
 
-    const handleFriendRequests = () => {
+    const handleIncomingFriendRequests = () => {
+        router.push("/friends-requests");
         // Navigate to friend requests page - implement when backend is ready
         console.log("View friend requests");
     };
@@ -128,9 +131,25 @@ export default function FriendsScreen() {
         });
     };
 
-    const handleAddFriend = () => {
-        // Implement add friend logic with backend
-        console.log("Add friend:", friendUsername);
+    const handleAddFriend = async ()  => {
+        const res = await usersApi.getByUsername(friendUsername);
+        if (!res.ok || !res.data) {
+            console.log("Failed to find user:", res.message);
+            return;
+        }
+       
+        const friend_id = res.data.id;
+
+        console.log("[handleAddFriend] Sending friend request to:", friendUsername);
+
+        const friendRes = await friendsApi.create({ to_user_id: friend_id });
+        if (!friendRes.ok) {
+            console.log("Failed to send friend request:", friendRes.message, friendRes.detail);
+            // (Later: show toast / error banner instead of just console.log)
+            return;
+        }
+        console.log("[handleAddFriend] Status:", friendRes.message);
+        console.log("Friend Request ID:", friendRes.data.id);
         closeAddFriendModal();
     };
 
@@ -167,9 +186,9 @@ export default function FriendsScreen() {
                         {/* Friend Requests Icon */}
                         <TouchableOpacity
                             style={styles.iconButton}
-                            onPress={handleFriendRequests}
+                            onPress={handleIncomingFriendRequests}
                         >
-                            <Ionicons name="person-add-outline" size={24} color={headerTextColor} />
+                            <Ionicons name="people-outline" size={24} color={headerTextColor} />
                         </TouchableOpacity>
 
                         {/* Add Friend Icon */}

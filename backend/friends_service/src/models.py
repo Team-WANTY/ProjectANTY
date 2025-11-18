@@ -5,7 +5,6 @@ FriendRequestStatus = Literal["pending", "accepted", "declined", "cancelled"]
 
 class FriendRequestCreate(BaseModel):
     to_user_id: str
-    message: Optional[str] = None
 
 class FriendRequest(BaseModel):
     id: str
@@ -14,7 +13,6 @@ class FriendRequest(BaseModel):
     status: FriendRequestStatus
     created_at: int
     updated_at: int
-    message: Optional[str] = None
 
 class Friendship(BaseModel):
     id: str
