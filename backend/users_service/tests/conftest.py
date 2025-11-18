@@ -52,9 +52,11 @@ def sample_user_in_db():
         id="user123",
         username="testuser",
         email="test@gmail.com",
+        hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
         created_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
         updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
         is_active=True,
+        is_superuser=False,
     )
 
 
