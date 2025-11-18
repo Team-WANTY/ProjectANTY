@@ -3,21 +3,53 @@ import { create } from "zustand";
 import { persist, createJSONStorage  } from "zustand/middleware";
 import { storage } from "../storage/async-storage";
 
+type ProfileUpdate = {
+  userId?: string;
+  bio?: string | null;
+  avatarImageId?: string | null;
+  avatarUrl?: string | null;
+};
+
 type ProfileState = {
+  userId: string | null;
   bio: string | null;
+  avatarUrl: string | null;
+  avatarImageId: string | null;
   lastProfileSaveAt: number | null;
-  setProfile: (p: { bio?: string | null }) => void;
+
+  isAvatarUploading: boolean;
+  setAvatarUploading: (val: boolean) => void;
+
+  setProfile: (p: ProfileUpdate) => void;
   clear: () => void;
 };
 
 export const useProfileStore = create<ProfileState>()(
   persist(
     (set) => ({
+      userId: null,
       bio: null,
+      avatarUrl: null,
+       avatarImageId: null,
       lastProfileSaveAt: null,
-      setProfile: ({ bio }) =>
-        set({ bio: bio ?? null, lastProfileSaveAt: Date.now() }),
-      clear: () => set({ bio: null, lastProfileSaveAt: null }),
+      isAvatarUploading: false,
+      setAvatarUploading: (val) => set({ isAvatarUploading: val }),
+
+      setProfile: (update) =>
+        set((state) => ({
+          ...state,
+          ...update,
+          lastProfileSaveAt: Date.now(),
+        })),
+        
+      clear: () => set( { 
+        userId: null, 
+        bio: null, 
+        avatarUrl: null, 
+        avatarImageId: null,
+        lastProfileSaveAt: null, 
+        isAvatarUploading: false,
+      }),
     }),
     { 
       name: "profile-store", 

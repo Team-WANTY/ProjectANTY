@@ -8,10 +8,6 @@ const paths = {
   byId: "/tasks/{task_id}", // DELETE 
 } as const;
 
-// helper to fill {user_id}
-function fillId(tpl: string, id: string) {
-  return tpl.replace("{user_id}", encodeURIComponent(id));
-}
 
 function fillTaskId(tpl: string, taskId: string) {
   return tpl.replace("{task_id}", encodeURIComponent(taskId));
@@ -62,7 +58,7 @@ export type Task = {
   name: string;
   desc: string;
   cat?: string | null;
-  due_date: number;           
+  due_date?: number | null;           
   repeat_rule?: RepeatRule | null;
 };
 
@@ -186,8 +182,7 @@ export const tasksApi = {
   // Delete /tasks/{task_id}
   async remove(taskId: string): Promise<ApiResult<Task>> {
     try {
-      const url = fillTaskId(paths.byId, taskId);
-      const res = await api.delete<Task>(url);
+      const res = await api.delete<Task>(`${paths.root}?task_id=${encodeURIComponent(taskId)}`);
       return { 
         ok: true, 
         status: res.status, 
