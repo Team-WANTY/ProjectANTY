@@ -224,7 +224,7 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
         <TouchableOpacity
             style={[styles.categoryTag, tagStyle]}
             onPress={onPress}
-            onLongPress={onLongPress}
+            onLongPress={(event) => onLongPress(event)}
             delayLongPress={1000}
         >
             <Text style={[styles.categoryText, textStyle]}>{category}</Text>
@@ -358,6 +358,50 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
+    // Category handlers
+    const handleCategoryLongPress = (category: string, event: any) => {
+        setSelectedCategoryForMenu(category);
+        setEditCategoryName(category);
+        setIsEditCategoryModalVisible(true);
+        fadeIn();
+    };
+
+    const handleDeleteCategory = () => {
+        if (selectedCategoryForMenu) {
+            setCategoriesList(prev => prev.filter(cat => cat !== selectedCategoryForMenu));
+            // Also clear the selection if the deleted category was selected
+            if (selectedCategory === selectedCategoryForMenu) {
+                setSelectedCategory(null);
+            }
+            fadeOut(() => {
+                setIsEditCategoryModalVisible(false);
+                setEditCategoryName("");
+                setSelectedCategoryForMenu(null);
+            });
+        }
+    };
+
+    const handleSaveEditCategory = () => {
+        if (selectedCategoryForMenu && editCategoryName.trim()) {
+            setCategoriesList(prev => 
+                prev.map(cat => cat === selectedCategoryForMenu ? editCategoryName.trim() : cat)
+            );
+            // Update selectedCategory if it was the edited one
+            if (selectedCategory === selectedCategoryForMenu) {
+                setSelectedCategory(editCategoryName.trim());
+            }
+            fadeOut(() => {
+                setIsEditCategoryModalVisible(false);
+                setEditCategoryName("");
+                setSelectedCategoryForMenu(null);
+            });
+        }
+    };
+
+    // Date validation helper
+    const isValidDateFormat = (date: string) => {
+        const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+        if (!dateRegex.test(date)) return false;
     // Update all tasks with a given category name -> new category name
     const renameTasksCategory = async (oldName: string, newName: string) => {
         // Find all tasks that is in that category
@@ -722,8 +766,8 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
-                            onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-                            onLongPress={() => handleCategoryLongPress(cat)}
+                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onLongPress={(event) => handleCategoryLongPress(cat, event)}
                         />
                     ))}
                 </ScrollView>
@@ -924,10 +968,11 @@ const styles = StyleSheet.create({
         fontWeight: "500",
     },
     saveButton: {
-        padding: 15,
-        borderRadius: 8,
-        alignItems: "center",
-        marginTop: 10,
+        flex: 1,
+        height: 50,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     saveButtonText: {
         fontSize: 16,
@@ -1089,8 +1134,11 @@ const styles = StyleSheet.create({
     },
     deleteButton: {
         padding: 8,
-        marginLeft: 8,
-        borderRadius: 6,
+        marginLeft: 10,
+        borderRadius: 15,
+        marginTop: 20,
+        marginBottom: 30,
+
     },
     rightAction: {
         justifyContent: "center",
@@ -1127,5 +1175,17 @@ const styles = StyleSheet.create({
     contextMenuText: {
         fontSize: 15,
         fontWeight: '600',
+    },
+    modalButtons: {
+        flexDirection: 'row',i'll 
+        gap: 12,
+        alignItems: 'center',
+    },
+    deleteButton: {
+        width: 50,
+        height: 50,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
