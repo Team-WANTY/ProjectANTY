@@ -10,7 +10,7 @@ class UserBase(BaseModel):
 class UserInfo(BaseModel):
     id: str
     username: str
-    
+
 class UserInDB(UserBase):
     username: str
     email: EmailStr
@@ -21,7 +21,7 @@ class UserInDB(UserBase):
 
     def to_base(self):
         return UserBase.model_validate(self.model_dump(), extra="ignore")
-    
+
     def to_info(self):
         return UserInfo.model_validate(self.model_dump(), extra="ignore")
 
