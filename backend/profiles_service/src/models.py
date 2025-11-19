@@ -5,7 +5,7 @@ from shared.db import now_timestamp
 class Profile(BaseModel):
     id: str
     bio: str = ""
-    avatar_image_id: str = "0"
+    avatar_image_id: str = ""
     created_at: int = now_timestamp()
     updated_at: int = now_timestamp()
     unlocked_badges: list[str] = Field(default_factory=list)

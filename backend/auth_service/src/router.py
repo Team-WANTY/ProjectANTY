@@ -37,6 +37,13 @@ async def get_current_user_auth(
     token: str = Depends(oauth2_scheme),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> UserAuthInfo:
+    return await _get_current_user_auth_logic(token, auth_service)
+
+
+async def _get_current_user_auth_logic(
+    token: str,
+    auth_service: AuthService,
+) -> UserAuthInfo:
     """Get current authenticated and active user from JWT token"""
     try:
         decoded_token = await auth_service.decode_token(token)
@@ -65,6 +72,10 @@ async def get_current_user_auth(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal query error",
         )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
     # Check if user is active
     if not user_auth_info.is_active:
@@ -90,7 +101,7 @@ async def register(
 ) -> UserBase:
     try:
         created_user = await auth_service.register_user(user_create)
-        return created_user.to_base().model_dump()
+        return created_user.to_base()
     except RecordAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="User already exists"

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRATION_MINUTES: int
     REFRESH_TOKEN_EXPIRATION_DAYS: int
     PW_RESET_TOKEN_EXPIRATION_MINUTES: int
+    PROFILES_SERVICE_URL: str  # TODO temporary until Azure DNS
 
     FRONTEND_URL: str
     SMTP_USER: str

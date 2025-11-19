@@ -33,6 +33,4 @@ def get_auth_db() -> AuthDB:
 
 @lru_cache
 def get_auth_service() -> AuthService:
-    return AuthService(
-        get_auth_db(),
-    )
+    return AuthService(get_auth_db())
