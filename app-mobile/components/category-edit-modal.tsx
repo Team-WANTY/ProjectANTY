@@ -1,4 +1,4 @@
-// components/CategoryEditModal.tsx
+// components/category-edit-modal.tsx
 import React from "react";
 import {
   Modal,
@@ -10,6 +10,7 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 export type Theme = {
   background: string;
@@ -25,8 +26,9 @@ type Props = {
   theme: Theme;
   value: string;
   onChangeValue: (text: string) => void;
-  onClose: () => void;   // parent will call fadeOut + hide
-  onSubmit: () => void;  // parent will run handleSaveEditCategory
+  onClose: () => void;      // parent will do fadeOut + hide
+  onSubmit: () => void;     // save / rename
+  onDelete: () => void;     // delete category
 };
 
 export const CategoryEditModal: React.FC<Props> = ({
@@ -37,6 +39,7 @@ export const CategoryEditModal: React.FC<Props> = ({
   onChangeValue,
   onClose,
   onSubmit,
+  onDelete,
 }) => {
   return (
     <Modal
@@ -70,17 +73,14 @@ export const CategoryEditModal: React.FC<Props> = ({
             onPress={onClose}
             style={styles.modalCloseButton}
           >
-            <Text style={styles.modalCloseText}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.background}]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
             Edit Category
           </Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
-              Category Name
-            </Text>
+          <View style={[styles.inputContainer, { marginBottom: 16 }]}>
             <TextInput
               style={[
                 styles.input,
@@ -93,14 +93,23 @@ export const CategoryEditModal: React.FC<Props> = ({
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: theme.primary }]}
-            onPress={onSubmit}
-          >
-            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-              Save Changes
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: theme.primary, flex: 1 }]}
+              onPress={onSubmit}
+            >
+              <Text style={[styles.saveButtonText, { color: theme.text }]}>
+                Save Changes
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteButton, { backgroundColor: styles.errorText.color }]}
+              onPress={onDelete}
+            >
+              <Ionicons name="trash" size={20} color={theme.text} />
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -116,48 +125,62 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "85%",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 15,
+    padding: 20,
   },
   modalCloseButton: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
+    padding: 6,
+    borderRadius: 12,
     zIndex: 10,
   },
   modalCloseText: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
+    fontWeight: "700",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "bold",
+    marginBottom: 20,
     textAlign: "center",
-    marginBottom: 16,
   },
   inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    marginBottom: 4,
+    marginBottom: 15,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 8,
+    padding: 10,
     fontSize: 16,
+    minHeight: 40,
   },
   saveButton: {
-    marginTop: 8,
+    flex: 1,
+    height: 50,
     borderRadius: 10,
-    paddingVertical: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
   },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  deleteButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+        color: "#ff4d4f",
+    },
 });
