@@ -8,7 +8,7 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 from shared.models.auth import UserAuthInfo
-from shared.models.users import UserBase, UserInDB
+from shared.models.users import UserBase, UserInDB, UserInfo
 
 from src.dependencies import get_users_service
 from src.models import UserUpdate
@@ -49,15 +49,56 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> U
     """Get current user"""
     return current_user.model_dump()
 
-
-@users_router.get("/{user_id}", response_model=UserBase, tags=["users"])
+@users_router.get("/id/{user_id}", response_model=UserInfo, tags=["users"])
 async def get_user(
-    user_id: str, users_service: UsersService = Depends(get_users_service)
-) -> UserBase:
+    user_id: str,
+    _current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
+    users_service: UsersService = Depends(get_users_service)
+) -> UserInfo:
     """Get user by ID"""
     try:
         user = await users_service.get_user_by_id(user_id)
-        return user.to_base()
+        return user.to_info()
+    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except GeneralQueryError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal query error",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
+
+    # @users_router.get("/{user_id}", response_model=UserBase, tags=["users"])
+    # async def get_user(
+    #     user_id: str, users_service: UsersService = Depends(get_users_service)
+    # ) -> UserBase:
+    #     """Get user by ID"""
+    #     try:
+    #         user = await users_service.get_user_by_id(user_id)
+    #         return user.to_base()
+    #     except RecordNotFoundError:
+    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    #     except GeneralQueryError:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #             detail="Internal query error",
+    #         )
+    #     except Exception:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+    #         )
+
+@users_router.get("/lookup/{username}", response_model=UserBase, tags=["users"])
+async def get_user_by_username(
+    username: str, users_service: UsersService = Depends(get_users_service)
+) -> UserBase:
+    """Get user by username"""
+    try:
+        user = await users_service.get_user_by_username(username)
+        return user
     except RecordNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
@@ -100,6 +141,7 @@ async def update_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+
 
 
 @users_router.delete(

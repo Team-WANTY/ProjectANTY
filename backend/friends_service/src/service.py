@@ -36,11 +36,15 @@ class FriendsService:
         await authorize_operation(me, user_id)
         return await self.friend_requests_db.list_outgoing(to_user_id=user_id, status=status_filter)
 
-    async def accept(self, me: UserAuthInfo, request_id: str) -> None:
+    async def accept(self, me: UserAuthInfo, request_id: str) -> Friendship:
         fr = await self.friend_requests_db.get_by_id(request_id)
         await authorize_operation(me, fr.to_user_id)
         await self.friend_requests_db.set_status_accepted(request_id)
-        await self.friendships_db.create_friendship(user_id=fr.from_user_id, friend_id=fr.to_user_id)
+        friendship = await self.friendships_db.create_friendship(
+            user_id=fr.from_user_id,
+            friend_id=fr.to_user_id,
+        )
+        return friendship
 
     async def decline(self, me: UserAuthInfo, request_id: str) -> None:
         fr = await self.friend_requests_db.get_by_id(request_id)

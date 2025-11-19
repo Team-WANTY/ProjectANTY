@@ -125,16 +125,18 @@ async def list_outgoing(
 
 @friends_router.post(
     "/requests/{request_id}/accept",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     tags=["friend_requests"],
+    response_model=Friendship,
 )
 async def accept_request(
     request_id: str,
     me: UserAuthInfo = Depends(get_current_user_auth),
     service: FriendsService = Depends(get_friends_service),
-):
+) -> Friendship:
     try:
-        await service.accept(me, request_id)
+        fs = await service.accept(me, request_id)
+        return fs
     except AuthError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     except RecordNotFoundError:

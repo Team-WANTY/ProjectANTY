@@ -28,17 +28,9 @@ import { imagesApi } from "@/services/api/image-api";
 import { EditProfileModal} from "@/components/profile-edit-modal"
 import { changeAvatar } from "@/services/actions/avatar-update";
 import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
-
+import { useFriendsStore} from "@/services/stores/friends-store"
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-
-// --- Mock Data ---
-// Note: friendsCount will be fetched from backend when integrated
-const userData = {
-    friendsCount: 3, // This will be dynamic from backend
-    likes: 0,
-    profilePicture: "../../assets/images/default-avatar.png",
-};
 
 const analyticsData = {
     tasksCompleted: 10,
@@ -74,6 +66,7 @@ export default function ProfileScreen() {
     const bio = useProfileStore((s) => s.bio);
     const avatarUrl = useProfileStore((s) => s.avatarUrl);
     const isAvatarUploading = useProfileStore((s) => s.isAvatarUploading);
+    const friendsCount = useFriendsStore((s) => s.friendCount)
 
     // ---------- MODAL STATE ----------
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -278,10 +271,10 @@ export default function ProfileScreen() {
                         <View style={styles.socialStats}>
                             <TouchableOpacity onPress={() => router.push("../friends" as any)}>
                                 <Text style={styles.socialText}>
-                                    {userData.friendsCount} <Text style={styles.friendsLink}>Friends</Text>
+                                    {friendsCount} <Text style={styles.friendsLink}>Friends</Text>
                                 </Text>
                             </TouchableOpacity>
-                            <Text style={styles.socialText}>{userData.likes} Likes</Text>
+                            <Text style={styles.socialText}>{0} Likes</Text>
                         </View>
                     </View>
 

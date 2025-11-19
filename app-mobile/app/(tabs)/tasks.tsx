@@ -284,10 +284,6 @@ export default function TasksScreen() {
         return a.name.localeCompare(b.name);
     });
 
-<<<<<<< HEAD
-
-=======
->>>>>>> d6f26ea (Integrated Anita's new Edit Category Modal)
 
     // Modal, Category States
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);

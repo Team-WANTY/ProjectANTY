@@ -5,7 +5,8 @@ import { api } from "../http/client";
 
 const paths = {
 	me: "/users/me",
-	byId: "/users/{user_id}",
+	byId: "/users/id/{user_id}",
+  byUsername: "/users/lookup/{username}",
 	update: "/users/",
 };
 
@@ -14,6 +15,9 @@ function fillId(tpl: string, id: string) {
   	return tpl.replace("{user_id}", encodeURIComponent(id));
 }
 
+function fillUsername(tpl: string, username: string) {
+  	return tpl.replace("{username}", encodeURIComponent(username));
+}
 // Keep the returned user type generic
 export type SimpleUser = { id: string; username: string; email: string };
 
@@ -41,6 +45,25 @@ export const usersApi = {
   async getById(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
       const res = await api.get(fillId(paths.byId, userId));
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
+    }
+    catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const msg = status === 404 ? "User not found" : toMessage(data, "Failed to load user");
+      return {ok: false, status, message: msg, detail:data };
+    }
+  },
+
+  // /id/{username}
+  async getByUsername(username: string): Promise<ApiResult<SimpleUser>> {
+    try {
+      const res = await api.get(fillUsername(paths.byUsername,username));
       return { 
         ok: true, 
         status: res.status, 

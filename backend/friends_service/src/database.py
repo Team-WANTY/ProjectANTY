@@ -54,7 +54,6 @@ class FriendRequestsDB:
             "from_user_id": from_user_id,
             "to_user_id": data.to_user_id,
             "status": "pending",
-            "message": data.message,
             "created_at": now,
             "updated_at": now,
         }
