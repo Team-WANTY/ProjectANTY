@@ -99,44 +99,42 @@ class TaskDB:
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            print("ERROR!:", e)
+            logger.error("ERROR!:", e)
             raise GeneralQueryError()
 
-    async def update_task(self, task_upate: TaskUpdate) -> TaskInDB | None:
+    async def update_task(self, task_update: TaskUpdate) -> TaskInDB | None:
         patch_operations = []
         try:
-            if task_upate.name is not None:
+            if task_update.name is not None:
                 patch_operations.append(
-                    {"op": "replace", "path": "/name", "value": task_upate.name}
+                    {"op": "replace", "path": "/name", "value": task_update.name}
                 )
 
-            if task_upate.desc is not None:
+            if task_update.desc is not None:
                 patch_operations.append(
                     {
                         "op": "replace",
                         "path": "/desc",
-                        "value": task_upate.desc,
+                        "value": task_update.desc,
                     }
                 )
 
-            if task_upate.cat is not None:
+            patch_operations.append(
+                {"op": "replace", "path": "/cat", "value": task_update.cat}
+            )
+
+            if task_update.due_date is not None:
                 patch_operations.append(
-                    {"op": "replace", "path": "/cat", "value": task_upate.cat}
+                    {"op": "replace", "path": "/due_date", "value": task_update.due_date}
                 )
 
-            if task_upate.due_date is not None:
-                patch_operations.append(
-                    {"op": "replace", "path": "/due_date", "value": task_upate.due_date}
-                )
-
-            if task_upate.repeat_rule is not None:
-                patch_operations.append(
-                    {
-                        "op": "replace",
-                        "path": "/repeat_rule",
-                        "value": task_upate.repeat_rule.model_dump(),
-                    }
-                )
+            patch_operations.append(
+                {
+                    "op": "replace",
+                    "path": "/repeat_rule",
+                    "value": task_update.repeat_rule.model_dump() if task_update.repeat_rule else None,
+                }
+            )
 
             if len(patch_operations) == 0:
                 return None
@@ -150,15 +148,16 @@ class TaskDB:
             )
 
             item = await self.container.patch_item(
-                item=task_upate.id,
-                partition_key=task_upate.id,
+                item=task_update.id,
+                partition_key=task_update.id,
                 patch_operations=patch_operations,
             )
             task = TaskInDB.model_validate(item, extra="ignore")
             return task
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error("ERROR!:", e)
             raise RecordUpdateError()
 
     async def delete_task(self, task_id: str):

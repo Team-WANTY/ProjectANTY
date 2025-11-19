@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
-    Modal, TextInput, Pressable, ActivityIndicator, Animated as RNAnimated } from "react-native";
+import {
+    View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity,
+    Modal, TextInput, Pressable, ActivityIndicator, Animated as RNAnimated
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import  Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
 
 import { RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +17,7 @@ import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/a
 import { useUserStore } from "@/services/stores/users-store";
 import { useTasksStore } from "@/services/stores/tasks-store";
 
-import { NewTaskModal  } from "@/components/task-create-modal";
+import { NewTaskModal } from "@/components/task-create-modal";
 import { EditTaskModal } from "@/components/task-edit-modal";
 import { CategoryCreateModal } from "@/components/category-create-modal";
 import { CategoryEditModal } from "@/components/category-edit-modal";
@@ -25,95 +27,95 @@ const { width } = Dimensions.get("window");
 
 // MM/DD/YYYY -> valid?
 const isValidDateFormat = (dateStr: string) => {
-  const dateRegex =
-    /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-  if (!dateRegex.test(dateStr)) return false;
+    const dateRegex =
+        /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+    if (!dateRegex.test(dateStr)) return false;
 
-  const [month, day, year] = dateStr.split("/").map(Number);
-  const d = new Date(year, month - 1, day);
-  return (
-    d.getFullYear() === year &&
-    d.getMonth() === month - 1 &&
-    d.getDate() === day
-  );
+    const [month, day, year] = dateStr.split("/").map(Number);
+    const d = new Date(year, month - 1, day);
+    return (
+        d.getFullYear() === year &&
+        d.getMonth() === month - 1 &&
+        d.getDate() === day
+    );
 };
 
 // MM/DD/YYYY -> Unix timestamp (seconds)
 const dateStringToUnix = (dateStr: string): number => {
-  const [month, day, year] = dateStr.split("/").map(Number);
-  const d = new Date(year, month - 1, day, 0, 0, 0, 0);
-  return Math.floor(d.getTime() / 1000);
+    const [month, day, year] = dateStr.split("/").map(Number);
+    const d = new Date(year, month - 1, day, 0, 0, 0, 0);
+    return Math.floor(d.getTime() / 1000);
 };
 
 // Unix timestamp (seconds) -> nice label
 const unixToDisplayDate = (ts?: number | null): string => {
-  if (!ts) return "No due date";
-  const d = new Date(ts * 1000);
-  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    if (!ts) return "No due date";
+    const d = new Date(ts * 1000);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 };
 
 // Helper to compare selected date to tasks' due_date
 const unixToDate = (ts?: number | null): Date | null => {
-  if (!ts) return null;
-  return new Date(ts * 1000);
+    if (!ts) return null;
+    return new Date(ts * 1000);
 };
 
 // Turn repeat rule from front end to match backend
 const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
-  if (!label || label === "None") return null;
+    if (!label || label === "None") return null;
 
-  const freqMap: Record<string, FrequencySpecifier> = {
-    Daily: "daily",
-    Weekly: "weekly",
-    Monthly: "monthly",
-    Yearly: "yearly",
-  };
+    const freqMap: Record<string, FrequencySpecifier> = {
+        Daily: "daily",
+        Weekly: "weekly",
+        Monthly: "monthly",
+        Yearly: "yearly",
+    };
 
-  const specifier = freqMap[label];
-  if (!specifier) return null;
+    const specifier = freqMap[label];
+    if (!specifier) return null;
 
-  return {
-    frequency: {
-      specifier,
-      value: 1,
-    },
-    duration: {
-      specifier: "forever",
-      value: null,
-    },
-  };
+    return {
+        frequency: {
+            specifier,
+            value: 1,
+        },
+        duration: {
+            specifier: "forever",
+            value: null,
+        },
+    };
 };
 
 // Turn repeat rule from back end to a label for frontend
 const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
-  if (!rule || !rule.frequency || !rule.frequency.specifier) return null;
+    if (!rule || !rule.frequency || !rule.frequency.specifier) return null;
 
-  switch (rule.frequency.specifier) {
-    case "daily":
-      return "Daily";
-    case "weekly":
-      return "Weekly";
-    case "monthly":
-      return "Monthly";
-    case "yearly":
-      return "Yearly";
-    default:
-      return null;
-  }
+    switch (rule.frequency.specifier) {
+        case "daily":
+            return "Daily";
+        case "weekly":
+            return "Weekly";
+        case "monthly":
+            return "Monthly";
+        case "yearly":
+            return "Yearly";
+        default:
+            return null;
+    }
 };
 
 // Task Animation
 function TaskItemWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <Animated.View
-      entering={FadeIn}
-      exiting={FadeOut}
-      layout={LinearTransition.springify().duration(1000)} // Animation here
-      style={{ width: "100%" }}
-    >
-      {children}
-    </Animated.View>
-  )
+    return (
+        <Animated.View
+            entering={FadeIn}
+            exiting={FadeOut}
+            layout={LinearTransition.springify().duration(1000)} // Animation here
+            style={{ width: "100%" }}
+        >
+            {children}
+        </Animated.View>
+    )
 };
 
 // --- Task Item Component ---
@@ -122,9 +124,9 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
 
     const handleDeletePress = () => {
         RNAnimated.timing(anim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: true,
         }).start(() => {
             onDelete(task.id);
         });
@@ -136,22 +138,22 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
 
         return (
-        <RNAnimated.View style={[{ opacity: anim }]}>
-            <RectButton
-            style={[
-                styles.rightAction,
-                {
-                backgroundColor: "#ff4d4f",
-                width: maxWidth,
-                },
-            ]}
-            onPress={handleDeletePress}
-            >
-            <View style={styles.trashIconContainer}>
-                <Ionicons name="trash-outline" size={20} color="#fff" />
-            </View>
-            </RectButton>
-        </RNAnimated.View>
+            <RNAnimated.View style={[{ opacity: anim }]}>
+                <RectButton
+                    style={[
+                        styles.rightAction,
+                        {
+                            backgroundColor: "#ff4d4f",
+                            width: maxWidth,
+                        },
+                    ]}
+                    onPress={handleDeletePress}
+                >
+                    <View style={styles.trashIconContainer}>
+                        <Ionicons name="trash-outline" size={20} color="#fff" />
+                    </View>
+                </RectButton>
+            </RNAnimated.View>
         );
     };
 
@@ -167,11 +169,11 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
         >
             <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(task.id)}>
                 <RNAnimated.View
-                style={[
-                    styles.taskCard,
-                    animatedStyle,
-                    { backgroundColor: theme.cardBackground, borderColor: theme.border },
-                ]}
+                    style={[
+                        styles.taskCard,
+                        animatedStyle,
+                        { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                    ]}
                 >
                     <View style={styles.taskTextContent}>
                         <Text style={[styles.taskTitle, { color: theme.secondaryText }]}>
@@ -219,8 +221,8 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
     };
 
     return (
-        <TouchableOpacity 
-            style={[styles.categoryTag, tagStyle]} 
+        <TouchableOpacity
+            style={[styles.categoryTag, tagStyle]}
             onPress={onPress}
             onLongPress={onLongPress}
             delayLongPress={1000}
@@ -250,12 +252,12 @@ export default function TasksScreen() {
     const filtered = tasks.filter((t) => {
         const taskDate = unixToDate(t.due_date);
         const matchDate = !taskDate
-        ? true
-        : (
-            taskDate.getFullYear() === date.getFullYear() &&
-            taskDate.getMonth() === date.getMonth() &&
-            taskDate.getDate() === date.getDate()
-        );
+            ? true
+            : (
+                taskDate.getFullYear() === date.getFullYear() &&
+                taskDate.getMonth() === date.getMonth() &&
+                taskDate.getDate() === date.getDate()
+            );
 
         const matchCategory = !selectedCategory || t.cat === selectedCategory;
 
@@ -284,28 +286,28 @@ export default function TasksScreen() {
         return a.name.localeCompare(b.name);
     });
 
-    
+
 
     // Modal states
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
-    
+
     // derive categories from tasks whenever tasks change
     useEffect(() => {
-    const fromTasks = Array.from(
-        new Set(
-        tasks
-            .map((t) => t.cat)
-            .filter((c): c is string => !!c)
-        )
-    ).sort();
+        const fromTasks = Array.from(
+            new Set(
+                tasks
+                    .map((t) => t.cat)
+                    .filter((c): c is string => !!c)
+            )
+        ).sort();
 
-    // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
-    setCategoriesList((prev) => {
-        const merged = new Set([...prev, ...fromTasks]);
-        return Array.from(merged).sort();
-    });
+        // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
+        setCategoriesList((prev) => {
+            const merged = new Set([...prev, ...fromTasks]);
+            return Array.from(merged).sort();
+        });
     }, [tasks]);
 
     // Category context menu states
@@ -313,7 +315,7 @@ export default function TasksScreen() {
     const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState<string | null>(null);
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
-    
+
     const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState<any | null>(null);
 
@@ -342,17 +344,17 @@ export default function TasksScreen() {
     // Animation helpers
     const fadeIn = () => {
         RNAnimated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
         }).start();
     };
 
     const fadeOut = (onComplete: () => void) => {
         RNAnimated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
         }).start(onComplete);
     };
 
@@ -369,7 +371,7 @@ export default function TasksScreen() {
         // PATCH calls in the background sequentially
         for (const t of tasksToUpdate) {
             try {
-                const res = await tasksApi.update({id: t.id, cat: newName});
+                const res = await tasksApi.update({ id: t.id, cat: newName });
                 if (!res.ok) {
                     console.log("Failed to update category on backend");
                 }
@@ -393,7 +395,7 @@ export default function TasksScreen() {
         // PATCH calls in the background sequentially
         for (const t of tasksToUpdate) {
             try {
-                const res = await tasksApi.update({id: t.id, cat:null});
+                const res = await tasksApi.update({ id: t.id, cat: null });
                 if (!res.ok) {
                     console.log("Failed to delete category on backend");
                 }
@@ -435,7 +437,7 @@ export default function TasksScreen() {
         if (selectedCategory === toDelete) {
             setSelectedCategory(null);
         }
-        
+
         // Delete category in the background
         clearTasksCategory(toDelete).catch((error) => {
             console.log("Failed to delete category", error);
@@ -466,7 +468,7 @@ export default function TasksScreen() {
 
         fadeOut(() => setIsEditCategoryModalVisible(false));
     };
-    
+
     const handleSaveNewCategory = () => {
         const trimmed = newCategoryName.trim();
         if (!trimmed) return;
@@ -487,7 +489,7 @@ export default function TasksScreen() {
             id: taskToEdit.id,
             title: taskToEdit.name,
             description: taskToEdit.desc,
-            category: taskToEdit.cat ?? null,
+            category: taskToEdit.cat,
             repeatLabel: formatRepeatRule(taskToEdit.repeat_rule) || "",
             dueDate: unixToDisplayDate(taskToEdit.due_date),
         });
@@ -509,7 +511,7 @@ export default function TasksScreen() {
         if (existing) {
             console.log(`Deleting Task: ${existing?.name}`)
         }
-        
+
         // Optimistically remove from UI
         removeTask(id);
 
@@ -573,8 +575,8 @@ export default function TasksScreen() {
                 console.log("Failed to create task:", res.status, res.message, res.detail);
                 setDateError(
                     typeof res.message === "string"
-                    ? res.message
-                    : "Failed to create task"
+                        ? res.message
+                        : "Failed to create task"
                 );
                 return;
             }
@@ -604,30 +606,29 @@ export default function TasksScreen() {
             });
             fadeOut(() => setIsNewTaskModalVisible(false));
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
 
     const updateExistingTask = async () => {
-        if (!editingTask || !editingTask.title.trim()) return;
+        if (!editingTask || !editingTask.title.trim() || !editingTask.dueDate.trim()) return;
         setLoading(true);
         try {
             const dueTimestamp = dateStringToUnix(editingTask.dueDate);
             const repeatRule = buildRepeatRuleFromLabel(editingTask.repeatLabel);
-            
+
             const res = await tasksApi.update({
                 id: editingTask.id,
                 name: editingTask.title,
                 desc: editingTask.description,
-                cat: editingTask.category,
+                cat: editingTask.category ? editingTask.category : null,
                 due_date: dueTimestamp,
                 repeat_rule: repeatRule,
-                
             });
             if (res.ok && res.data) {
                 console.log("Task Updated");
                 updateTask(editingTask.id, res.data);
-                
+
             } else {
                 console.log("Update failed", res.message);
             }
@@ -645,9 +646,9 @@ export default function TasksScreen() {
             <HeaderBar
                 title="Tasks"
                 showTitle={false}
-                onNotificationPress={() => {}}
+                onNotificationPress={() => { }}
                 onSettingsPress={() => {
-                router.push("../settings");
+                    router.push("../settings");
                 }}
             />
 
@@ -661,7 +662,7 @@ export default function TasksScreen() {
                         onPress={() =>
                             setDate(
                                 (d) =>
-                                new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
+                                    new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
                             )
                         }
                     >
@@ -680,7 +681,7 @@ export default function TasksScreen() {
                         onPress={() =>
                             setDate(
                                 (d) =>
-                                new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+                                    new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
                             )
                         }
                     >
@@ -707,8 +708,8 @@ export default function TasksScreen() {
                     >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
-                </View>  
-                
+                </View>
+
                 {/* Horizontal Scroll for Categories */}
                 <ScrollView
                     horizontal
@@ -721,28 +722,28 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
-                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
                             onLongPress={() => handleCategoryLongPress(cat)}
                         />
                     ))}
                 </ScrollView>
 
-                
+
 
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
-                        <TouchableOpacity onPress={() => {
-                            setIsNewTaskModalVisible(true);
-                            setDateError("");
-                            setTaskNameError("");
-                            fadeIn();
-                        }}
+                    <TouchableOpacity onPress={() => {
+                        setIsNewTaskModalVisible(true);
+                        setDateError("");
+                        setTaskNameError("");
+                        fadeIn();
+                    }}
                     >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
-   
+
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
                     {sorted.map((task) => (
@@ -813,7 +814,7 @@ export default function TasksScreen() {
                     setEditingTask(null);
                 }}
             />
-            
+
             {/* Category Context Menu Modal */}
             <Modal
                 transparent={true}
@@ -847,7 +848,7 @@ export default function TasksScreen() {
                             <Ionicons name="pencil" size={20} color="#fff" />
                             <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
                         </TouchableOpacity>
-                        
+
                         <TouchableOpacity
                             style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
                             onPress={handleDeleteCategory}
