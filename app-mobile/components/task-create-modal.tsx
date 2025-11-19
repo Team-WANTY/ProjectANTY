@@ -203,7 +203,11 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     },
                   ]}
                   onPress={() =>
-                    setNewTask((prev) => ({ ...prev, category: cat }))
+                    setNewTask((prev) =>
+                      prev
+                        ? { ...prev, category: prev.category === cat ? "" : cat }
+                        : prev
+                    )
                   }
                 >
                   <Text

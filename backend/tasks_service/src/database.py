@@ -99,7 +99,7 @@ class TaskDB:
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error("ERROR!:", e)
+            logger.error(f"ERROR!: {e}")
             raise GeneralQueryError()
 
     async def update_task(self, task_update: TaskUpdate) -> TaskInDB | None:
@@ -118,23 +118,24 @@ class TaskDB:
                         "value": task_update.desc,
                     }
                 )
-
-            patch_operations.append(
-                {"op": "replace", "path": "/cat", "value": task_update.cat}
-            )
+            if task_update.cat is not None:
+                patch_operations.append(
+                    {"op": "replace", "path": "/cat", "value": None if task_update.cat == "" else task_update.cat}
+                )
 
             if task_update.due_date is not None:
                 patch_operations.append(
                     {"op": "replace", "path": "/due_date", "value": task_update.due_date}
                 )
 
-            patch_operations.append(
-                {
-                    "op": "replace",
-                    "path": "/repeat_rule",
-                    "value": task_update.repeat_rule.model_dump() if task_update.repeat_rule else None,
-                }
-            )
+            if task_update.repeat_rule is not None:
+                patch_operations.append(
+                    {
+                        "op": "replace",
+                        "path": "/repeat_rule",
+                        "value": task_update.repeat_rule.model_dump(),
+                    }
+                )
 
             if len(patch_operations) == 0:
                 return None
@@ -157,7 +158,7 @@ class TaskDB:
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error("ERROR!:", e)
+            logger.error(f"ERROR!: {e}")
             raise RecordUpdateError()
 
     async def delete_task(self, task_id: str):

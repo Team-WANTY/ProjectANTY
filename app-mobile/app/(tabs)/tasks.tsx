@@ -621,7 +621,7 @@ export default function TasksScreen() {
                 id: editingTask.id,
                 name: editingTask.title,
                 desc: editingTask.description,
-                cat: editingTask.category ? editingTask.category : null,
+                cat: editingTask.category,
                 due_date: dueTimestamp,
                 repeat_rule: repeatRule,
             });
