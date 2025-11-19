@@ -293,7 +293,7 @@ export default function TasksScreen() {
     
     // derive categories from tasks whenever tasks change
     useEffect(() => {
-    const fromTasks = Array.from(
+        const fromTasks = Array.from(
         new Set(
         tasks
             .map((t) => t.cat)

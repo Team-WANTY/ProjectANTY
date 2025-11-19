@@ -137,16 +137,16 @@ export const friendsApi = {
   },
 
   // POST /friends/requests/{request_id}/accept
-  async accept(requestId: string): Promise<ApiResult<null>> {
+  async accept(requestId: string): Promise<ApiResult<Friendship>> {
     try {
       const url = fillRequestId(`${paths.root}/accept`, requestId);
-      const res = await api.post<void>(url);
+      const res = await api.post<Friendship>(url);
 
       return {
         ok: true,
         status: res.status,
         message: "Friend request accepted",
-        data: null,
+        data: res.data,
       }
     } catch (error: any) {
       const status = error?.response?.status;

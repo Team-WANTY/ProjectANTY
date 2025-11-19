@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Animated,
+  Animated as RNAnimated,
   Dimensions,
   Image,
   ActivityIndicator,
@@ -15,25 +15,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 import { useTheme } from "@/context/ThemeContext";
+import  Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
 
-import { 
-  friendsApi, 
-  type FriendRequest,
-} from "@/services/api/friends-api";
+import { friendsApi, type FriendRequest} from "@/services/api/friends-api";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
+import {
+  useFriendsStore,
+  type DisplayFriend,
+  type FriendUserInfo,
+} from "@/services/stores/friends-store";
+
 
 const { width: screenWidth } = Dimensions.get("window");
 
-type RequestUserInfo = {
-  id: string;
-  username: string;
-  avatarUrl: string | null;
-};
 
 type DisplayRequest = FriendRequest & {
-  user: RequestUserInfo;
+  user: FriendUserInfo;
 };
 
 type FriendRequestItemProps = {
@@ -43,7 +42,20 @@ type FriendRequestItemProps = {
   onAccept?: (req: DisplayRequest) => void;
   onDecline?: (req: DisplayRequest) => void;
   onCancel?: (req: DisplayRequest) => void;
-  onViewProfile?: (user: RequestUserInfo) => void;
+  onViewProfile?: (user: FriendUserInfo) => void;
+};
+
+function FriendRequestItemWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
+      layout={LinearTransition.springify().duration(1000)} // Animation here
+      style={{ width: "100%" }}
+    >
+      {children}
+    </Animated.View>
+  )
 };
 
 const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
@@ -55,125 +67,152 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
   onCancel,
   onViewProfile,
 }) => {
-  const anim = useRef(new Animated.Value(1)).current;
   const displayName = request.user.username || "Unknown user";
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
-  const animateAnd = (cb?: () => void) => {
-    Animated.timing(anim, {
+  // Animated value: 1 => full size, 0 => collapsed
+  const anim = useRef(new RNAnimated.Value(1)).current;
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+
+  // Interpolated styles for collapse
+  const baseAnimatedStyle = {
+    opacity: anim,
+    overflow: "hidden" as const,
+  };
+
+  const animatedSizeStyle =
+    measuredHeight == null
+      ? { marginBottom: 10 } // normal layout until we know the height
+      : {
+          height: anim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, measuredHeight],
+          }),
+          marginBottom: anim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 10],
+          }),
+        };
+
+  const runCloseAnimation = (cb?: () => void) => {
+    RNAnimated.timing(anim, {
       toValue: 0,
       duration: 220,
-      useNativeDriver: true,
+      useNativeDriver: false, // needed for height/margin
     }).start(() => cb && cb());
   };
 
   const handleAccept = () => {
-    animateAnd(() => onAccept && onAccept(request));
+    runCloseAnimation(() => onAccept?.(request));
   };
 
   const handleDecline = () => {
-    animateAnd(() => onDecline && onDecline(request));
+    runCloseAnimation(() => onDecline?.(request));
   };
 
   const handleCancel = () => {
-    animateAnd(() => onCancel && onCancel(request));
-  };
-
-  const animatedStyle = {
-    opacity: anim,
-    transform: [{ scale: anim }],
+    runCloseAnimation(() => onCancel?.(request));
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.friendCard,
-        { backgroundColor: theme.cardBackground },
-        animatedStyle,
-      ]}
+    <RNAnimated.View
+      style={[baseAnimatedStyle, animatedSizeStyle]}
+      onLayout={(e) => {
+        if (measuredHeight == null) {
+          setMeasuredHeight(e.nativeEvent.layout.height);
+        }
+      }}
     >
-      <View style={styles.friendBanner}>
-        {/* Avatar */}
-        <View style={styles.friendAvatarWrapper}>
-          {request.user.avatarUrl ? (
-            <Image
-              source={{ uri: request.user.avatarUrl }}
-              style={styles.friendImage}
-            />
-          ) : (
-            <View
-              style={[
-                styles.friendImage,
-                {
-                  backgroundColor: theme.primary,
-                  justifyContent: "center",
-                  alignItems: "center",
-                },
-              ]}
+      <View
+        style={[
+          styles.friendCard,
+          { backgroundColor: theme.cardBackground },
+        ]}
+      >
+        <View style={styles.friendBanner}>
+          {/* Avatar */}
+          <View style={styles.friendAvatarWrapper}>
+            {request.user.avatarUrl ? (
+              <Image
+                source={{ uri: request.user.avatarUrl }}
+                style={styles.friendImage}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.friendImage,
+                  {
+                    backgroundColor: theme.primary,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  },
+                ]}
+              >
+                <Text style={styles.friendInitial}>{initial}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Name + tap to view profile */}
+          <View style={styles.friendInfo}>
+            <TouchableOpacity
+              onPress={() => onViewProfile && onViewProfile(request.user)}
+              activeOpacity={0.7}
             >
-              <Text style={styles.friendInitial}>{initial}</Text>
-            </View>
-          )}
+              <Text style={[styles.friendName, { color: theme.text }]}>
+                {displayName}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        
-        {/* Name + tap to view profile */}
-        <View style={styles.friendInfo}>
-          <TouchableOpacity
-            onPress={() => onViewProfile && onViewProfile(request.user)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.friendName, { color: theme.text }]}>
-              {displayName}
-            </Text>
-          </TouchableOpacity>
-        </View>
+
+        {/* Right-side action buttons */}
+        {mode === "incoming" ? (
+          <View style={styles.actionsRow}>
+            {/* Accept */}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.acceptButton,
+                { backgroundColor: theme.primary },
+              ]}
+              onPress={handleAccept}
+            >
+              <Ionicons name="checkmark-sharp" size={18} color={theme.text} />
+            </TouchableOpacity>
+
+            {/* Decline */}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.declineButton,
+                { backgroundColor: theme.primary },
+              ]}
+              onPress={handleDecline}
+            >
+              <Ionicons name="close-sharp" size={18} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.actionsRow}>
+            {/* Cancel (outgoing) */}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.declineButton,
+                { backgroundColor: theme.primary },
+              ]}
+              onPress={handleCancel}
+            >
+              <Ionicons name="close-sharp" size={18} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-
-      {/* Right-side action buttons */}
-      {mode === "incoming" ? (
-        <View style={styles.actionsRow}>
-          {/* Accept */}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.acceptButton,
-              { backgroundColor: theme.primary },
-            ]}
-            onPress={handleAccept}
-          >
-            <Ionicons name="checkmark-sharp" size={18} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Decline */}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.declineButton,
-              { borderColor: theme.primary },
-            ]}
-            onPress={handleDecline}
-          >
-            <Ionicons name="close-sharp" size={18} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.actionsRow}>
-          {/* Cancel (outgoing) */}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.declineButton,
-              { borderColor: theme.primary },
-            ]}
-            onPress={handleCancel}
-          >
-            <Ionicons name="close-sharp" size={18} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-      )}
-    </Animated.View>
+    </RNAnimated.View>
   );
 };
+
 
 /**
  * Helper: figure out "other user" id depending on mode
@@ -195,7 +234,7 @@ function getCounterpartyId(req: FriendRequest, mode: "incoming" | "outgoing") {
 async function resolveUserInfoForRequest(
   req: FriendRequest,
   mode: "incoming" | "outgoing"
-): Promise<RequestUserInfo> {
+): Promise<FriendUserInfo> {
   const userId = getCounterpartyId(req, mode);
 
   let username = "Unknown user";
@@ -246,6 +285,8 @@ const FriendRequestsScreen: React.FC = () => {
   const [outgoing, setOutgoing] = useState<DisplayRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  const addFriend = useFriendsStore((s) => s.addFriend);
 
   const SWOOSH_COMPONENT_HEIGHT = screenWidth * 0.495;
   const headerTextColor = theme.background;
@@ -307,7 +348,7 @@ const FriendRequestsScreen: React.FC = () => {
   }, []);
 
 
-  const handleViewProfile = (user: RequestUserInfo) => {
+  const handleViewProfile = (user: FriendUserInfo) => {
     console.log("[FriendRequests] View profile:", user.id);
     // router.push(`/profile/${id}`); // later
   };
@@ -315,12 +356,28 @@ const FriendRequestsScreen: React.FC = () => {
   const handleAccept = async (req: DisplayRequest) => {
     console.log("[FriendRequests] Accept:", req.id);
     const res = await friendsApi.accept(req.id);
-    if (!res.ok || !res.data) {
+
+    if (!res.ok) {
       console.log("Error accepting friend request");
       return;
     }
-    console.log("[FriendRequests] You are now friends with", req.user.username)
+    const friendship = res.data;
+    console.log(friendship);
+
+    // Build DisplayFriend for the store
+    const newFriend: DisplayFriend = {
+      ...friendship,
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        avatarUrl: req.user.avatarUrl,
+      },
+    };
+    addFriend(newFriend);
+    // remove from incoming list
     setIncoming((prev) => prev.filter((r) => r.id !== req.id));
+
+    console.log("[FriendRequests] You are now friends with", req.user.username);
   };
 
   const handleDecline = async (req: DisplayRequest) => {
@@ -331,7 +388,7 @@ const FriendRequestsScreen: React.FC = () => {
       return;
     }
     console.log("[FriendRequests] You are now friends with", req.user.username)
-    setIncoming((prev) => prev.filter((r) => r.id !== req.id));
+    setIncoming(prev => prev.filter(r => r.id !== req.id));
   };
 
   const handleCancel = async (req: DisplayRequest) => {
@@ -342,7 +399,7 @@ const FriendRequestsScreen: React.FC = () => {
       return;
     }
     console.log("[FriendRequests] You are now friends with", req.user.username)
-    setOutgoing((prev) => prev.filter((r) => r.id !== req.id));
+    setOutgoing(prev => prev.filter(r => r.id !== req.id));
   };
 
   return (
@@ -411,15 +468,17 @@ const FriendRequestsScreen: React.FC = () => {
             </Text>
           ) : (
             incoming.map((req) => (
-              <FriendRequestItem
-                key={req.id}
-                request={req}
-                mode="incoming"
-                theme={theme}
-                onAccept={handleAccept}
-                onDecline={handleDecline}
-                onViewProfile={handleViewProfile}
-              />
+              <FriendRequestItemWrapper key={req.id}>
+                <FriendRequestItem
+                  // key={req.id}
+                  request={req}
+                  mode="incoming"
+                  theme={theme}
+                  onAccept={handleAccept}
+                  onDecline={handleDecline}
+                  onViewProfile={handleViewProfile}
+                />
+              </FriendRequestItemWrapper>
             ))
           )}
 
@@ -442,14 +501,15 @@ const FriendRequestsScreen: React.FC = () => {
             </Text>
           ) : (
             outgoing.map((req) => (
-              <FriendRequestItem
-                key={req.id}
-                request={req}
-                mode="outgoing"
-                theme={theme}
-                onCancel={handleCancel}
-                onViewProfile={handleViewProfile}
-              />
+              <FriendRequestItemWrapper key={req.id}>
+                <FriendRequestItem
+                  request={req}
+                  mode="outgoing"
+                  theme={theme}
+                  onCancel={handleCancel}
+                  onViewProfile={handleViewProfile}
+                />
+              </FriendRequestItemWrapper>
             ))
           )}
         </ScrollView>
@@ -480,7 +540,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
     marginBottom: 10,
   },
@@ -514,9 +574,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   friendImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     overflow: "hidden",
   },
   friendInitial: {
@@ -528,12 +588,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   friendName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
-  },
-  friendMessage: {
-    fontSize: 13,
-    marginTop: 2,
   },
   actionsRow: {
     flexDirection: "row",
@@ -552,8 +608,7 @@ const styles = StyleSheet.create({
     // bg color from theme.primary
   },
   declineButton: {
-    borderWidth: 1,
-    backgroundColor: "transparent",
+
   },
   loadingContainer: {
     paddingVertical: 16,

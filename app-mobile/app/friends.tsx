@@ -1,45 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-    View,
-    Text,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    Image,
-    Animated,
-    Dimensions,
-    Modal,
-    TextInput,
-    Pressable,
-    ActivityIndicator,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Animated as RNAnimated,
+    Dimensions, Modal, TextInput, Pressable, ActivityIndicator,
+    } from "react-native";
 import { useRouter, useFocusEffect  } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
+import Animated, { LinearTransition, FadeIn, FadeOut} from "react-native-reanimated";
 
 import { usersApi } from "@/services/api/users-api";
 import { friendsApi, type Friendship } from "@/services/api/friends-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
+import { useFriendsStore, type DisplayFriend, type FriendUserInfo} from "@/services/stores/friends-store";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-type FriendUserInfo = {
-  id: string;
-  username: string;
-  avatarUrl: string | null;
-};
-
-export type DisplayFriend = Friendship & {
-  user: FriendUserInfo;
-};
 
 // For /friends/me we assume owner_id === "me" and friend_id === "other user"
-async function resolveUserInfoForFriendship(
-  friendship: Friendship
-): Promise<FriendUserInfo> {
+async function resolveUserInfoForFriendship(friendship: Friendship): Promise<FriendUserInfo> {
   const userId = friendship.friend_id;
 
   let username = "Unknown user";
@@ -66,11 +46,22 @@ async function resolveUserInfoForFriendship(
   return { id: userId, username, avatarUrl };
 }
 
-async function enrichFriendship(
-  friendship: Friendship
-): Promise<DisplayFriend> {
+async function enrichFriendship(friendship: Friendship): Promise<DisplayFriend> {
   const user = await resolveUserInfoForFriendship(friendship);
   return { ...friendship, user };
+}
+
+function FriendItemWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
+      layout={LinearTransition.springify().duration(250)}
+      style={{ width: "100%" }}
+    >
+      {children}
+    </Animated.View>
+  );
 }
 
 // Friend Item Component
@@ -87,71 +78,51 @@ const FriendItem: React.FC<FriendItemProps> = ({
   onUnfriend,
   onViewProfile,
 }) => {
-  const anim = useRef(new Animated.Value(1)).current;
+  const displayName = friend.user.username || "Unknown user";
+  const initial = displayName[0]?.toUpperCase() ?? "?";
 
-  const handleUnfriend = () => {
-    Animated.timing(anim, {
-      toValue: 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => {
-      onUnfriend(friend.user.id); // still use friendship id here
-    });
-  };
-
-  const animatedStyle = {
-    opacity: anim,
-    transform: [{ scale: anim }],
-  };
-
-  const avatarLetter =
-    friend.user.username?.[0]?.toUpperCase() ?? "?";
+  const handleUnfriendPress = () => {onUnfriend(friend.friend_id)};
 
   return (
-    <Animated.View
-      style={[
-        styles.friendCard,
-        { backgroundColor: theme.cardBackground },
-        animatedStyle,
-      ]}
-    >
-      <View style={styles.friendBanner}>
-        {friend.user.avatarUrl ? (
-          <Image
-            source={{ uri: friend.user.avatarUrl }}
-            style={styles.friendImage}
-          />
-        ) : (
-          <View
-            style={[
-              styles.friendImage,
-              { backgroundColor: theme.primary, justifyContent: "center", alignItems: "center" },
-            ]}
-          >
-            <Text style={styles.friendInitial}>{avatarLetter}</Text>
-          </View>
-        )}
+        <View
+            style={[styles.friendCard, { backgroundColor: theme.cardBackground }]}
+        >
+            <View style={styles.friendBanner}>
+                {friend.user.avatarUrl ? (
+                    <Image source={{ uri: friend.user.avatarUrl }} style={styles.friendImage}/>
+                ) : (
+                    <View
+                        style={[
+                            styles.friendImage,
+                            {
+                                backgroundColor: theme.primary,
+                                justifyContent: "center",
+                                alignItems: "center",
+                            },
+                        ]}
+                    >
+                        <Text style={styles.friendInitial}>{initial}</Text>
+                    </View>
+                )}
 
-        <View style={styles.friendInfo}>
-          <TouchableOpacity
-            onPress={() => onViewProfile(friend.user.id)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.friendName, { color: theme.text }]}>
-              {friend.user.username}
-            </Text>
-          </TouchableOpacity>
+                <View style={styles.friendInfo}>
+                    <TouchableOpacity
+                        onPress={() => onViewProfile(friend.user.id)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.friendName, { color: theme.text }]}> {displayName} </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <TouchableOpacity
+                style={[styles.unfriendButton, { backgroundColor: theme.primary }]}
+                onPress={handleUnfriendPress}
+            >
+                <Ionicons name="person-remove" size={18} color={theme.text} />
+            </TouchableOpacity>
         </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.unfriendButton, { backgroundColor: theme.primary }]}
-        onPress={handleUnfriend}
-      >
-        <Ionicons name="person-remove" size={18} color="#fff" />
-      </TouchableOpacity>
-    </Animated.View>
-  );
+    );
 };
 
 
@@ -159,27 +130,34 @@ export default function FriendsScreen() {
     const { theme } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new RNAnimated.Value(0)).current;
 
-    const [friends, setFriends] = useState<DisplayFriend[]>([]);
-    const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
-    const [friendUsername, setFriendUsername] = useState("");
-    
+    const friends = useFriendsStore((s) => s.friends);
+    const friendCount = useFriendsStore((s) => s.friendCount);
+    const setFriends = useFriendsStore((s) => s.setFriends);
+    const removeFriend = useFriendsStore((s) => s.removeFriend);
+    const addFriend = useFriendsStore((s) => s.addFriend);
+
     const [loading, setLoading] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
+
+    const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
+    const [friendUsername, setFriendUsername] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
 
-    const loadFriends = async () => {
-        setLoading(true);
+    // Load friends in the background
+    const loadFriends = React.useCallback(async () => {
         setErrorText(null);
+        setLoading(true);
         try {
             const res = await friendsApi.listFriends(50);
             if (res.ok && res.data) {
                 const enriched: DisplayFriend[] = await Promise.all(
-                    res.data.friends.map((f) => enrichFriendship(f))
+                res.data.friends.map((f) => enrichFriendship(f))
                 );
                 setFriends(enriched);
+                console.log("Loading friends");
             } 
             else {
                 setErrorText(res.message || "Failed to load friends");
@@ -191,43 +169,66 @@ export default function FriendsScreen() {
         finally {
             setLoading(false);
         }
-    };
+    }, [setFriends]);
 
     useEffect(() => {
-        loadFriends();
-    }, []);
+        loadFriends(); // background refresh on first mount
+    }, [loadFriends]);
 
     useFocusEffect(
         React.useCallback(() => {
-            loadFriends();
-        }, [])
+        loadFriends(); // background refresh whenever the screen is focused
+        }, [loadFriends])
     );
-    const handleUnfriend = async (friendId: string) => {
-        const res = await friendsApi.unfriend(friendId);
-        if (!res.ok) {
-            console.log("Failed to unfriend:", res.message);
-            console.log("FriendID:", friendId);
-        return;
-        }
-        console.log("[handleUnfriend] Success")
-        setFriends(prev => prev.filter(f => f.friend_id !== friendId));
+
+
+    const handleUnfriend = (friendId: string) => {
+        // Find the friend to re-add to the store incase the API fail
+        const prevFriend = friends.find(
+            (f) => f.friend_id === friendId || f.user.id === friendId
+        );
+
+        // Optimistically remove friend from the store
+        removeFriend(friendId);
+        setErrorText(null);
+
+        (async () => {
+            try {
+                // Call the API in the background
+                const res = await friendsApi.unfriend(friendId);
+
+                if (!res.ok) {
+                    throw new Error(res.message || "Failed to unfriend.");
+                }
+
+                console.log("[handleUnfriend] Success");
+            } 
+            catch (err) {
+                console.log("[handleUnfriend] API error:", err);
+                // Restore the friend in the UI if we removed them
+                if (prevFriend) {
+                    addFriend(prevFriend);
+                }
+                // Show an error message
+                setErrorText("Failed to unfriend. Please try again.");
+            }
+        })();
     };
 
     const handleViewProfile = (userId: string) => {
         // Navigate to friend's profile - implement when backend is ready
         console.log("View profile:", userId);
-        // router.push(`/profile/${friendId}`);
+        // router.push(`/profile/${friendId}`); ?
     };
 
-    const handleIncomingFriendRequests = () => {
+    const handleViewFriendRequests = () => {
         router.push("/friends-requests");
-        // Navigate to friend requests page - implement when backend is ready
-        console.log("View friend requests");
+        console.log("Loading friend requests");
     };
 
     const openAddFriendModal = () => {
         setAddFriendModalVisible(true);
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
             toValue: 1,
             duration: 200,
             useNativeDriver: true,
@@ -235,7 +236,7 @@ export default function FriendsScreen() {
     };
 
     const closeAddFriendModal = () => {
-        Animated.timing(fadeAnim, {
+        RNAnimated.timing(fadeAnim, {
             toValue: 0,
             duration: 200,
             useNativeDriver: true,
@@ -330,16 +331,14 @@ export default function FriendsScreen() {
                     </TouchableOpacity>
 
                     {/* Friends Title */}
-                    <Text style={[styles.headerTitle, { color: headerTextColor, top: insets.top + 50, width: screenWidth, textAlign: "center" }]}>
-                        Friends
-                    </Text>
+                    <Text style={[styles.headerTitle, { color: headerTextColor, top: insets.top + 50, width: screenWidth, textAlign: "center" }]}>Friend</Text>
 
                     {/* Right Icons */}
                     <View style={[styles.rightIcons, { top: insets.top + 15 }]}>
                         {/* Friend Requests Icon */}
                         <TouchableOpacity
                             style={styles.iconButton}
-                            onPress={handleIncomingFriendRequests}
+                            onPress={handleViewFriendRequests}
                         >
                             <Ionicons name="people-outline" size={24} color={headerTextColor} />
                         </TouchableOpacity>
@@ -358,7 +357,7 @@ export default function FriendsScreen() {
             {/* Friend Count */}
             <View style={styles.header}>
                 <Text style={[styles.friendCount, { color: theme.text }]}>
-                    {friends.length} {friends.length === 1 ? "Friend" : "Friends"}
+                    {friendCount} {friendCount === 1 ? "Friend" : "Friends"}
                 </Text>
             </View>
 
@@ -369,19 +368,18 @@ export default function FriendsScreen() {
                 {friends.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Ionicons name="people-outline" size={64} color={theme.secondaryText} />
-                        <Text style={[styles.emptyText, { color: theme.secondaryText }]}>
-                            No friends yet
-                        </Text>
+                        <Text style={[styles.emptyText, { color: theme.secondaryText }]}>No friends yet</Text>
                     </View>
                 ) : (
                     friends.map((friend) => (
-                        <FriendItem
-                            key={friend.id}
-                            friend={friend}
-                            theme={theme}
-                            onUnfriend={handleUnfriend}
-                            onViewProfile={handleViewProfile}
-                        />
+                        <FriendItemWrapper key={friend.id}>
+                            <FriendItem
+                                friend={friend}
+                                theme={theme}
+                                onUnfriend={handleUnfriend}
+                                onViewProfile={handleViewProfile}
+                            />
+                        </FriendItemWrapper>
                     ))
                 )}
             </ScrollView>
@@ -393,12 +391,12 @@ export default function FriendsScreen() {
                 onRequestClose={closeAddFriendModal}
                 animationType="none"
             >
-                <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+                <RNAnimated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
                     <Pressable
                         style={StyleSheet.absoluteFill}
                         onPress={closeAddFriendModal}
                     />
-                    <Animated.View
+                    <RNAnimated.View
                         style={[
                             styles.modalContent,
                             {
@@ -419,14 +417,10 @@ export default function FriendsScreen() {
                             <Text style={styles.modalCloseText}>✕</Text>
                         </Pressable>
 
-                        <Text style={[styles.modalTitle, { color: theme.background }]}>
-                            Add Friend
-                        </Text>
+                        <Text style={[styles.modalTitle, { color: theme.background }]}>Add Friend</Text>
 
                         <View style={styles.inputContainer}>
-                            <Text style={[styles.inputLabel, { color: theme.background }]}>
-                                Username
-                            </Text>
+                            <Text style={[styles.inputLabel, { color: theme.background }]}>Username</Text>
 
                             <TextInput
                                 style={[
@@ -467,9 +461,8 @@ export default function FriendsScreen() {
                                 <Text style={styles.addButtonText}>Send Request</Text>
                             )}
                         </Pressable>
-
-                    </Animated.View>
-                </Animated.View>
+                    </RNAnimated.View>
+                </RNAnimated.View>
             </Modal>
         </View>
     );
@@ -533,21 +526,21 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     friendImage: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         marginRight: 12,
     },
     friendInfo: {
         flex: 1,
     },
     friendName: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: "600",
     },
     friendInitial: {
         color: "#fff",
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "700",
     },
     unfriendButton: {
@@ -632,7 +625,7 @@ const styles = StyleSheet.create({
     errorText: {
         color: "red",
         marginTop: 4,
-        fontSize: 12,
+        fontSize: 14,
     },
 
 });
