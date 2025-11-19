@@ -101,7 +101,7 @@ async def register(
 ) -> UserBase:
     try:
         created_user = await auth_service.register_user(user_create)
-        return created_user.to_base().model_dump()
+        return created_user.to_base()
     except RecordAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="User already exists"

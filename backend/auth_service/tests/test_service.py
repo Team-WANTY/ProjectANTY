@@ -1,10 +1,12 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import jwt
 import pytest
 from email_validator import EmailNotValidError
+from httpx import Response
 from shared.exceptions.auth import AuthError
+from shared.exceptions.db import RecordNotFoundError
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.token import Token
 
@@ -20,10 +22,32 @@ class TestRegisterUser:
 
     @pytest.mark.asyncio
     async def test_register_user_success(
-        self, mock_auth_service, mock_db, sample_user_create, sample_user_auth_info
+        self,
+        mock_auth_service,
+        mock_db,
+        sample_user_create,
+        sample_user_auth_info,
+        monkeypatch,
     ):
         """Test successful user registration"""
         mock_db.create_user.return_value = sample_user_auth_info
+        mock_db.get_user_auth_by_username.side_effect = RecordNotFoundError()
+        mock_db.get_user_auth_by_email.side_effect = RecordNotFoundError()
+
+        mock_post = AsyncMock(return_value=Response(status_code=201))
+
+        class MockClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                pass
+
+            post = mock_post
+
+        monkeypatch.setattr(
+            "src.service.AsyncClient", lambda *args, **kwargs: MockClient()
+        )
 
         result = await mock_auth_service.register_user(sample_user_create)
 
