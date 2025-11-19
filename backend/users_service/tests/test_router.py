@@ -6,6 +6,7 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
+
 from src.models import UserUpdate
 
 
