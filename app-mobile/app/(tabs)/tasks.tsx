@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-    View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity,
-    Modal, TextInput, Pressable, ActivityIndicator, Animated as RNAnimated
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
+    Modal, TextInput, Pressable, Animated as RNAnimated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
@@ -22,13 +20,13 @@ import { EditTaskModal } from "@/components/task-edit-modal";
 import { CategoryCreateModal } from "@/components/category-create-modal";
 import { CategoryEditModal } from "@/components/category-edit-modal";
 
+
 const { width } = Dimensions.get("window");
 
 
 // MM/DD/YYYY -> valid?
 const isValidDateFormat = (dateStr: string) => {
-    const dateRegex =
-        /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+    const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
     if (!dateRegex.test(dateStr)) return false;
 
     const [month, day, year] = dateStr.split("/").map(Number);
@@ -286,9 +284,12 @@ export default function TasksScreen() {
         return a.name.localeCompare(b.name);
     });
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d6f26ea (Integrated Anita's new Edit Category Modal)
 
-    // Modal states
+    // Modal, Category States
     const [isNewCategoryModalVisible, setIsNewCategoryModalVisible] = useState(false);
     const [isNewTaskModalVisible, setIsNewTaskModalVisible] = useState(false);
     const [categoriesList, setCategoriesList] = useState<string[]>([]);
@@ -315,7 +316,8 @@ export default function TasksScreen() {
     const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState<string | null>(null);
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
-
+    const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+    
     const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState<any | null>(null);
 
@@ -358,50 +360,10 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
-    // Category handlers
-    const handleCategoryLongPress = (category: string, event: any) => {
-        setSelectedCategoryForMenu(category);
-        setEditCategoryName(category);
-        setIsEditCategoryModalVisible(true);
-        fadeIn();
-    };
+    
 
-    const handleDeleteCategory = () => {
-        if (selectedCategoryForMenu) {
-            setCategoriesList(prev => prev.filter(cat => cat !== selectedCategoryForMenu));
-            // Also clear the selection if the deleted category was selected
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(null);
-            }
-            fadeOut(() => {
-                setIsEditCategoryModalVisible(false);
-                setEditCategoryName("");
-                setSelectedCategoryForMenu(null);
-            });
-        }
-    };
+    // CATEGORY AND TASKS CATEGORY HELPERS
 
-    const handleSaveEditCategory = () => {
-        if (selectedCategoryForMenu && editCategoryName.trim()) {
-            setCategoriesList(prev => 
-                prev.map(cat => cat === selectedCategoryForMenu ? editCategoryName.trim() : cat)
-            );
-            // Update selectedCategory if it was the edited one
-            if (selectedCategory === selectedCategoryForMenu) {
-                setSelectedCategory(editCategoryName.trim());
-            }
-            fadeOut(() => {
-                setIsEditCategoryModalVisible(false);
-                setEditCategoryName("");
-                setSelectedCategoryForMenu(null);
-            });
-        }
-    };
-
-    // Date validation helper
-    const isValidDateFormat = (date: string) => {
-        const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-        if (!dateRegex.test(date)) return false;
     // Update all tasks with a given category name -> new category name
     const renameTasksCategory = async (oldName: string, newName: string) => {
         // Find all tasks that is in that category
@@ -451,9 +413,10 @@ export default function TasksScreen() {
     };
 
     // Category handlers
-    const handleCategoryLongPress = (category: string) => {
+    const handleCategoryLongPress = (category: string, event: any) => {
         setSelectedCategoryForMenu(category);
-        setCategoryMenuVisible(true);
+        setEditCategoryName(category);
+        setIsEditCategoryModalVisible(true);
         fadeIn();
     };
 
@@ -470,6 +433,15 @@ export default function TasksScreen() {
         }
     };
 
+    const handleSaveNewCategory = () => {
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) return;
+
+        setCategoriesList((prev) => [...prev, trimmed,]);
+        setNewCategoryName("");
+        fadeOut(() => setIsNewCategoryModalVisible(false));
+    };
+   
     const handleDeleteCategory = () => {
         if (!selectedCategoryForMenu) return;
         const toDelete = selectedCategoryForMenu;
@@ -513,17 +485,8 @@ export default function TasksScreen() {
         fadeOut(() => setIsEditCategoryModalVisible(false));
     };
 
-    const handleSaveNewCategory = () => {
-        const trimmed = newCategoryName.trim();
-        if (!trimmed) return;
-
-        setCategoriesList((prev) => [
-            ...prev,
-            trimmed,
-        ]);
-        setNewCategoryName("");
-        fadeOut(() => setIsNewCategoryModalVisible(false));
-    };
+    
+    // TASKS handlers
 
     const handleEditTask = (id: string) => {
         const taskToEdit = tasks.find((t) => t.id === id);
@@ -575,7 +538,7 @@ export default function TasksScreen() {
     // Calculate tasks completed (for the header)
     const completedCount = filtered.filter((t) => t.completed).length;
 
-
+    // Create tasks
     const createTask = async () => {
         const title = newTask.title.trim();
         const dueDateRaw = newTask.dueDate.trim();
@@ -654,6 +617,7 @@ export default function TasksScreen() {
         }
     };
 
+    // Update tasks
     const updateExistingTask = async () => {
         if (!editingTask || !editingTask.title.trim() || !editingTask.dueDate.trim()) return;
         setLoading(true);
@@ -767,12 +731,10 @@ export default function TasksScreen() {
                             theme={theme}
                             isActive={cat === selectedCategory}
                             onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
-                            onLongPress={(event) => handleCategoryLongPress(cat, event)}
+                            onLongPress={(event: any) => handleCategoryLongPress(cat, event)}
                         />
                     ))}
                 </ScrollView>
-
-
 
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
@@ -813,7 +775,7 @@ export default function TasksScreen() {
                 onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
                 onSubmit={handleSaveNewCategory}
             />
-
+            
             <CategoryEditModal
                 visible={isEditCategoryModalVisible}
                 fadeAnim={fadeAnim}
@@ -822,6 +784,7 @@ export default function TasksScreen() {
                 onChangeValue={setEditCategoryName}
                 onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
                 onSubmit={handleSaveEditCategory}
+                onDelete={handleDeleteCategory}
             />
 
             <NewTaskModal
@@ -858,51 +821,6 @@ export default function TasksScreen() {
                     setEditingTask(null);
                 }}
             />
-
-            {/* Category Context Menu Modal */}
-            <Modal
-                transparent={true}
-                visible={categoryMenuVisible}
-                onRequestClose={() => fadeOut(() => setCategoryMenuVisible(false))}
-                animationType="none"
-            >
-                <RNAnimated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                    <Pressable
-                        style={StyleSheet.absoluteFill}
-                        onPress={() => fadeOut(() => setCategoryMenuVisible(false))}
-                    />
-                    <RNAnimated.View
-                        style={[
-                            styles.contextMenuContent,
-                            {
-                                backgroundColor: theme.cardBackground,
-                                transform: [{
-                                    scale: fadeAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [0.95, 1]
-                                    })
-                                }]
-                            }
-                        ]}
-                    >
-                        <TouchableOpacity
-                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
-                            onPress={handleEditCategory}
-                        >
-                            <Ionicons name="pencil" size={20} color="#fff" />
-                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Edit</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.contextMenuItem, { backgroundColor: theme.primary }]}
-                            onPress={handleDeleteCategory}
-                        >
-                            <Ionicons name="trash" size={20} color="#fff" />
-                            <Text style={[styles.contextMenuText, { color: '#fff' }]}>Delete</Text>
-                        </TouchableOpacity>
-                    </RNAnimated.View>
-                </RNAnimated.View>
-            </Modal>
         </View>
     );
 }
@@ -1020,7 +938,6 @@ const styles = StyleSheet.create({
     modalCloseText: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#1D3B53",
     },
     headerBar: {
         flexDirection: "row",
@@ -1132,14 +1049,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
     },
-    deleteButton: {
-        padding: 8,
-        marginLeft: 10,
-        borderRadius: 15,
-        marginTop: 20,
-        marginBottom: 30,
-
-    },
     rightAction: {
         justifyContent: "center",
         alignItems: "center",
@@ -1151,33 +1060,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    contextMenuContent: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 8,
-        width: '50%',
-        maxWidth: 200,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-        gap: 8,
-    },
-    contextMenuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
-        gap: 8,
-        borderRadius: 8,
-    },
-    contextMenuText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
     modalButtons: {
-        flexDirection: 'row',i'll 
+        flexDirection: 'row',
         gap: 12,
         alignItems: 'center',
     },
