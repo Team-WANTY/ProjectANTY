@@ -18,8 +18,8 @@ export type EditingTask = {
   title: string;
   description: string;
   category: string | null;
-  repeatLabel: string; // "None" | "Daily" | ...
-  dueDate: string;     // MM/DD/YYYY
+  repeatLabel: string;
+  dueDate: string;
 };
 
 export type Theme = {
@@ -46,8 +46,8 @@ type EditTaskModalProps = {
   setDateError: React.Dispatch<React.SetStateAction<string>>;
 
   loading: boolean;
-  onSave: () => void;          // calls updateExistingTask in parent
-  onRequestClose: () => void;  // parent sets visible=false & clears editingTask
+  onSave: () => void;
+  onRequestClose: () => void;
 };
 
 export const EditTaskModal: React.FC<EditTaskModalProps> = ({
@@ -83,27 +83,16 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   };
 
   useEffect(() => {
-    if (visible) {
-      fadeIn();
-    } else {
-      fadeAnim.setValue(0);
-    }
+    if (visible) fadeIn();
+    else fadeAnim.setValue(0);
   }, [visible, fadeAnim]);
 
-  const handleClose = () => {
-    fadeOut(onRequestClose);
-  };
+  const handleClose = () => fadeOut(onRequestClose);
 
-  // Nothing to edit yet
   if (!visible || !editingTask) return null;
 
   return (
-    <Modal
-      transparent
-      visible={visible}
-      onRequestClose={handleClose}
-      animationType="none"
-    >
+    <Modal transparent visible={visible} onRequestClose={handleClose} animationType="none">
       <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         <Animated.View
@@ -131,15 +120,11 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
             <Text style={styles.modalCloseText}>✕</Text>
           </Pressable>
 
-          <Text style={[styles.modalTitle, { color: theme.background }]}>
-            Edit Task
-          </Text>
+          <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Task</Text>
 
           {/* Task Name */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
-              Task Name
-            </Text>
+            <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
             <TextInput
               style={[
                 styles.input,
@@ -147,9 +132,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               ]}
               value={editingTask.title}
               onChangeText={(text) =>
-                setEditingTask((prev) =>
-                  prev ? { ...prev, title: text } : prev
-                )
+                setEditingTask((prev) => (prev ? { ...prev, title: text } : prev))
               }
               placeholder="Enter task name"
               placeholderTextColor={theme.background + "80"}
@@ -158,9 +141,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
           {/* Description */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
-              Description
-            </Text>
+            <Text style={[styles.inputLabel, { color: theme.background }]}>Description</Text>
             <TextInput
               style={[
                 styles.input,
@@ -168,9 +149,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               ]}
               value={editingTask.description}
               onChangeText={(text) =>
-                setEditingTask((prev) =>
-                  prev ? { ...prev, description: text } : prev
-                )
+                setEditingTask((prev) => (prev ? { ...prev, description: text } : prev))
               }
               placeholder="What’s this task about?"
               placeholderTextColor={theme.background + "80"}
@@ -180,14 +159,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
           {/* Category */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
-              Category
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoryScroll}
-            >
+            <Text style={[styles.inputLabel, { color: theme.background }]}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {categoriesList.map((cat) => (
                 <TouchableOpacity
                   key={cat}
@@ -195,15 +168,15 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                     styles.categoryOption,
                     {
                       backgroundColor:
-                        editingTask.category === cat
-                          ? theme.primary
-                          : "transparent",
+                        editingTask.category === cat ? theme.primary : "transparent",
                       borderColor: theme.background,
                     },
                   ]}
                   onPress={() =>
                     setEditingTask((prev) =>
-                      prev ? { ...prev, category: cat } : prev
+                      prev
+                        ? { ...prev, category: prev.category === cat ? "" : cat }
+                        : prev
                     )
                   }
                 >
@@ -212,9 +185,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                       styles.categoryOptionText,
                       {
                         color:
-                          editingTask.category === cat
-                            ? "#fff"
-                            : theme.background,
+                          editingTask.category === cat ? "#fff" : theme.background,
                       },
                     ]}
                   >
@@ -227,9 +198,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
           {/* Repeat */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
-              Repeat
-            </Text>
+            <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
             <Pressable
               style={[styles.dropdown, { borderColor: theme.background }]}
               onPress={() => setIsRepeatOpen((prev) => !prev)}
@@ -237,11 +206,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               <Text style={[styles.dropdownText, { color: theme.background }]}>
                 {editingTask.repeatLabel || "None"}
               </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={theme.background}
-              />
+              <Ionicons name="chevron-down" size={18} color={theme.background} />
             </Pressable>
 
             {isRepeatOpen && (
@@ -303,9 +268,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               placeholder="MM/DD/YYYY"
               placeholderTextColor={theme.background + "80"}
             />
-            {!!dateError && (
-              <Text style={styles.errorText}>{dateError}</Text>
-            )}
+            {!!dateError && <Text style={styles.errorText}>{dateError}</Text>}
           </View>
 
           <TouchableOpacity
@@ -320,9 +283,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
             {loading ? (
               <ActivityIndicator />
             ) : (
-              <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-                Save Changes
-              </Text>
+              <Text style={[styles.saveButtonText, { color: "#fff" }]}>Save Changes</Text>
             )}
           </TouchableOpacity>
         </Animated.View>
