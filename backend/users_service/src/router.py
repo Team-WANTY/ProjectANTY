@@ -52,7 +52,7 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> U
 @users_router.get("/id/{user_id}", response_model=UserInfo, tags=["users"])
 async def get_user(
     user_id: str,
-    current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
+    _current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
     users_service: UsersService = Depends(get_users_service)
 ) -> UserInfo:
     """Get user by ID"""
@@ -92,7 +92,7 @@ async def get_user(
     #         )
 
 @users_router.get("/lookup/{username}", response_model=UserBase, tags=["users"])
-async def get_user(
+async def get_user_by_username(
     username: str, users_service: UsersService = Depends(get_users_service)
 ) -> UserBase:
     """Get user by username"""
