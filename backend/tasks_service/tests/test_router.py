@@ -1,4 +1,5 @@
 import pytest
+from shared.db import now_timestamp
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     GeneralQueryError,
@@ -9,67 +10,75 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 
-from src.models import PaginatedTasks, TaskUpdate
+from src.models import TaskUpdate
 
 
 class TestRouterCreateTask:
     @pytest.mark.asyncio
     async def test_create_task_success(
-        self, mock_service, client, sample_task_in_db, sample_task
+        self, mock_service, client, sample_task_in_db, sample_task_create
     ):
         mock_service.create_task.return_value = sample_task_in_db
 
-        response = client.post("/", json=sample_task.model_dump())
+        response = client.post("/", content=sample_task_create.model_dump_json())
 
         assert response.status_code == 201
-        data = response.json()
-        assert data["id"] == sample_task_in_db.id
 
     @pytest.mark.asyncio
     async def test_create_task_not_authorized(
-        self, mock_service, client, sample_task_in_db, sample_task
+        self, mock_service, client, sample_task_in_db, sample_task_create
     ):
-        new_sample_task = sample_task.model_copy(deep=True)
+        new_sample_task = sample_task_create.model_copy(deep=True)
         new_sample_task.user_id = "user321"
 
-        mock_service.create_task.side_effect = AuthError
-        response = client.post("/", json=new_sample_task.model_dump())
+        mock_service.create_task.side_effect = AuthError()
+        response = client.post("/", content=new_sample_task.model_dump_json())
 
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_create_task_already_exists(self, mock_service, client, sample_task):
+    async def test_create_task_already_exists(
+        self, mock_service, client, sample_task_create
+    ):
         mock_service.create_task.side_effect = RecordAlreadyExistsError()
 
-        response = client.post("/", json=sample_task.model_dump())
+        response = client.post("/", content=sample_task_create.model_dump_json())
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_create_task_unexpected_error(
-        self, mock_service, client, sample_task
+    async def test_create_task_creation_error(
+        self, mock_service, client, sample_task_create
     ):
         mock_service.create_task.side_effect = RecordCreationError()
 
-        response = client.post("/", json=sample_task.model_dump())
+        response = client.post("/", content=sample_task_create.model_dump_json())
+
+        assert response.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_create_task_unexpected_error(
+        self, mock_service, client, sample_task_create
+    ):
+        mock_service.create_task.side_effect = Exception()
+
+        response = client.post("/", content=sample_task_create.model_dump_json())
 
         assert response.status_code == 500
 
 
-class TestRouterGetTasks:
+class TestRouterGetTaskByID:
     @pytest.mark.asyncio
     async def test_get_task_by_id_success(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_task_by_id.return_value = PaginatedTasks(
-            tasks=[sample_task_in_db], continuation_token=None
-        )
+        mock_service.get_task_by_id.return_value = sample_task_in_db
 
-        response = client.get("/", params={"task_id": "task123"})
+        response = client.get("/id/task123")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["tasks"][0]["id"] == sample_task_in_db.id
+        assert data["id"] == sample_task_in_db.id
 
     @pytest.mark.asyncio
     async def test_get_task_by_id_not_found(
@@ -77,7 +86,7 @@ class TestRouterGetTasks:
     ):
         mock_service.get_task_by_id.side_effect = RecordNotFoundError()
 
-        response = client.get("/", params={"task_id": "task123"})
+        response = client.get("/id/task123")
 
         assert response.status_code == 404
 
@@ -87,41 +96,61 @@ class TestRouterGetTasks:
     ):
         mock_service.get_task_by_id.side_effect = AuthError()
 
-        response = client.get("/", params={"task_id": "task123"})
+        response = client.get("/id/task123")
 
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_task_by_id_unxepected_erro(
+    async def test_get_task_by_user_id_query_error(
         self, mock_service, client, sample_task_in_db
     ):
         mock_service.get_task_by_id.side_effect = GeneralQueryError()
 
-        response = client.get("/", params={"task_id": "task123"})
+        response = client.get("/id/task123")
 
         assert response.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_get_tasks_by_user_id_success(
+    async def test_get_task_by_id_unxepected_error(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_tasks_by_user_id.return_value = PaginatedTasks(
-            tasks=[sample_task_in_db, sample_task_in_db], continuation_token=None
+        mock_service.get_task_by_id.side_effect = Exception()
+
+        response = client.get("/id/task123")
+
+        assert response.status_code == 500
+
+
+class TestRouterGetUsersTasks:
+    @pytest.mark.asyncio
+    async def test_get_users_task_ids_in_range_success(
+        self, mock_service, client, sample_task_in_db, sample_occurrences
+    ):
+        mock_service.get_users_task_ids_in_range.return_value = sample_occurrences
+
+        response = client.get(
+            "/user_id/user123",
+            params={
+                "start_date": now_timestamp().date(),
+                "end_date": now_timestamp().date(),
+            },
         )
 
-        response = client.get("/", params={"user_id": "user123"})
-
         assert response.status_code == 200
-        data = response.json()
-        assert data["tasks"][0]["id"] == "task123"
 
     @pytest.mark.asyncio
     async def test_get_task_by_user_id_not_found(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_tasks_by_user_id.side_effect = RecordNotFoundError()
+        mock_service.get_users_task_ids_in_range.side_effect = RecordNotFoundError()
 
-        response = client.get("/", params={"user_id": "user123"})
+        response = client.get(
+            "/user_id/user123",
+            params={
+                "start_date": now_timestamp().date(),
+                "end_date": now_timestamp().date(),
+            },
+        )
 
         assert response.status_code == 404
 
@@ -129,19 +158,47 @@ class TestRouterGetTasks:
     async def test_get_task_by_user_id_not_authorized(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_tasks_by_user_id.side_effect = AuthError()
+        mock_service.get_users_task_ids_in_range.side_effect = AuthError()
 
-        response = client.get("/", params={"user_id": "user123"})
+        response = client.get(
+            "/user_id/user123",
+            params={
+                "start_date": now_timestamp().date(),
+                "end_date": now_timestamp().date(),
+            },
+        )
 
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_task_by_user_id_unxepected_erro(
+    async def test_get_task_by_user_id_query_error(
         self, mock_service, client, sample_task_in_db
     ):
-        mock_service.get_tasks_by_user_id.side_effect = GeneralQueryError()
+        mock_service.get_users_task_ids_in_range.side_effect = GeneralQueryError()
 
-        response = client.get("/", params={"user_id": "user123"})
+        response = client.get(
+            "/user_id/user123",
+            params={
+                "start_date": now_timestamp().date(),
+                "end_date": now_timestamp().date(),
+            },
+        )
+
+        assert response.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_get_task_by_user_id_unxepected_error(
+        self, mock_service, client, sample_task_in_db
+    ):
+        mock_service.get_users_task_ids_in_range.side_effect = Exception()
+
+        response = client.get(
+            "/user_id/user123",
+            params={
+                "start_date": now_timestamp().date(),
+                "end_date": now_timestamp().date(),
+            },
+        )
 
         assert response.status_code == 500
 
@@ -154,7 +211,7 @@ class TestRouterUpdateTask:
         mock_service.update_task.return_value = new_sample_task_in_db
 
         response = client.patch(
-            "/", json=TaskUpdate(id="task123", name="New Name").model_dump()
+            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
         )
 
         assert response.status_code == 200
@@ -168,7 +225,7 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = AuthError()
 
         response = client.patch(
-            "/", json=TaskUpdate(id="task123", name="New Name").model_dump()
+            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
         )
 
         assert response.status_code == 401
@@ -178,19 +235,31 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = RecordNotFoundError()
 
         response = client.patch(
-            "/", json=TaskUpdate(id="task123", name="New Name").model_dump()
+            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
         )
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_task_unexpected_error(
+    async def test_update_task_update_error(
         self, mock_service, client, sample_task_in_db
     ):
         mock_service.update_task.side_effect = RecordUpdateError()
 
         response = client.patch(
-            "/", json=TaskUpdate(id="task123", name="New Name").model_dump()
+            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+        )
+
+        assert response.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_update_task_unexpected_error(
+        self, mock_service, client, sample_task_in_db
+    ):
+        mock_service.update_task.side_effect = Exception()
+
+        response = client.patch(
+            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
         )
 
         assert response.status_code == 500
@@ -222,10 +291,20 @@ class TestRouterDeleteTask:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_task_unexpected_error(
+    async def test_delete_task_deletion_error(
         self, mock_service, client, sample_task_in_db
     ):
         mock_service.delete_task.side_effect = RecordDeletionError()
+
+        response = client.delete("/", params={"task_id": "task123"})
+
+        assert response.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_delete_task_unexpected_error(
+        self, mock_service, client, sample_task_in_db
+    ):
+        mock_service.delete_task.side_effect = Exception()
 
         response = client.delete("/", params={"task_id": "task123"})
 

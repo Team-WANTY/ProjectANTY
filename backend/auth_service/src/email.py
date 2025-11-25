@@ -1,10 +1,9 @@
-import logging
 import smtplib
 from email.mime.text import MIMEText
 
-from src.settings import settings
+from shared.simple_logging import logger
 
-logger = logging.getLogger("auth_service")
+from src.settings import settings
 
 EMAIL_FROM = "noreply@projectanty.com"
 SERVER = "smtp.gmail.com"

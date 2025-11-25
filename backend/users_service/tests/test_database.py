@@ -4,6 +4,7 @@ import pytest
 from azure.cosmos import exceptions
 from shared.db import now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordDeletionError,
     RecordNotFoundError,
@@ -147,7 +148,7 @@ class TestDBUpdateUser:
         mock_container.patch_item.return_value = new_sample_user_in_db
 
         user_update = UserUpdate(id="user123", email="newtest@gmail.com")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        result = await mock_users_db.update_user(user_update)
 
         assert isinstance(result, UserInDB)
         assert result.email == "newtest@gmail.com"
@@ -166,7 +167,7 @@ class TestDBUpdateUser:
         mock_container.patch_item.return_value = new_sample_user_in_db
 
         user_update = UserUpdate(id="user123", username="newtestuser")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        result = await mock_users_db.update_user(user_update)
 
         assert isinstance(result, UserInDB)
         assert result.username == "newtestuser"
@@ -180,12 +181,8 @@ class TestDBUpdateUser:
     async def test_update_user_no_input(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
-        user_update = UserUpdate(id="user123")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
-
-        assert isinstance(result, UserInDB)
-        assert result.username == sample_user_in_db.username
-        assert result.email == sample_user_in_db.email
+        with pytest.raises(EmptyRecordUpdateError):
+            await mock_users_db.update_user(UserUpdate(id="user123"))
 
     @pytest.mark.asyncio
     async def test_update_user_timestamp_updated(
@@ -195,31 +192,27 @@ class TestDBUpdateUser:
         new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
         new_sample_user_in_db.updated_at = now_timestamp()
         mock_container.patch_item.return_value = new_sample_user_in_db
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        result = await mock_users_db.update_user(user_update)
 
         assert isinstance(result, UserInDB)
         assert result.updated_at != sample_user_in_db.updated_at
 
     @pytest.mark.asyncio
-    async def test_update_user_not_found(
-        self, mock_container, mock_users_db, sample_user_in_db
-    ):
+    async def test_update_user_not_found(self, mock_container, mock_users_db):
         mock_container.patch_item.side_effect = exceptions.CosmosResourceNotFoundError()
 
         with pytest.raises(RecordNotFoundError):
             await mock_users_db.update_user(
-                sample_user_in_db, UserUpdate(id="user321", username="newusername")
+                UserUpdate(id="user321", username="newusername")
             )
 
     @pytest.mark.asyncio
-    async def test_update_user_unexpected_error(
-        self, mock_container, mock_users_db, sample_user_in_db
-    ):
+    async def test_update_user_unexpected_error(self, mock_container, mock_users_db):
         mock_container.patch_item.side_effect = Exception()
 
         with pytest.raises(RecordUpdateError):
             await mock_users_db.update_user(
-                sample_user_in_db, UserUpdate(id="user123", username="newusername")
+                UserUpdate(id="user123", username="newusername")
             )
 
 

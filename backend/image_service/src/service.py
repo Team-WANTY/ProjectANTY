@@ -1,5 +1,4 @@
-import logging
-
+from shared.simple_logging import logger
 from shared.auth import authorize_operation
 from shared.exceptions.db import RecordAlreadyExistsError, RecordCreationError
 from shared.models.auth import UserAuthInfo
@@ -7,8 +6,6 @@ from shared.models.auth import UserAuthInfo
 from src.blob_store import BlobStorage
 from src.database import ImageDB
 from src.models import Image
-
-logger = logging.getLogger("image_service")
 
 
 class ImageService:

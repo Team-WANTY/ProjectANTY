@@ -1,5 +1,4 @@
-import logging
-
+from shared.simple_logging import logger
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from shared.exceptions.db import (
@@ -11,9 +10,6 @@ from shared.exceptions.db import (
 )
 
 from src.models import Image
-
-logger = logging.getLogger("image_service")
-
 
 class ImageDB:
     def __init__(self, container: ContainerProxy):

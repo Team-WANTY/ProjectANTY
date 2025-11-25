@@ -1,9 +1,11 @@
 from unittest.mock import AsyncMock
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from shared.db import now_timestamp
 from shared.models.auth import UserAuthInfo
+from shared.models.token import Token
 
 from src.database import AuthDB
 from src.dependencies import get_auth_service
@@ -88,3 +90,15 @@ def mock_service():
 @pytest.fixture(autouse=True)
 def dependency_overrides(mock_service):
     app.dependency_overrides[get_auth_service] = lambda: mock_service
+
+@pytest.fixture()
+def sample_token():
+    return Token(
+        sub="user123",
+        exp=now_timestamp() + timedelta(minutes=15),
+        token_type="access",
+    )
+
+@pytest.fixture()
+async def override_get_current_user_auth(sample_user_auth_info):
+    app.dependency_overrides[get_current_user_auth] = lambda _:sample_user_auth_info

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -11,8 +13,5 @@ class UserBase(BaseModel):
 class UserInDB(UserBase):
     username: str
     email: EmailStr
-    created_at: int
-    updated_at: int
-
-    def to_base(self):
-        return UserBase.model_validate(self.model_dump(), extra="ignore")
+    created_at: datetime
+    updated_at: datetime

@@ -10,19 +10,18 @@ from shared.models.auth import UserAuthInfo
 from src.database import TaskDB
 from src.dependencies import get_tasks_service
 from src.main import app
-from src.models import Task, TaskInDB
+from src.models import OccurrencesByDate, TaskCreate, TaskInDB
 from src.service import TasksService
 
 
 @pytest.fixture
-def sample_task():
-    return Task(
+def sample_task_create():
+    return TaskCreate(
         user_id="user123",
         name="Test Task",
         desc="Task made for testing",
         cat="Testing",
-        due_date=now_timestamp(),
-        # omitted repeat for simplicity
+        first_relevant_date=now_timestamp().date(),
     )
 
 
@@ -34,7 +33,7 @@ def sample_task_in_db():
         name="Test Task",
         desc="Task made for testing",
         cat="Testing",
-        due_date=now_timestamp(),
+        first_relevant_date=now_timestamp().date(),
         created_at=now_timestamp(),
         updated_at=now_timestamp(),
         # omitted repeat for simplicity
@@ -49,7 +48,7 @@ def sample_user_auth_info():
         username="testuser",
         email="test@gmail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
+        updated_at=(datetime.now(UTC) - timedelta(minutes=15)),
         is_active=True,
         is_superuser=False,
     )
@@ -91,3 +90,8 @@ def client():
 def dependency_overrides(mock_service, sample_user_auth_info):
     app.dependency_overrides[get_tasks_service] = lambda: mock_service
     app.dependency_overrides[get_current_user_auth] = lambda: sample_user_auth_info
+
+
+@pytest.fixture
+def sample_occurrences():
+    return OccurrencesByDate(occurrences={now_timestamp().date(): ["task123"]})

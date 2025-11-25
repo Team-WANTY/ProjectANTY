@@ -1,21 +1,11 @@
-import logging
 from functools import lru_cache
-from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
 from shared.settings import settings as shared_settings
+from shared.simple_logging import logger
 
 from src.database import TaskDB
 from src.service import TasksService
-
-logging.basicConfig(
-    stream=stdout,
-    level=logging.DEBUG,
-    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s",
-)
-
-logger = logging.getLogger("tasks_service")
-
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(

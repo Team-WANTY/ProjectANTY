@@ -52,8 +52,8 @@ def sample_user_in_db():
         id="user123",
         username="testuser",
         email="test@gmail.com",
-        created_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
-        updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
+        created_at=(datetime.now(UTC) - timedelta(minutes=15)),
+        updated_at=(datetime.now(UTC) - timedelta(minutes=15)),
         is_active=True,
     )
 
@@ -66,7 +66,7 @@ def sample_user_auth_info():
         username="testuser",
         email="test@gmail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
+        updated_at=(datetime.now(UTC) - timedelta(minutes=15)),
         is_active=True,
         is_superuser=False,
     )

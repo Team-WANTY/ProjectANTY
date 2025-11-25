@@ -1,11 +1,10 @@
-import logging
-from datetime import UTC, datetime
-
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pwdlib import PasswordHash
 from pydantic import EmailStr
+from shared.db import now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -13,10 +12,9 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 from shared.models.auth import UserAuthInfo
+from shared.simple_logging import logger
 
 from src.models import UserAuthUpdate, UserCreate
-
-logger = logging.getLogger("auth_service")
 
 pwdhasher = PasswordHash.recommended()
 
@@ -26,24 +24,25 @@ class AuthDB:
         self.container = container
         logger.debug("Created AuthDB")
 
-    async def create_user(self, user_create: UserCreate) -> UserAuthInfo:
+    async def create_user(self, user_create: UserCreate):
         try:
             logger.debug(f"Trying to create user: {user_create.model_dump()}")
             user_in_db = user_create.to_user_in_db()
+            logger.debug("Converted UserCreate to UserInDB, sending to DB")
             item: CosmosDict = await self.container.create_item(
                 body=user_in_db.model_dump()
             )
+            logger.debug("Created item in DB successfully, validating response")
             user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created user: {user_auth_info.model_dump()}")
-            return user_auth_info
         except exceptions.CosmosHttpResponseError:
             logger.warning(
-                f"Error while creating user: {user_create.model_dump()}, already exists"
+                f"Error creating user: {user_create.model_dump()}, already exists"
             )
             raise RecordAlreadyExistsError()
         except Exception as e:
             logger.error(
-                f"Error while creating user: {user_create.model_dump()}, unexpected: {e}"
+                f"Error creating user: {user_create.model_dump()}, unexpected: {e}"
             )
             raise RecordCreationError()
 
@@ -53,14 +52,17 @@ class AuthDB:
             item: CosmosDict = await self.container.read_item(
                 item=user_id, partition_key=user_id
             )
+            logger.debug("Read item from DB, validating response")
             user_auth_info = UserAuthInfo.model_validate(item, extra="ignore")
-            logger.debug(f"Got from id '{user_id}': {user_auth_info.model_dump()}")
+            logger.debug(f"Got user from id '{user_id}': {user_auth_info.model_dump()}")
             return user_auth_info
         except exceptions.CosmosResourceNotFoundError:
-            logger.debug(f"User with id '{user_id}' not found")
+            logger.error(f"Error getting user auth with id '{user_id}': not found")
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(
+                f"Error getting user auth with id '{user_id}', unexpected: {e}"
+            )
             raise GeneralQueryError()
 
     async def get_user_auth_by_username(self, username: str) -> UserAuthInfo:
@@ -72,6 +74,7 @@ class AuthDB:
             async for item in self.container.query_items(
                 query=query, parameters=parameters
             ):
+                logger.debug("Queried items from DB, validating response")
                 user_auth_info = UserAuthInfo.model_validate(
                     item, extra="ignore"
                 )  # Return first match immediately
@@ -81,13 +84,19 @@ class AuthDB:
                 return user_auth_info
             raise RecordNotFoundError()
         except RecordNotFoundError as e:
-            logger.debug(f"User with username '{username}' not found")
+            logger.debug(
+                f"Error getting UserAuthInfo with username '{username}': not found"
+            )
             raise e
         except exceptions.CosmosResourceNotFoundError:
-            logger.debug(f"User with username '{username}' not found")
+            logger.debug(
+                f"Error getting UserAuthInfo with username '{username}': not found"
+            )
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(
+                f"Error getting UserAuthInfo with username '{username}', Unexpected error: {e}"
+            )
             raise GeneralQueryError()
 
     async def get_user_auth_by_email(self, email: EmailStr) -> UserAuthInfo:
@@ -95,10 +104,11 @@ class AuthDB:
         query = "SELECT * FROM c WHERE c.email = @email"
         parameters: list[dict[str, object]] = [{"name": "@email", "value": email}]
         try:
-            logger.debug(f"Trying to get user with email '{email}'")
+            logger.debug(f"Trying to get UserAuthInfo with email '{email}'")
             async for item in self.container.query_items(
                 query=query, parameters=parameters
             ):
+                logger.debug("Queried items from DB, validating response")
                 user_auth_info = UserAuthInfo.model_validate(
                     item, extra="ignore"
                 )  # Return first match immediately
@@ -106,19 +116,24 @@ class AuthDB:
                 return user_auth_info
             raise RecordNotFoundError()
         except RecordNotFoundError as e:
-            logger.debug(f"User with email '{email}' not found")
+            logger.debug(f"Error getting UserAuthInfo with email '{email}': not found")
             raise e
         except exceptions.CosmosResourceNotFoundError:
-            logger.debug(f"User with email '{email}' not found")
+            logger.debug(f"Error getting UserAuthInfo with email '{email}': not found")
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(
+                f"Error getting UserAuthInfo with email '{email}', unexpected error: {e}"
+            )
             raise GeneralQueryError()
 
     async def update_auth(
         self, old_user_auth_info: UserAuthInfo, auth_update_info: UserAuthUpdate
     ) -> UserAuthInfo:
         try:
+            logger.debug(
+                f"Trying to update UserAuthInfo ({old_user_auth_info.model_dump()}) with: {auth_update_info.model_dump()}"
+            )
             patch_operations = []
 
             if auth_update_info.plain_text_password is not None:
@@ -157,6 +172,9 @@ class AuthDB:
                         "value": auth_update_info.is_active,
                     }
                 )
+                logger.debug(
+                    f"Successfully added active status update operation for user '{auth_update_info.id}'"
+                )
 
             if auth_update_info.is_superuser is not None:
                 logger.debug(
@@ -169,19 +187,25 @@ class AuthDB:
                         "value": auth_update_info.is_superuser,
                     }
                 )
+                logger.debug(
+                    f"Successfully added superuser status update operation for user '{auth_update_info.id}'"
+                )
 
             if len(patch_operations) == 0:
                 logger.debug(
                     f"No update operations pending for user '{auth_update_info.id}'"
                 )
-                return old_user_auth_info
+                raise EmptyRecordUpdateError
 
             # Always update updated_at timestamp
+            logger.debug(
+                f"Updating last update timestamp for user '{auth_update_info.id}'"
+            )
             patch_operations.append(
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": int(datetime.now(UTC).timestamp()),
+                    "value": now_timestamp(),
                 }
             )
 
@@ -201,11 +225,15 @@ class AuthDB:
             return user_auth_info
 
         except exceptions.CosmosResourceNotFoundError:
-            logger.debug(f"User with id {auth_update_info.id} not found")
+            logger.debug(
+                f"Error updating UserAuthInfo with id {auth_update_info.id}: not found"
+            )
             raise RecordNotFoundError()
-        except RecordUpdateError as e:
+        except RecordUpdateError:
             # no logging needed, already covered above
-            raise e
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(
+                f"Error updating UserAuthInfo with id {auth_update_info.id}, unexpected error: {e}"
+            )
             raise RecordUpdateError()

@@ -1,13 +1,14 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
-from shared.db import now_timestamp
 
 
 class Profile(BaseModel):
     id: str
     bio: str = ""
-    avatar_image_id: str = "0"
-    created_at: int = now_timestamp()
-    updated_at: int = now_timestamp()
+    avatar_image_id: str = ""
+    created_at: datetime
+    updated_at: datetime
     unlocked_badges: list[str] = Field(default_factory=list)
     unlocked_analytics: list[str] = Field(default_factory=list)
     equipped_badges: list[str] = Field(default_factory=list, max_items=4)

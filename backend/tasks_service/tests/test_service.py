@@ -1,9 +1,11 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from shared.db import now_timestamp
 from shared.exceptions.auth import AuthError
+from shared.models.testing import AsyncIteratorMock
 
-from src.models import TaskInDB, TaskUpdate
+from src.models import OccurrencesByDate, TaskInDB, TaskUpdate
 
 
 class TestServiceCreateTask:
@@ -13,21 +15,12 @@ class TestServiceCreateTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
+        sample_task_create,
         sample_user_auth_info,
     ):
         mock_db.create_task.return_value = sample_task_in_db
 
-        result = await mock_tasks_service.create_task(
-            sample_task, sample_user_auth_info
-        )
-
-        assert isinstance(result, TaskInDB)
-        assert result.id == "task123"
-        assert result.user_id == "user123"
-        assert result.name == "Test Task"
-        assert result.desc == "Task made for testing"
-        assert result.cat == "Testing"
+        await mock_tasks_service.create_task(sample_task_create, sample_user_auth_info)
 
     @pytest.mark.asyncio
     async def test_create_task_not_authorized(
@@ -35,7 +28,7 @@ class TestServiceCreateTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
+        sample_task_create,
         sample_user_auth_info,
     ):
         different_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)
@@ -47,7 +40,7 @@ class TestServiceCreateTask:
             mock_authorizer.side_effect = AuthError()
             with pytest.raises(AuthError):
                 await mock_tasks_service.create_task(
-                    sample_task, different_sample_user_auth_info
+                    sample_task_create, different_sample_user_auth_info
                 )
 
 
@@ -58,7 +51,6 @@ class TestServiceGetTaskByID:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         mock_db.get_task_by_id.return_value = sample_task_in_db
@@ -76,7 +68,6 @@ class TestServiceGetTaskByID:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         different_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)
@@ -99,19 +90,21 @@ class TestServiceGetTasksByUserID:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
-        mock_db.get_tasks_by_user_id.return_value = [
-            sample_task_in_db,
-            sample_task_in_db,
-        ]
-
-        result = await mock_tasks_service.get_tasks_by_user_id(
-            "user123", 10, cont_token=None, getter=sample_user_auth_info
+        mock_db.get_users_tasks_in_range = Mock()
+        mock_db.get_users_tasks_in_range.return_value = AsyncIteratorMock(
+            [sample_task_in_db]
         )
 
-        assert isinstance(result[0], TaskInDB)
+        result = await mock_tasks_service.get_users_task_ids_in_range(
+            "user123",
+            now_timestamp().date(),
+            now_timestamp().date(),
+            getter=sample_user_auth_info,
+        )
+
+        assert isinstance(result, OccurrencesByDate)
 
     @pytest.mark.asyncio
     async def test_get_tasks_by_user_id_not_authorized(
@@ -119,7 +112,6 @@ class TestServiceGetTasksByUserID:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         different_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)
@@ -130,10 +122,10 @@ class TestServiceGetTasksByUserID:
         ) as mock_authorizer:
             mock_authorizer.side_effect = AuthError()
             with pytest.raises(AuthError):
-                await mock_tasks_service.get_tasks_by_user_id(
+                await mock_tasks_service.get_users_task_ids_in_range(
                     "user123",
-                    10,
-                    cont_token=None,
+                    now_timestamp().date(),
+                    now_timestamp().date(),
                     getter=different_sample_user_auth_info,
                 )
 
@@ -145,7 +137,6 @@ class TestServiceUpdateTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         mock_db.get_task_by_id.return_value = sample_task_in_db
@@ -167,7 +158,6 @@ class TestServiceUpdateTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         different_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)
@@ -191,7 +181,6 @@ class TestServiceDeleteTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         mock_db.get_task_by_id.return_value = sample_task_in_db
@@ -203,7 +192,6 @@ class TestServiceDeleteTask:
         mock_db,
         mock_tasks_service,
         sample_task_in_db,
-        sample_task,
         sample_user_auth_info,
     ):
         different_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)

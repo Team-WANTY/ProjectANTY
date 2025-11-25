@@ -1,5 +1,4 @@
-import logging
-
+from shared.simple_logging import logger
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from PIL import UnidentifiedImageError
 from shared.auth import get_current_user_auth
@@ -16,8 +15,6 @@ from shared.models.auth import UserAuthInfo
 from src.dependencies import get_image_service
 from src.models import Image
 from src.service import ImageService
-
-logger = logging.getLogger("image_service")
 
 images_router = APIRouter()
 

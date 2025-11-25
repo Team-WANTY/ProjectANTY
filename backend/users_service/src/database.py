@@ -1,40 +1,41 @@
-import logging
-from datetime import UTC, datetime
-
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from pydantic import EmailStr
+from shared.db import now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
 )
 from shared.models.users import UserInDB
+from shared.simple_logging import logger
 
 from src.models import UserUpdate
-
-logger = logging.getLogger("users_service")
 
 
 class UsersDB:
     def __init__(self, container: ContainerProxy):
         self.container = container
+        logger.debug("Created UsersDB")
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
         try:
-            logging.debug(f"Trying to get user with ID '{user_id}'")
+            logger.debug(f"Trying to get user with ID '{user_id}'")
             item: CosmosDict = await self.container.read_item(
                 item=user_id, partition_key=user_id
             )
             user_in_db = UserInDB.model_validate(item, extra="ignore")
-            logging.debug(
+            logger.debug(
                 f"Successfully got user with ID '{user_id}': {user_in_db.model_dump()}"
             )
             return user_in_db
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Error getting user with ID '{user_id}': not found")
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error getting user with ID '{user_id}', unexpected: {e}")
             raise GeneralQueryError()
 
     async def get_user_by_username(self, username: str) -> UserInDB:
@@ -53,10 +54,19 @@ class UsersDB:
                 return user_in_db  # Return first match immediately
             raise RecordNotFoundError()
         except RecordNotFoundError as e:
+            logger.error(
+                f"Error trying to get user with username '{username}': not found"
+            )
             raise e
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(
+                f"Error trying to get user with username '{username}': not found"
+            )
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                f"Error trying to get user with username '{username}', unexpected: {e}"
+            )
             raise GeneralQueryError()
 
     async def get_user_by_email(self, email: EmailStr) -> UserInDB:
@@ -75,15 +85,18 @@ class UsersDB:
                 return user_in_db  # Return first match immediately
             raise RecordNotFoundError
         except RecordNotFoundError as e:
+            logger.error(f"Error trying to get user with email '{email}': not found")
             raise e
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Error trying to get user with email '{email}': not found")
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                f"Error trying to get user with email '{email}', unexpected: {e}"
+            )
             raise GeneralQueryError()
 
-    async def update_user(
-        self, old_user_db_record: UserInDB, user_update: UserUpdate
-    ) -> UserInDB:
+    async def update_user(self, user_update: UserUpdate) -> UserInDB:
         """Update user in CosmosDB using patch_item for partial updates"""
         try:
             logger.debug(f"Trying to update user with ID '{user_update.id}'")
@@ -113,7 +126,7 @@ class UsersDB:
 
             if len(patch_operations) == 0:
                 logger.debug(f"No valid updates for user with ID '{user_update.id}'")
-                return old_user_db_record
+                raise EmptyRecordUpdateError()
 
             logger.debug(
                 f"Changing 'updated_at' timestamp for user with ID '{user_update.id}'"
@@ -123,7 +136,7 @@ class UsersDB:
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": int(datetime.now(UTC).timestamp()),
+                    "value": now_timestamp(),
                 }
             )
 
@@ -140,8 +153,16 @@ class UsersDB:
             return user_in_db
 
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(
+                f"Error trying to update user with ID '{user_update.id}': not found"
+            )
             raise RecordNotFoundError()
-        except Exception:
+        except EmptyRecordUpdateError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Error trying to update user with ID '{user_update.id}', unexpected: {e}"
+            )
             raise RecordUpdateError()
 
     async def delete_user(self, user_id: str) -> None:
@@ -151,6 +172,10 @@ class UsersDB:
             await self.container.delete_item(item=user_id, partition_key=user_id)
             logger.debug(f"Successfully deleted user with ID '{user_id}'")
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Error trying to delete user with ID '{user_id}': not found")
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                f"Error trying to delete user with ID '{user_id}', unexpected: {e}"
+            )
             raise RecordDeletionError()

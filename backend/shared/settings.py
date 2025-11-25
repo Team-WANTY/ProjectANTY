@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed
     AUTH_EXTERNAL_URL: str
     INTERSERVICE_KEY: str
+    MINIMUM_LOGGING_LEVEL: str | None
 
     COSMOSDB_ENDPOINT: str
     COSMOSDB_KEY: str

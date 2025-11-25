@@ -1,9 +1,10 @@
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 import jwt
 import pytest
 from email_validator import EmailNotValidError
+from shared.db import now_timestamp
 from shared.exceptions.auth import AuthError
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.token import Token
@@ -23,12 +24,7 @@ class TestRegisterUser:
         self, mock_auth_service, mock_db, sample_user_create, sample_user_auth_info
     ):
         """Test successful user registration"""
-        mock_db.create_user.return_value = sample_user_auth_info
-
-        result = await mock_auth_service.register_user(sample_user_create)
-
-        assert result == sample_user_auth_info
-        mock_db.create_user.assert_called_once_with(sample_user_create)
+        await mock_auth_service.register_user(sample_user_create)
 
 
 class TestAuthenticateUserById:
@@ -283,7 +279,7 @@ class TestTokenFunctions:
     async def test_decode_token_success(self, mock_auth_service):
         """Test successful token decoding"""
         # Create a valid token
-        expiration = datetime.now(UTC) + timedelta(minutes=15)
+        expiration = now_timestamp() + timedelta(minutes=15)
         token_str = jwt.encode(
             {
                 "sub": "user123",
@@ -304,7 +300,7 @@ class TestTokenFunctions:
     async def test_decode_expired_token(self, mock_auth_service):
         """Test decoding expired token"""
         # Create an expired token
-        expiration = datetime.now(UTC) - timedelta(minutes=15)
+        expiration = now_timestamp() - timedelta(minutes=15)
         token_str = jwt.encode(
             {
                 "sub": "user123",

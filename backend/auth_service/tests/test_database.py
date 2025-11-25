@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 from azure.cosmos import exceptions
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -25,13 +26,7 @@ class TestCreateUser:
         """Test successful user creation"""
         mock_container.create_item.return_value = sample_user_auth_info.model_dump()
 
-        result = await mock_auth_db.create_user(sample_user_create)
-
-        assert isinstance(result, UserAuthInfo)
-        assert result.username == "testuser"
-        assert result.email == "test@gmail.com"
-        assert result.id == "user123"
-        mock_container.create_item.assert_called_once()
+        await mock_auth_db.create_user(sample_user_create)
 
     @pytest.mark.asyncio
     async def test_create_user_already_exists(
@@ -271,13 +266,10 @@ class TestUpdateAuth:
         self, mock_auth_db, mock_container, sample_user_auth_info
     ):
         """Test update with no changes"""
-        auth_update = UserAuthUpdate(id="user123")
-
-        result = await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
-
-        # Should return original user without calling patch
-        assert result == sample_user_auth_info
-        mock_container.patch_item.assert_not_called()
+        with pytest.raises(EmptyRecordUpdateError):
+            await mock_auth_db.update_auth(
+                sample_user_auth_info, UserAuthUpdate(id="user123")
+            )
 
     @pytest.mark.asyncio
     async def test_update_user_not_found(

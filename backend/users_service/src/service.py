@@ -1,14 +1,11 @@
-import logging
-
 from pydantic import EmailStr
 from shared.auth import authorize_operation
 from shared.models.auth import UserAuthInfo
 from shared.models.users import UserInDB
+from shared.simple_logging import logger
 
 from src.database import UsersDB
 from src.models import UserUpdate
-
-logger = logging.getLogger("users_service")
 
 
 class UsersService:
@@ -46,17 +43,18 @@ class UsersService:
         )
         await authorize_operation(updater, user_update.id)
         logger.debug(f"Updating user with ID '{user_update.id}'")
-        old_user_in_db = await self.get_user_by_id(user_update.id)
         if not updater.is_superuser:
             pass  # TODO if any restricted updates, set them to None here
-        updated_user_in_db = await self.user_db.update_user(old_user_in_db, user_update)
+        updated_user_in_db = await self.user_db.update_user(user_update)
         logger.debug(f"Successfully updated user with ID '{user_update.id}'")
         return updated_user_in_db
 
     async def delete_user(self, user_id: str, deleter: UserAuthInfo) -> None:
         """Delete user"""
+        # TODO call other services and delete everything related to that user
         logger.debug(f"Checking if {deleter.id} is authorized to delete {user_id}")
         await authorize_operation(deleter, user_id)
         logger.debug(f"Deleting user with ID '{user_id}'")
         await self.user_db.delete_user(user_id)
+        # TODO query aggregation service to delete all user's info
         logger.debug(f"Successfully deleted user with ID '{user_id}'")

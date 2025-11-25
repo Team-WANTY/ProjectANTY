@@ -1,4 +1,4 @@
-import logging
+from shared.simple_logging import logger
 from io import BytesIO
 
 from azure.storage.blob.aio import BlobServiceClient
@@ -10,9 +10,6 @@ from shared.exceptions.db import (
 )
 
 from src.models import Blob
-
-logger = logging.getLogger("image_service")
-
 
 class BlobStorage:
     def __init__(self, client: BlobServiceClient):

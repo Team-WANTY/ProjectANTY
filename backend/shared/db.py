@@ -7,5 +7,5 @@ def generate_id() -> str:
     return uuid4().hex
 
 
-def now_timestamp() -> int:
-    return int(datetime.now(UTC).timestamp())
+def now_timestamp() -> datetime:
+    return datetime.now(UTC)

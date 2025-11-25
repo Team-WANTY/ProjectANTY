@@ -1,14 +1,15 @@
 import asyncio
-import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import jwt
 from email_validator import EmailNotValidError, validate_email
 from pwdlib import PasswordHash
 from shared.auth import authorize_operation
+from shared.db import now_timestamp
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
+from shared.simple_logging import logger
 
 from src.database import AuthDB
 from src.email import send_email
@@ -18,7 +19,6 @@ from src.exceptions import (
 from src.models import UserAuthUpdate, UserCreate
 from src.settings import settings
 
-logger = logging.getLogger("auth_service")
 pwdhasher = PasswordHash.recommended()
 
 
@@ -27,18 +27,17 @@ class AuthService:
         self.db = auth_db
         logger.debug("Created AuthService")
 
-    async def register_user(self, user_create: UserCreate) -> UserAuthInfo:
-        logger.debug(f"Trying to register new user: {user_create.model_dump()}")
-        user_auth_info = await self.db.create_user(user_create)
-        logger.debug(f"Successfully registered new user: {user_auth_info.model_dump()}")
-        return user_auth_info
+    async def register_user(self, user_create: UserCreate):
+        await self.db.create_user(user_create)
 
     async def authenticate_user_by_id(
         self, user_id: str, password: str
     ) -> UserAuthInfo:
         logger.debug(f"Trying to authenticate user with ID '{user_id}'")
         user_auth_info = await self.db.get_user_auth_by_id(user_id)
+        logger.debug(f"Verifying hashed password of user with ID '{user_id}'")
         if not pwdhasher.verify(password, user_auth_info.hashed_password):
+            logger.error(f"Invalid password for user with ID '{user_id}'")
             raise AuthIncorrectPasswordError()
         logger.debug(
             f"Successfully authenticated user with ID: '{user_id}': {user_auth_info.model_dump()}"
@@ -50,7 +49,9 @@ class AuthService:
     ) -> UserAuthInfo:
         logger.debug(f"Trying to authenticate user with username '{username}'")
         user_auth_info = await self.db.get_user_auth_by_username(username)
+        logger.debug(f"Verifying hashed password of user with ID '{user_auth_info.id}'")
         if not pwdhasher.verify(password, user_auth_info.hashed_password):
+            logger.error(f"Invalid password for user with ID '{user_auth_info.id}'")
             raise AuthIncorrectPasswordError()
         logger.debug(
             f"Successfully authenticated user with username: '{username}': {user_auth_info.model_dump()}"
@@ -70,7 +71,9 @@ class AuthService:
             raise e
         logger.debug(f"Trying to authenticate user with email '{email}'")
         user_auth_info = await self.db.get_user_auth_by_email(email)
+        logger.debug(f"Verifying hashed password of user with ID '{user_auth_info.id}'")
         if not pwdhasher.verify(password, user_auth_info.hashed_password):
+            logger.error(f"Invalid password for user with ID '{user_auth_info.id}'")
             raise AuthIncorrectPasswordError()
         logger.debug(
             f"Successfully authenticated user with email '{email}': {user_auth_info.model_dump()}"
@@ -101,17 +104,17 @@ class AuthService:
         )
         await authorize_operation(updater, auth_update_info.id)
         if not updater.is_superuser:
+            logger.debug("User it not a superuser, deleting restricted update info")
             auth_update_info.is_active = None
             auth_update_info.is_superuser = None
-        logger.debug(
-            f"Trying to resolve and get user record with ID '{auth_update_info.id}'"
-        )
+        logger.debug(f"Trying to get user record with ID '{auth_update_info.id}'")
         old_user_auth_info = await self.get_user_auth_by_id(auth_update_info.id)
-        logger.debug(
-            f"Trying to update user with ID '{auth_update_info.id}'"
-        )  # TODO for logging, get updater info
+        logger.debug(f"Trying to update user with ID '{auth_update_info.id}'")
         new_user_auth_info = await self.db.update_auth(
             old_user_auth_info, auth_update_info
+        )
+        logger.debug(
+            f"Successfully updated UserAuthInfo: {new_user_auth_info.model_dump()}"
         )
         return new_user_auth_info
 
@@ -162,11 +165,11 @@ class AuthService:
     async def create_access_token(user_id: str) -> str:
         try:
             logger.debug(f"Trying to create access token for user with ID '{user_id}'")
-            expiration = datetime.now(UTC) + timedelta(
+            expiration = now_timestamp() + timedelta(
                 minutes=settings.ACCESS_TOKEN_EXPIRATION_MINUTES
             )
             payload = Token(
-                sub=user_id, exp=int(expiration.timestamp()), token_type="access"
+                sub=user_id, exp=expiration, token_type="access"
             ).model_dump()
             token = jwt.encode(
                 payload=payload,
@@ -187,11 +190,11 @@ class AuthService:
     async def create_refresh_token(user_id: str) -> str:
         try:
             logger.debug(f"Trying to create refresh token for user with ID '{user_id}'")
-            expiration = datetime.now(UTC) + timedelta(
+            expiration = now_timestamp() + timedelta(
                 days=settings.REFRESH_TOKEN_EXPIRATION_DAYS
             )
             payload = Token(
-                sub=user_id, exp=int(expiration.timestamp()), token_type="refresh"
+                sub=user_id, exp=expiration, token_type="refresh"
             ).model_dump()
             token = jwt.encode(
                 payload=payload,
@@ -212,12 +215,12 @@ class AuthService:
     async def create_password_reset_token(user_id: str) -> str:
         try:
             logger.debug(f"Creating password reset token for user '{user_id}'")
-            expiration = datetime.now(UTC) + timedelta(
+            expiration = now_timestamp() + timedelta(
                 minutes=settings.PW_RESET_TOKEN_EXPIRATION_MINUTES
             )
             payload = Token(
                 sub=user_id,
-                exp=int(expiration.timestamp()),
+                exp=expiration,
                 token_type="password_reset",
             ).model_dump()
             token = jwt.encode(
@@ -246,7 +249,7 @@ class AuthService:
             )
 
             token = Token.model_validate(payload, extra="ignore")
-            now = int(datetime.now(UTC).timestamp())
+            now = now_timestamp()
             if token.exp <= now:
                 raise TokenExpiredError()
             logger.debug("Successfully decoded JWT string to Token")
