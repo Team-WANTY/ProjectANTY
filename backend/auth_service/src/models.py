@@ -17,10 +17,12 @@ class UserCreate(BaseModel):
         return UserInDB(
             id=generate_id(),
             username=self.username,
+            hashed_password=pwd_hasher.hash(self.plain_text_password),
             email=self.email,
             created_at=now_timestamp(),
             updated_at=now_timestamp(),
             is_active=True,  # assume the user is being created this shouldn't be inactive
+            is_superuser=False,  # assume user being created is not a superuser
         )
 
 

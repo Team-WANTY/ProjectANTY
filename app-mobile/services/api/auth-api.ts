@@ -1,4 +1,4 @@
-// app-mobile/services/auth-api.ts
+// app-mobile/services/api/auth-api.ts
 import { api } from "../http/client";
 import type { ApiResult } from "../../../common/http/types";
 import { toMessage } from "../../../common/http/types";
@@ -12,9 +12,10 @@ const paths = {
   reset_password: "/auth/reset-password",
   refresh: "/auth/refresh",
   logout: "/auth/logout",
-  // update_auth: "/auth/",  
+  update: "/auth/",  
 } as const;
 
+export type ChangePassword = {id: string, plain_text_password: string};
 export type LoginResponse = { access_token: string; token_type?: "bearer"  };
 
 export const authApi = {
@@ -37,7 +38,12 @@ export const authApi = {
 
       console.log("Access Token:", maskToken(token, 6)); // Debugging
       await secureStoreToken.set(token);
-      return { ok: true, status: res.status, data: res.data };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     } 
     catch (error: any) {
       await secureStoreToken.clear();
@@ -65,7 +71,12 @@ export const authApi = {
       console.log("Access token cleared");
       console.log("Access Token:", maskToken(token, 6));
 
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       await secureStoreToken.clear();
@@ -80,7 +91,12 @@ export const authApi = {
     try {
       const url = `${paths.request_password_reset}?email=${encodeURIComponent(email.trim())}`;
       const res = await api.post<{ message?: string }>(url);
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -102,7 +118,12 @@ export const authApi = {
         token,
         new_password: newPassword,
       });
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -124,7 +145,12 @@ export const authApi = {
         username,
         plain_text_password: password,
       });
-      return { ok: true, status: res.status, data: undefined };
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: undefined 
+      };
     } 
     catch (error: any) {
       const status = error?.response?.status;
@@ -155,7 +181,12 @@ export const authApi = {
       // Debugging
       console.log("New access token set");
       console.log("Access Token:", maskToken(token, 6));
-      return {ok:true, status: res.status, data: res.data};
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        data: res.data 
+      };
     }
     catch (error: any) {
       await secureStoreToken.clear();
@@ -166,6 +197,36 @@ export const authApi = {
         : status === 403 ? "Invalid token type"
         : toMessage(data, "Failed to refresh session");
       return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+  // PATCH /auth
+  async update(body: Partial<ChangePassword>): Promise<ApiResult<ChangePassword>> {
+    try {
+      const id = (body as any).id;
+      if (!id) {
+        return {ok: false, status: 400, message: "id field is required in body"};
+      }
+      const payload: Record<string, any> = {id};
+      if (body.plain_text_password !== undefined) payload.plain_text_password = body.plain_text_password;
+
+      const res = await api.patch(paths.update, payload);
+      return { 
+        ok: true, 
+        status: res.status, 
+        message: res.statusText || "Request successful", 
+        detail: res.data?.detail,
+        data: res.data 
+      };
+
+    }
+    catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const msg =
+        status === 401 ? "Not authenticated"
+        : toMessage(data, "Failed to change password");
+      return {ok: false, status, message: msg, detail: data};
     }
   },
 };

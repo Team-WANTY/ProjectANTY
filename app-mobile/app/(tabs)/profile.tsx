@@ -11,27 +11,26 @@ import {
     Modal,
     Pressable,
     Animated,
+    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 import { HeaderBar } from "@/components/header-bar";
+import * as ImagePicker from "expo-image-picker";
 
 import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
+import { imagesApi } from "@/services/api/image-api";
+import { EditProfileModal} from "@/components/profile-edit-modal"
+import { changeAvatar } from "@/services/actions/avatar-update";
+import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
+import { useFriendsStore} from "@/services/stores/friends-store"
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-
-// --- Mock Data ---
-const userData = {
-    friends: 3,
-    likes: 0,
-    profilePicture: "../../assets/images/default-avatar.png",
-};
 
 const analyticsData = {
     tasksCompleted: 10,
@@ -63,17 +62,22 @@ export default function ProfileScreen() {
 
     // Pull user and profile from Zustand
     const username = useUserStore((s) => s.username);
-    const email    = useUserStore(s => s.email);
     const userId   = useUserStore(s => s.userId);
     const bio = useProfileStore((s) => s.bio);
+    const avatarUrl = useProfileStore((s) => s.avatarUrl);
+    const isAvatarUploading = useProfileStore((s) => s.isAvatarUploading);
+    const friendsCount = useFriendsStore((s) => s.friendCount)
 
     // ---------- MODAL STATE ----------
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-    const [editUsername, setEditUsername] = useState(username);
-    const [editBio, setEditBio] = useState(bio);
+    const [isPhotoSheetVisible, setIsPhotoSheetVisible] = useState(false);
+    const [editUsername, setEditUsername] = useState<string>(username ?? "");
+    const [editBio, setEditBio] = useState<string>(bio ?? "");
     const fadeAnim = useState(new Animated.Value(0))[0];
     const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    
+
 
     function openEditModal() {
         setEditUsername(username ?? "");
@@ -88,60 +92,127 @@ export default function ProfileScreen() {
         );
     }
 
-    async function handleSave() {
-        if (!userId) {
-            setErrorMsg("Missing user id.");
-            return;
-        }
-
-        const trimmedUsername = (editUsername ?? "").trim();
-        const trimmedBio = (editBio ?? "").trim();
-
-        const usernameChanged = trimmedUsername !== (username ?? "");
-        const bioChanged = trimmedBio !== (bio ?? "");
-
-        if (!usernameChanged && !bioChanged) {
-            closeEditModal();
-            return;
-        }
-
+    const handleProfileSave = (newUsername: string, newBio: string) => {
         setSaving(true);
         setErrorMsg(null);
-
-        try {
-            const ops: Promise<any>[] = [];
-            if (bioChanged) // Call profiles service to update
-                ops.push(profileApi.update(userId, {bio: trimmedBio}));
-            if (usernameChanged) // Call user service to update
-                ops.push(usersApi.update({ id: userId, username: trimmedUsername }));
-
-            const results = await Promise.all(ops);
-            for (const r of results) {
-                if (r?.ok === false) throw new Error(r?.message || "Failed to save changes.");
-            }
-            
-            if(usernameChanged) {
-                useUserStore.getState().setUser({
-                    id: userId,
-                    username: trimmedUsername,
-                    email: email ?? "",
-                });
-            }
-            if(bioChanged) {
-                useProfileStore.getState().setProfile({ bio: trimmedBio});
-            }
-            closeEditModal();
-
-        } catch (err: any) {
-            const msg =
-                err?.response?.data?.detail ||
-                err?.message ||
-                "Failed to save changes. Please try again.";
-            setErrorMsg(msg);
-        } finally {
-            setSaving(false);
+        // Determine what changed
+        const usernameChanged = newUsername !== (username ?? "");
+        const bioChanged = newBio !== (bio ?? "");
+        
+        // Optimistically update Zustand store FIRST 
+        if (usernameChanged) {
+            useUserStore.getState().setUser({ username: newUsername });
         }
-    }
+        if (bioChanged) {
+            useProfileStore.getState().setProfile({ bio: newBio });
+        }
+        
+        // Close modal 
+        closeEditModal();  
+
+        (async () => {
+                try {
+                // API calls sequentially
+                if (usernameChanged) {
+                    const res = await usersApi.update({ id: userId!, username: newUsername });
+                    if (!res.ok) console.log("Failed to update username on backend");
+                }
+
+                if (bioChanged) {
+                    const res = await profileApi.update(userId!, { bio: newBio });
+                    if (!res.ok) console.log("Failed to update bio on backend");
+                }
+            } 
+            catch (err) {
+                console.log("Network error while updating profile");
+            }
+            finally {
+                setSaving(false);
+            }
+        })();
+
+        /*
+        * TODO
+        * rollback incase api call fails
+        * display error on UI whhen api call fails
+        * retry logic
+        * background queue systems when backend is working again
+        */
+    };
+    
+    const handleRemoveAvatar = () => {
+        if (!userId) return;
+        
+        const {
+            avatarImageId: currentAvatarId,
+            setProfile,
+            setAvatarUploading,
+        } = useProfileStore.getState();
+        
+        // If there is no avatar, return
+        if (!currentAvatarId) {
+            console.log("No avatar to delete");
+            return;
+        }
+
+        console.log("Deleting avatar in Zustand store");
+        // Clear avatar in UI optimistically 
+        setProfile({
+            userId,
+            avatarUrl: null,
+            avatarImageId: null,
+        });
+
+        setIsPhotoSheetVisible(false);
+
+        // If there's nothing to delete on backend, we're done
+        if (!currentAvatarId) {
+            return;
+        }
+
+        // Background work: DELETE /images + PATCH /profiles
+        (async () => {
+            try {
+                setAvatarUploading(true);
+                
+                console.log("Calling DELETE /images");
+                // DELETE /images/
+                const deleteRes = await imagesApi.remove(currentAvatarId);
+                if (!deleteRes.ok) {
+                    console.warn(
+                        "[ProfileScreen.handleRemoveAvatar] FAILED deleting image",
+                        deleteRes.status,
+                        deleteRes.message
+                    );
+                    // TODO
+                    // requeue & retry logic
+                }
+
+                console.log("Calling PATCH /profiles");
+                // PATCH /profiles/
+                const patchRes = await profileApi.update(userId, {
+                    avatar_image_id: null,
+                });
+                if (!patchRes.ok) {
+                    console.warn(
+                        "[ProfileScreen.handleRemoveAvatar] FAILED patching profile (avatar_image_id = null)",
+                        patchRes.status,
+                        patchRes.message
+                    );
+                    // TODO
+                    // requeue & retry logic
+                }
+                console.log("[handleRemoveAvatar] Avatar deleted in store and backend");
+            } catch (err) {
+                console.warn(
+                    "[ProfileScreen.handleRemoveAvatar] Unexpected background error",
+                    err
+                );
+            } finally {
+                setAvatarUploading(false);
+            }
+        })();
+    };
 
     // -------------------------------------------------------
     const HEADER_BACKGROUND_HEIGHT = screenWidth * 0.495;
@@ -171,13 +242,39 @@ export default function ProfileScreen() {
                         />
                     </View>
 
-                    <Image source={{ uri: userData.profilePicture }} style={styles.profileImage} />
+                    <View style={styles.avatarWrapper}>
+                        {avatarUrl ? (
+                            <Image source={{ uri: avatarUrl }} style={styles.profileImage} />
+                        ) : (
+                            <View
+                                style={[
+                                    styles.avatarFallback,
+                                    { backgroundColor: theme.primary },
+                                ]}
+                            >
+                                <Text style={styles.avatarInitial}>
+                                    {username?.[0]?.toUpperCase() ?? "?"}
+                                </Text>
+                            </View>
+                        )}
+
+                        {isAvatarUploading && (
+                            <View style={styles.avatarSpinnerOverlay}>
+                                <ActivityIndicator />
+                            </View>
+                        )}
+                    </View>
+
 
                     <View style={styles.userInfo}>
                         <Text style={styles.displayUsername}>{username}</Text>
                         <View style={styles.socialStats}>
-                            <Text style={styles.socialText}>{userData.friends} Friends</Text>
-                            <Text style={styles.socialText}>{userData.likes} Likes</Text>
+                            <TouchableOpacity onPress={() => router.push("../friends" as any)}>
+                                <Text style={styles.socialText}>
+                                    {friendsCount} <Text style={styles.friendsLink}>Friends</Text>
+                                </Text>
+                            </TouchableOpacity>
+                            <Text style={styles.socialText}>{0} Likes</Text>
                         </View>
                     </View>
 
@@ -186,117 +283,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* ---------- EDIT PROFILE MODAL ---------- */}
-                <Modal
-                    transparent
-                    animationType="none"
-                    visible={isEditModalVisible}
-                    onRequestClose={closeEditModal}
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable style={StyleSheet.absoluteFill} onPress={closeEditModal} />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [
-                                        {
-                                            scale: fadeAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [0.95, 1],
-                                            }),
-                                        },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Pressable
-                                accessible
-                                accessibilityLabel="Close edit profile"
-                                onPress={closeEditModal}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>
-                                Edit Profile
-                            </Text>
-
-                            {/* Username */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>
-                                    Username
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        { color: theme.background, borderColor: theme.background },
-                                    ]}
-                                    value={editUsername}
-                                    onChangeText={setEditUsername}
-                                    placeholder="Enter username"
-                                    placeholderTextColor={theme.background + "80"}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            {/* Bio */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: theme.background }]}>
-                                    Bio
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        {
-                                            color: theme.background,
-                                            borderColor: theme.background,
-                                            minHeight: 80,
-                                            textAlignVertical: "top",
-                                        },
-                                    ]}
-                                    value={editBio}
-                                    onChangeText={setEditBio}
-                                    placeholder="Tell us about yourself..."
-                                    placeholderTextColor={theme.background + "80"}
-                                    multiline
-                                    numberOfLines={4}
-                                />
-                            </View>
-
-                            {errorMsg && (
-                                <Text
-                                    style={{
-                                        marginTop: 6,
-                                        marginBottom: 6,
-                                        color: "#b00020",
-                                        textAlign: "center",
-                                    }}
-                                >
-                                    {errorMsg}
-                                </Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveButton,
-                                    {
-                                        backgroundColor: theme.primary || theme.text,
-                                        opacity: saving ? 0.6 : 1,
-                                    },
-                                ]}
-                                onPress={handleSave}
-                                disabled={saving}
-                            >
-                                <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-                                    {saving ? "Saving..." : "Save Changes"}
-                                </Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
+                
             </View>
 
             {/* 2. SCROLLABLE CONTENT AREA */}
@@ -371,6 +358,41 @@ export default function ProfileScreen() {
                     </ScrollView>
                 </View>
             </ScrollView>
+            
+            {/* ---------- EDIT PROFILE MODAL ---------- */}
+            <EditProfileModal
+                visible={isEditModalVisible}
+                username={username}
+                bio={bio}
+                avatarUrl={avatarUrl}
+                saving={saving}
+                errorMsg={errorMsg}
+                onClose={() => setIsEditModalVisible(false)}
+                onSave={handleProfileSave}
+                onChangePhoto={() => setIsPhotoSheetVisible(true)}
+            />
+
+            <EditPhotoModal
+                visible={isPhotoSheetVisible}
+                onClose={() => setIsPhotoSheetVisible(false)}
+                onChooseFromLibrary={() => {
+                    if (!userId) return;
+                    changeAvatar(
+                    userId,
+                    () => setIsPhotoSheetVisible(false),
+                    "library"
+                    );
+                }}
+                onTakePhoto={() => {
+                    if (!userId) return;
+                    changeAvatar(
+                    userId,
+                    () => setIsPhotoSheetVisible(false),
+                    "camera"
+                    );
+                }}
+                onRemoveAvatar={handleRemoveAvatar}
+            />
         </View>
     );
 }
@@ -382,7 +404,7 @@ export default function ProfileScreen() {
 const SWOOSH_FACTOR = 0.55;
 const PADDING_HORIZONTAL = screenWidth * 0.05;
 const HEADER_BACKGROUND_HEIGHT = screenWidth * SWOOSH_FACTOR;
-const IMAGE_SIZE = screenWidth * 0.18;
+const IMAGE_SIZE = screenWidth * 0.25;
 
 function getStyles(theme: any) {
     return StyleSheet.create({
@@ -465,12 +487,9 @@ function getStyles(theme: any) {
             paddingTop: screenHeight * 0.01,
         },
         profileImage: {
-            width: IMAGE_SIZE,
-            height: IMAGE_SIZE,
+            width: "100%",
+            height: "100%",
             borderRadius: IMAGE_SIZE / 2,
-            borderWidth: 2,
-            borderColor: "#fff",
-            marginRight: PADDING_HORIZONTAL * 0.5,
         },
         userInfo: { flex: 1 },
         displayUsername: {
@@ -547,6 +566,41 @@ function getStyles(theme: any) {
             fontWeight: "bold",
             textAlign: "center",
             lineHeight: 10,
+        },
+        friendsLink: {
+            textDecorationLine: "underline",
+        },
+        avatarWrapper: {
+            width: IMAGE_SIZE,
+            height: IMAGE_SIZE,
+            borderRadius: IMAGE_SIZE / 2,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: PADDING_HORIZONTAL * 0.5,
+            position: "relative",
+        },
+        avatarSpinnerOverlay: {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.25)",
+            borderRadius: IMAGE_SIZE / 2,
+        },
+        avatarFallback: {
+            width: "100%",
+            height: "100%",
+            borderRadius: IMAGE_SIZE / 2,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        avatarInitial: {
+            fontSize: 46,
+            fontWeight: "700",
+            color: "white",
         },
     });
 }

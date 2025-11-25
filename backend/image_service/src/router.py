@@ -26,9 +26,9 @@ images_router = APIRouter()
     tags=["images"],
 )
 async def image_upload(
-    user_id: str,
-    file: UploadFile,
     container_name: str,
+    user_id: str,
+    file: UploadFile = File(...),
     image_service: ImageService = Depends(get_image_service),
     current_user: UserAuthInfo = Depends(get_current_user_auth),
 ) -> Image:

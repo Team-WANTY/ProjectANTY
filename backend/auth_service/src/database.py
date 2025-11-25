@@ -40,6 +40,8 @@ class AuthDB:
                 f"Error creating user: {user_create.model_dump()}, already exists"
             )
             raise RecordAlreadyExistsError()
+        except RecordAlreadyExistsError:
+            raise
         except Exception as e:
             logger.error(
                 f"Error creating user: {user_create.model_dump()}, unexpected: {e}"

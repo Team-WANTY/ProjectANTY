@@ -45,7 +45,7 @@ async def get_current_user(
         )
 
     # Check if user is active
-    if not user_in_db.is_active:
+    if not current_user_auth.is_active:
         logger.warning(
             f"Current user with UserAuthInfo '{current_user_auth.model_dump()}' not active"
         )
@@ -64,15 +64,21 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> U
     """Get current user"""
     return current_user
 
-
-@users_router.get("/{user_id}", response_model=UserBase, tags=["users"])
+@users_router.get("/id/{user_id}", response_model=UserInDB, tags=["users"])
 async def get_user(
-    user_id: str, users_service: UsersService = Depends(get_users_service)
-) -> UserBase:
+    user_id: str,
+    current_user_auth: UserAuthInfo = Depends(get_current_user_auth),
+    users_service: UsersService = Depends(get_users_service)
+) -> UserInDB:
     """Get user by ID"""
     try:
-        user = await users_service.get_user_by_id(user_id)
+        user = await users_service.get_user_by_id(user_id, current_user_auth)
         return user
+    except AuthError:
+        logger.warning(
+            f"Error trying to get user with ID '{user_update.id}': authorization error"
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     except RecordNotFoundError:
         logger.error(f"Error getting user with ID '{user_id}': not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -139,6 +145,7 @@ async def update_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+
 
 
 @users_router.delete(

@@ -55,6 +55,7 @@ def sample_user_in_db():
         created_at=(datetime.now(UTC) - timedelta(minutes=15)),
         updated_at=(datetime.now(UTC) - timedelta(minutes=15)),
         is_active=True,
+        is_superuser=False,
     )
 
 

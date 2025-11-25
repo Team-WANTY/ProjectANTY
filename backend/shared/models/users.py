@@ -7,8 +7,6 @@ class UserBase(BaseModel):
     """Info passed usually out of program, "base" due to containing minimum info and no sensitive data"""
 
     id: str
-    is_active: bool
-
 
 class UserInDB(UserBase):
     username: str
