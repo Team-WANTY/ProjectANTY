@@ -11,7 +11,7 @@ const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike }) => {
     const heartIconColor = theme.background;
 
     return (
-        <View style={[styles.friendCard, { backgroundColor: theme.border }]}>
+        <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
             <Image source={activity.img} style={styles.friendAvatar} />
 
             <View style={styles.friendTextContent}>
