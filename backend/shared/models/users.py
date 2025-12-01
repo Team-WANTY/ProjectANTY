@@ -8,8 +8,14 @@ class UserBase(BaseModel):
 
     id: str
 
+
 class UserInDB(UserBase):
+    """internal use only data model not to be sent out"""
+
     username: str
     email: EmailStr
     created_at: datetime
     updated_at: datetime
+    hashed_password: str
+    is_active: bool
+    is_superuser: bool

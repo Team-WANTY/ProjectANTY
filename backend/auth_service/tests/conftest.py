@@ -1,16 +1,16 @@
-from unittest.mock import AsyncMock
 from datetime import timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from shared.auth import get_current_user
 from shared.db import now_timestamp
-from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
+from shared.models.users import UserInDB
 
 from src.database import AuthDB
 from src.dependencies import get_auth_service
 from src.main import app
-from src.models import UserCreate
 from src.service import AuthService
 
 
@@ -45,13 +45,14 @@ def mock_auth_db(mock_container):
 
 
 @pytest.fixture
-def sample_user_auth_info():
+def sample_user_in_db():
     """Fixture for sample UserAuthInfo"""
-    return UserAuthInfo(
+    return UserInDB(
         id="user123",
         username="testuser",
         email="test@gmail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
+        created_at=now_timestamp(),
         updated_at=now_timestamp(),
         is_active=True,
         is_superuser=False,
@@ -61,24 +62,15 @@ def sample_user_auth_info():
 @pytest.fixture
 def sample_superuser():
     """Fixture for sample superuser"""
-    return UserAuthInfo(
+    return UserInDB(
         id="admin123",
         username="admin",
         email="admin@superfaketestemail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
+        created_at=now_timestamp(),
         updated_at=now_timestamp(),
         is_active=True,
         is_superuser=True,
-    )
-
-
-@pytest.fixture
-def sample_user_create():
-    """Fixture for sample UserCreate data"""
-    return UserCreate(
-        email="test@gmail.com",
-        username="testuser",
-        plain_text_password="SecurePassword123!",
     )
 
 
@@ -88,8 +80,10 @@ def mock_service():
 
 
 @pytest.fixture(autouse=True)
-def dependency_overrides(mock_service):
+def dependency_overrides(mock_service, sample_user_in_db):
     app.dependency_overrides[get_auth_service] = lambda: mock_service
+    app.dependency_overrides[get_current_user] = lambda: sample_user_in_db
+
 
 @pytest.fixture()
 def sample_token():
@@ -98,7 +92,3 @@ def sample_token():
         exp=now_timestamp() + timedelta(minutes=15),
         token_type="access",
     )
-
-@pytest.fixture()
-async def override_get_current_user_auth(sample_user_auth_info):
-    app.dependency_overrides[get_current_user_auth] = lambda _:sample_user_auth_info

@@ -5,6 +5,8 @@ from shared.db import now_timestamp
 from shared.exceptions.db import (
     EmptyRecordUpdateError,
     GeneralQueryError,
+    RecordAlreadyExistsError,
+    RecordCreationError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
@@ -12,13 +14,35 @@ from shared.exceptions.db import (
 from shared.models.users import UserInDB
 from shared.simple_logging import logger
 
-from src.models import UserUpdate
+from src.models import UserCreate, UserUpdate
 
 
 class UsersDB:
     def __init__(self, container: ContainerProxy):
         self.container = container
         logger.debug("Created UsersDB")
+
+    async def create_user(self, user_create: UserCreate):
+        try:
+            logger.debug(f"Trying to create user: {user_create.model_dump()}")
+            user_in_db = user_create.to_user_in_db()
+            logger.debug("Converted UserCreate to UserInDB, sending to DB")
+            item: CosmosDict = await self.container.create_item(
+                body=user_in_db.model_dump(mode="json")
+            )
+            logger.debug("Created item in DB successfully, validating response")
+            user_auth_info = UserInDB.model_validate(item, extra="ignore")
+            logger.debug(f"Successfully created user: {user_auth_info.model_dump()}")
+        except exceptions.CosmosHttpResponseError:
+            logger.warning(
+                f"Error creating user: {user_create.model_dump()}, already exists"
+            )
+            raise RecordAlreadyExistsError()
+        except Exception as e:
+            logger.error(
+                f"Error creating user: {user_create.model_dump()}, unexpected: {e}"
+            )
+            raise RecordCreationError()
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
         try:
@@ -96,7 +120,7 @@ class UsersDB:
             )
             raise GeneralQueryError()
 
-    async def update_user(self, user_update: UserUpdate) -> UserInDB:
+    async def update_user(self, user_update: UserUpdate):
         """Update user in CosmosDB using patch_item for partial updates"""
         try:
             logger.debug(f"Trying to update user with ID '{user_update.id}'")
@@ -150,7 +174,6 @@ class UsersDB:
             logger.debug(
                 f"Successfully updated user with ID '{user_update.id}': {user_in_db.model_dump()}"
             )
-            return user_in_db
 
         except exceptions.CosmosResourceNotFoundError:
             logger.error(

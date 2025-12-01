@@ -10,7 +10,8 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed
+    AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed with DNS
+    USERS_SERVICE_URL: str  # TODO temporary while users service not deployed with DNS
     AUTH_EXTERNAL_URL: str
     INTERSERVICE_KEY: str
     MINIMUM_LOGGING_LEVEL: str | None

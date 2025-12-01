@@ -1,13 +1,12 @@
-from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from datetime import timedelta
+from unittest.mock import patch
 
 import jwt
 import pytest
 from email_validator import EmailNotValidError
 from shared.db import now_timestamp
-from httpx import Response
 from shared.exceptions.auth import AuthError
-from shared.exceptions.db import RecordNotFoundError
+from shared.exceptions.db import EmptyRecordUpdateError
 from shared.exceptions.token import TokenError, TokenExpiredError
 from shared.models.token import Token
 
@@ -18,125 +17,70 @@ from src.models import UserAuthUpdate
 from src.settings import settings
 
 
-class TestRegisterUser:
-    """Tests for register_user method"""
-
-    @pytest.mark.asyncio
-    async def test_register_user_success(
-        self,
-        mock_auth_service,
-        mock_db,
-        sample_user_create,
-        sample_user_auth_info,
-        monkeypatch,
-    ):
-        """Test successful user registration"""
-        mock_db.create_user.return_value = sample_user_auth_info
-        mock_db.get_user_auth_by_username.side_effect = RecordNotFoundError()
-        mock_db.get_user_auth_by_email.side_effect = RecordNotFoundError()
-
-        mock_post = AsyncMock(return_value=Response(status_code=201))
-
-        class MockClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb):
-                pass
-
-            post = mock_post
-
-        monkeypatch.setattr(
-            "src.service.AsyncClient", lambda *args, **kwargs: MockClient()
-        )
-
-        result = await mock_auth_service.register_user(sample_user_create)
-
-        assert result == sample_user_auth_info
-        mock_db.create_user.assert_called_once_with(sample_user_create)
+class TestServiceGetUserFromService:
+    pass
 
 
-class TestAuthenticateUserById:
-    """Tests for authenticate_user_by_id method"""
-
-    @pytest.mark.asyncio
-    async def test_authenticate_by_id_success(
-        self, mock_auth_service, mock_db, sample_user_auth_info
-    ):
-        """Test successful authentication by ID"""
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-
-        with patch("src.service.pwdhasher.verify", return_value=True):
-            result = await mock_auth_service.authenticate_user_by_id(
-                "user123", "password"
-            )
-
-        assert result == sample_user_auth_info
-        mock_db.get_user_auth_by_id.assert_called_once_with("user123")
-
-    @pytest.mark.asyncio
-    async def test_authenticate_by_id_wrong_password(
-        self, mock_auth_service, mock_db, sample_user_auth_info
-    ):
-        """Test authentication by ID with wrong password"""
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-
-        with patch("src.service.pwdhasher.verify", return_value=False):
-            with pytest.raises(AuthIncorrectPasswordError):
-                await mock_auth_service.authenticate_user_by_id(
-                    "user123", "wrongpassword"
-                )
-
-
-class TestAuthenticateUserByUsername:
-    """Tests for authenticate_user_by_username method"""
-
+class TestServiceAuthenticateUserByUsername:
     @pytest.mark.asyncio
     async def test_authenticate_by_username_success(
-        self, mock_auth_service, mock_db, sample_user_auth_info
+        self, mock_auth_service, mock_db, sample_user_in_db
     ):
-        """Test successful authentication by username"""
-        mock_db.get_user_auth_by_username.return_value = sample_user_auth_info
+        with patch(
+            "src.service.AuthService._get_user_from_service",
+            return_value=sample_user_in_db,
+        ):
+            with patch("src.service.pwdhasher.verify", return_value=True):
+                result = await mock_auth_service.authenticate_user_by_username(
+                    "testuser", "password"
+                )
 
-        with patch("src.service.pwdhasher.verify", return_value=True):
-            result = await mock_auth_service.authenticate_user_by_username(
-                "testuser", "password"
-            )
-
-        assert result == sample_user_auth_info
-        mock_db.get_user_auth_by_username.assert_called_once_with("testuser")
+        assert result == sample_user_in_db
 
     @pytest.mark.asyncio
     async def test_authenticate_by_username_wrong_password(
-        self, mock_auth_service, mock_db, sample_user_auth_info
+        self, mock_auth_service, mock_db, sample_user_in_db
     ):
-        """Test authentication by username with wrong password"""
-        mock_db.get_user_auth_by_username.return_value = sample_user_auth_info
+        with patch(
+            "src.service.AuthService._get_user_from_service",
+            return_value=sample_user_in_db,
+        ):
+            with patch("src.service.pwdhasher.verify", return_value=False):
+                with pytest.raises(AuthIncorrectPasswordError):
+                    await mock_auth_service.authenticate_user_by_username(
+                        "testuser", "wrong_password"
+                    )
 
-        with patch("src.service.pwdhasher.verify", return_value=False):
-            with pytest.raises(AuthIncorrectPasswordError):
-                await mock_auth_service.authenticate_user_by_username(
-                    "testuser", "wrongpassword"
-                )
 
-
-class TestAuthenticateUserByEmail:
-    """Tests for authenticate_user_by_email method"""
-
+class TestServiceAuthenticateUserByEmail:
     @pytest.mark.asyncio
     async def test_authenticate_by_email_success(
-        self, mock_auth_service, mock_db, sample_user_auth_info
+        self, mock_auth_service, mock_db, sample_user_in_db
     ):
-        """Test successful authentication by email"""
-        mock_db.get_user_auth_by_email.return_value = sample_user_auth_info
+        with patch(
+            "src.service.AuthService._get_user_from_service",
+            return_value=sample_user_in_db,
+        ):
+            with patch("src.service.pwdhasher.verify", return_value=True):
+                result = await mock_auth_service.authenticate_user_by_email(
+                    "testing@gmail.com", "password"
+                )
 
-        with patch("src.service.pwdhasher.verify", return_value=True):
-            result = await mock_auth_service.authenticate_user_by_email(
-                "test@gmail.com", "password"
-            )
+        assert result == sample_user_in_db
 
-        assert result == sample_user_auth_info
-        mock_db.get_user_auth_by_email.assert_called_once_with("test@gmail.com")
+    @pytest.mark.asyncio
+    async def test_authenticate_by_email_wrong_password(
+        self, mock_auth_service, mock_db, sample_user_in_db
+    ):
+        with patch(
+            "src.service.AuthService._get_user_from_service",
+            return_value=sample_user_in_db,
+        ):
+            with patch("src.service.pwdhasher.verify", return_value=False):
+                with pytest.raises(AuthIncorrectPasswordError):
+                    await mock_auth_service.authenticate_user_by_email(
+                        "testing@gmail.com", "wrong_password"
+                    )
 
     @pytest.mark.asyncio
     async def test_authenticate_by_email_invalid_email(
@@ -148,107 +92,79 @@ class TestAuthenticateUserByEmail:
                 "not-an-email", "password"
             )
 
-    @pytest.mark.asyncio
-    async def test_authenticate_by_email_wrong_password(
-        self, mock_auth_service, mock_db, sample_user_auth_info
-    ):
-        """Test authentication by email with wrong password"""
-        mock_db.get_user_auth_by_email.return_value = sample_user_auth_info
 
-        with patch("src.service.pwdhasher.verify", return_value=False):
-            with pytest.raises(AuthIncorrectPasswordError):
-                await mock_auth_service.authenticate_user_by_email(
-                    "test@gmail.com", "wrongpassword"
-                )
-
-
-class TestGetUserAuthById:
-    """Tests for get_user_auth_by_id method"""
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_id_success(
-        self, mock_auth_service, mock_db, sample_user_auth_info
-    ):
-        """Test successful get user by ID"""
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-
-        result = await mock_auth_service.get_user_auth_by_id("user123")
-
-        assert result == sample_user_auth_info
-        mock_db.get_user_auth_by_id.assert_called_once_with("user123")
-
-
-class TestGetUserAuthByEmail:
-    @pytest.mark.asyncio
-    async def test_get_user_auth_by_email_success(
-        self, mock_auth_service, mock_db, sample_user_auth_info
-    ):
-        mock_db.get_user_auth_by_email.return_value = sample_user_auth_info
-
-        result = await mock_auth_service.get_user_auth_by_email("test@gmail.com")
-
-        assert result.email == "test@gmail.com"
-
-
-class TestUpdateUserAuth:
-    """Tests for update_user_auth method"""
-
+class TestServiceUpdateUserAuth:
     @pytest.mark.asyncio
     async def test_update_own_password(
-        self, mock_auth_service, mock_db, sample_user_auth_info
+        self, mock_auth_service, mock_db, sample_user_in_db
     ):
-        """Test user updating their own password"""
         auth_update = UserAuthUpdate(
             id="user123", plain_text_password="NewPassword123!"
         )
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-        mock_db.update_auth.return_value = sample_user_auth_info
+        new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
+        new_sample_user_in_db.hashed_password = "hashed_password"
+        mock_db.update_auth.return_value = new_sample_user_in_db
 
-        with patch("shared.auth.authorize_operation"):
-            result = await mock_auth_service.update_user_auth(
-                auth_update, sample_user_auth_info
-            )
-
-        assert result == sample_user_auth_info
-        mock_db.update_auth.assert_called_once()
+        with patch(
+            "src.service.AuthService._get_user_from_service",
+            return_value=sample_user_in_db,
+        ):
+            await mock_auth_service.update_user_auth(auth_update, sample_user_in_db)
 
     @pytest.mark.asyncio
-    async def test_regular_user_cannot_update_is_active(
-        self, mock_auth_service, mock_db, sample_user_auth_info
+    async def test_update_other_user_password_fail(
+        self, mock_auth_service, mock_db, sample_user_in_db
     ):
-        """Test regular user cannot update is_active"""
+        auth_update = UserAuthUpdate(
+            id="user321", plain_text_password="NewPassword123!"
+        )
+
+        with patch("src.service.authorize_operation", side_effect=AuthError()):
+            with pytest.raises(AuthError):
+                await mock_auth_service.update_user_auth(auth_update, sample_user_in_db)
+
+    @pytest.mark.asyncio
+    async def test_regular_user_cannot_update_restricted(
+        self, mock_auth_service, mock_db, sample_user_in_db
+    ):
         auth_update = UserAuthUpdate(id="user123", is_active=False, is_superuser=True)
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-        mock_db.update_auth.return_value = sample_user_auth_info
 
-        with patch("shared.auth.authorize_operation"):
-            await mock_auth_service.update_user_auth(auth_update, sample_user_auth_info)
+        mock_db.update_auth.side_effect = EmptyRecordUpdateError()
 
-        # Verify that is_active and is_superuser were set to None
-        call_args = mock_db.update_auth.call_args
-        auth_update_arg = call_args[0][1]
-        assert auth_update_arg.is_active is None
-        assert auth_update_arg.is_superuser is None
+        with patch("src.service.authorize_operation"):
+            with patch(
+                "src.service.AuthService._get_user_from_service",
+                return_value=sample_user_in_db,
+            ):
+                with pytest.raises(EmptyRecordUpdateError):
+                    await mock_auth_service.update_user_auth(
+                        auth_update, sample_user_in_db
+                    )
+
+        mock_db.update_auth.assert_awaited_once_with(
+            sample_user_in_db,
+            UserAuthUpdate(id="user123", is_active=None, is_superuser=None),
+        )
 
     @pytest.mark.asyncio
-    async def test_superuser_can_update_is_active(
-        self, mock_auth_service, mock_db, sample_user_auth_info, sample_superuser
+    async def test_regular_user_can_update_restricted(
+        self, mock_auth_service, mock_db, sample_user_in_db, sample_superuser
     ):
-        """Test superuser can update is_active"""
-        auth_update = UserAuthUpdate(id="user123", is_active=False)
-        mock_db.get_user_auth_by_id.return_value = sample_user_auth_info
-        mock_db.update_auth.return_value = sample_user_auth_info
+        auth_update = UserAuthUpdate(id="user123", is_active=False, is_superuser=True)
+        new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
+        new_sample_user_in_db.is_active = False
+        new_sample_user_in_db.is_superuser = True
+        mock_db.update_auth.return_value = new_sample_user_in_db
 
-        with patch("shared.auth.authorize_operation"):
-            await mock_auth_service.update_user_auth(auth_update, sample_superuser)
-
-        # Verify that is_active was not set to None
-        call_args = mock_db.update_auth.call_args
-        auth_update_arg = call_args[0][1]
-        assert not auth_update_arg.is_active
+        with patch("src.service.authorize_operation", return_value=None):
+            with patch(
+                "src.service.AuthService._get_user_from_service",
+                return_value=sample_user_in_db,
+            ):
+                await mock_auth_service.update_user_auth(auth_update, sample_superuser)
 
     @pytest.mark.asyncio
-    async def test_update_unauthorized(self, mock_auth_service, sample_user_auth_info):
+    async def test_update_unauthorized(self, mock_auth_service, sample_user_in_db):
         """Test unauthorized update attempt"""
         auth_update = UserAuthUpdate(
             id="otheruser456", plain_text_password="NewPassword123!"
@@ -256,12 +172,10 @@ class TestUpdateUserAuth:
 
         with patch("src.service.authorize_operation", side_effect=AuthError()):
             with pytest.raises(AuthError):
-                await mock_auth_service.update_user_auth(
-                    auth_update, sample_user_auth_info
-                )
+                await mock_auth_service.update_user_auth(auth_update, sample_user_in_db)
 
 
-class TestTokenFunctions:
+class TestServiceTokenFunctions:
     """Tests for token creation and decoding"""
 
     @pytest.mark.asyncio
@@ -348,3 +262,7 @@ class TestTokenFunctions:
         """Test decoding invalid token"""
         with pytest.raises(TokenError):
             await mock_auth_service.decode_token("invalid.token.string")
+
+
+class TestServicePasswordReset:
+    pass

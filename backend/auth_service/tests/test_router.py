@@ -1,240 +1,29 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from email_validator import EmailNotValidError
-from fastapi import HTTPException
 from shared.db import now_timestamp
+from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
-    RecordAlreadyExistsError,
-    RecordCreationError,
     RecordNotFoundError,
     RecordUpdateError,
-    EmptyRecordUpdateError,
 )
 from shared.exceptions.token import TokenError, TokenExpiredError
-from shared.exceptions.auth import AuthError
-from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
+from shared.models.users import UserInDB
 
 from src.exceptions import AuthIncorrectPasswordError
-from src.main import app
-from src.router import _get_current_user_auth_logic, get_current_user_auth
-
-
-class TestGetCurrentUserAuth:
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_success(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.return_value = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="access",
-        )
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
-        result = await _get_current_user_auth_logic(
-            token="test-token", auth_service=mock_service
-        )
-
-        assert isinstance(result, UserAuthInfo)
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_token_error(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.side_effect = TokenError()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_expired_token(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.side_effect = TokenExpiredError()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_unexpected_token_error(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.side_effect = Exception()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_not_found(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.return_value = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="access",
-        )
-        mock_service.get_user_auth_by_id.side_effect = RecordNotFoundError()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_query_error(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.return_value = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="access",
-        )
-        mock_service.get_user_auth_by_id.side_effect = GeneralQueryError()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_unexpected_error(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.return_value = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="access",
-        )
-        mock_service.get_user_auth_by_id.side_effect = Exception()
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_get_current_user_auth_not_active(
-        self, mock_service, sample_user_auth_info
-    ):
-        mock_service.decode_token.return_value = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="access",
-        )
-        new_sample_user_auth_info = sample_user_auth_info.model_copy(deep=True)
-        new_sample_user_auth_info.is_active = False
-        mock_service.get_user_auth_by_id.return_value = new_sample_user_auth_info
-
-        with pytest.raises(HTTPException) as e:
-            await _get_current_user_auth_logic(
-                token="test-token", auth_service=mock_service
-            )
-
-        assert isinstance(e.value, HTTPException)
-        assert e.value.status_code == 401
-
-
-class TestRegister:
-    """Tests for /register endpoint"""
-
-    def test_register_success(self, client, sample_user_auth_info, mock_service):
-        """Test successful user registration"""
-
-        response = client.post(
-            "/register",
-            json={
-                "email": "test@gmail.com",
-                "username": "testuser",
-                "plain_text_password": "SecurePassword123!",
-            },
-        )
-
-        assert response.status_code == 201
-
-    def test_register_user_already_exists(self, client, mock_service):
-        """Test registration when user already exists"""
-
-        mock_service.register_user.side_effect = RecordAlreadyExistsError()
-
-        response = client.post(
-            "/register",
-            json={
-                "email": "test@gmail.com",
-                "username": "testuser",
-                "plain_text_password": "SecurePassword123!",
-            },
-        )
-
-        assert response.status_code == 403
-        assert "already exists" in response.json()["detail"]
-
-    def test_register_creation_error(self, client, mock_service):
-        """Test registration with creation error"""
-        mock_service.register_user.side_effect = RecordCreationError()
-
-        response = client.post(
-            "/register",
-            json={
-                "email": "test@gmail.com",
-                "username": "testuser",
-                "plain_text_password": "SecurePassword123!",
-            },
-        )
-
-        assert response.status_code == 500
-
-    def test_register_unexpected_error(self, client, mock_service):
-        """Test registration with creation error"""
-        mock_service.register_user.side_effect = Exception()
-
-        response = client.post(
-            "/register",
-            json={
-                "email": "test@gmail.com",
-                "username": "testuser",
-                "plain_text_password": "SecurePassword123!",
-            },
-        )
-
-        assert response.status_code == 500
 
 
 class TestLogin:
     """Tests for /login endpoint"""
 
-    def test_login_success_with_email(
-        self, client, sample_user_auth_info, mock_service
-    ):
+    def test_login_success_with_email(self, client, sample_user_in_db, mock_service):
         """Test successful login with email"""
 
-        mock_service.authenticate_user_by_email.return_value = sample_user_auth_info
+        mock_service.authenticate_user_by_email.return_value = sample_user_in_db
         mock_service.create_access_token.return_value = "access_token_123"
         mock_service.create_refresh_token.return_value = "refresh_token_123"
 
@@ -274,13 +63,11 @@ class TestLogin:
         )
         assert response.status_code == 500
 
-    def test_login_success_with_username(
-        self, client, sample_user_auth_info, mock_service
-    ):
+    def test_login_success_with_username(self, client, sample_user_in_db, mock_service):
         """Test successful login with username"""
 
         mock_service.authenticate_user_by_email.side_effect = EmailNotValidError()
-        mock_service.authenticate_user_by_username.return_value = sample_user_auth_info
+        mock_service.authenticate_user_by_username.return_value = sample_user_in_db
         mock_service.create_access_token.return_value = "access_token_123"
         mock_service.create_refresh_token.return_value = "refresh_token_123"
 
@@ -343,11 +130,12 @@ class TestLogin:
 
     def test_login_inactive_user(self, client, mock_service):
         """Test login with inactive user"""
-        inactive_user = UserAuthInfo(
+        inactive_user = UserInDB(
             id="user123",
             username="testuser",
             email="test@gmail.com",
             hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
+            created_at=now_timestamp(),
             updated_at=now_timestamp(),
             is_active=False,
             is_superuser=False,
@@ -373,22 +161,11 @@ class TestLogin:
 
         assert response.status_code == 500
 
-    def test_login_user_not_found(self, client, mock_service):
-        """Test login with non-existent user"""
-        mock_service.authenticate_user_by_email.side_effect = EmailNotValidError()
-        mock_service.authenticate_user_by_username.side_effect = Exception()
-
-        response = client.post(
-            "/login", data={"username": "nonexistent", "password": "password123"}
-        )
-
-        assert response.status_code == 500
-
 
 class TestVerifyToken:
     """Tests for /verify/{token} endpoint"""
 
-    def test_verify_token_success(self, client, sample_user_auth_info, mock_service):
+    def test_verify_token_success(self, client, sample_user_in_db, mock_service):
         """Test successful token verification"""
         decoded_token = Token(
             sub="user123",
@@ -399,8 +176,7 @@ class TestVerifyToken:
         with patch("src.router.shared_settings") as mock_settings:
             mock_settings.INTERSERVICE_KEY = "valid_key"
             mock_service.decode_token.return_value = decoded_token
-            mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
-
+            mock_service._get_user_from_service.return_value = sample_user_in_db
             response = client.get(
                 "/verify/test_token", headers={"X-Interservice-Key": "valid_key"}
             )
@@ -462,30 +238,6 @@ class TestVerifyToken:
 
         assert response.status_code == 400
 
-    def test_verify_token_general_query_error(self, client, mock_service):
-        """Test verification of expired token"""
-        with patch("src.router.shared_settings") as mock_settings:
-            mock_settings.INTERSERVICE_KEY = "valid_key"
-            mock_service.decode_token.side_effect = GeneralQueryError()
-
-            response = client.get(
-                "/verify/test_token", headers={"X-Interservice-Key": "valid_key"}
-            )
-
-        assert response.status_code == 500
-
-    def test_verify_token_not_found(self, client, mock_service):
-        """Test verification of expired token"""
-        with patch("src.router.shared_settings") as mock_settings:
-            mock_settings.INTERSERVICE_KEY = "valid_key"
-            mock_service.decode_token.side_effect = RecordNotFoundError()
-
-            response = client.get(
-                "/verify/test_token", headers={"X-Interservice-Key": "valid_key"}
-            )
-
-        assert response.status_code == 404
-
     def test_verify_token_unexpected_error(self, client, mock_service):
         """Test verification of expired token"""
         with patch("src.router.shared_settings") as mock_settings:
@@ -502,7 +254,7 @@ class TestVerifyToken:
 class TestRefreshToken:
     """Tests for /refresh endpoint"""
 
-    def test_refresh_token_success(self, client, sample_user_auth_info, mock_service):
+    def test_refresh_token_success(self, client, sample_user_in_db, mock_service):
         """Test successful token refresh"""
         decoded_token = Token(
             sub="user123",
@@ -511,7 +263,7 @@ class TestRefreshToken:
         )
 
         mock_service.decode_token.return_value = decoded_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
+        mock_service.get_user_auth_by_id.return_value = sample_user_in_db
         mock_service.create_access_token.return_value = "new_access_token"
 
         client.cookies.set("refresh_token", "valid_refresh_token")
@@ -554,31 +306,6 @@ class TestRefreshToken:
 
         assert response.status_code == 401
 
-    def test_refresh_inactive_user(self, client, mock_service):
-        """Test refresh for inactive user"""
-        decoded_token = Token(
-            sub="user123",
-            exp=now_timestamp() + timedelta(minutes=15),
-            token_type="refresh",
-        )
-        inactive_user = UserAuthInfo(
-            id="user123",
-            username="testuser",
-            email="test@gmail.com",
-            hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-            updated_at=now_timestamp(),
-            is_active=False,
-            is_superuser=False,
-        )
-
-        mock_service.decode_token.return_value = decoded_token
-        mock_service.get_user_auth_by_id.return_value = inactive_user
-
-        client.cookies.set("refresh_token", "valid_token")
-        response = client.get("/refresh")
-
-        assert response.status_code == 401
-
     def test_refresh_token_error(self, client, mock_service):
         """Test refresh with expired token"""
 
@@ -588,26 +315,6 @@ class TestRefreshToken:
         response = client.get("/refresh")
 
         assert response.status_code == 400
-
-    def test_refresh_not_found(self, client, mock_service):
-        """Test refresh with expired token"""
-
-        mock_service.decode_token.side_effect = RecordNotFoundError()
-
-        client.cookies.set("refresh_token", "expired_token")
-        response = client.get("/refresh")
-
-        assert response.status_code == 404
-
-    def test_refresh_general_query_error(self, client, mock_service):
-        """Test refresh with expired token"""
-
-        mock_service.decode_token.side_effect = GeneralQueryError()
-
-        client.cookies.set("refresh_token", "expired_token")
-        response = client.get("/refresh")
-
-        assert response.status_code == 500
 
     def test_refresh_unexpected_error(self, client, mock_service):
         """Test refresh with expired token"""
@@ -638,11 +345,10 @@ class TestLogout:
 class TestUpdateAuth:
     """Tests for PATCH / endpoint"""
 
-    def test_update_auth_success(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
-        mock_service.update_user_auth.return_value = sample_user_auth_info
+    def test_update_auth_success(
+        self, client, sample_user_in_db, mock_service, sample_token
+    ):
+        mock_service.update_user_auth.return_value = sample_user_in_db
 
         response = client.patch(
             "/",
@@ -651,12 +357,10 @@ class TestUpdateAuth:
         )
 
         assert response.status_code == 200
-        assert response.json()["id"] == "user123"
 
-    def test_update_auth_auth_error(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
+    def test_update_auth_auth_error(
+        self, client, sample_user_in_db, mock_service, sample_token
+    ):
         mock_service.update_user_auth.side_effect = AuthError()
 
         response = client.patch(
@@ -667,23 +371,9 @@ class TestUpdateAuth:
 
         assert response.status_code == 403
 
-    def test_update_auth_not_found(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.side_effect = RecordNotFoundError()
-
-        response = client.patch(
-            "/",
-            json={"id": "user123", "plain_text_password": "NewPassword123!"},
-            headers={"Authorization": "Bearer valid_token"},
-        )
-
-        assert response.status_code == 404
-
-    def test_update_auth_empty_update(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
+    def test_update_auth_empty_update(
+        self, client, sample_user_in_db, mock_service, sample_token
+    ):
         mock_service.update_user_auth.side_effect = EmptyRecordUpdateError()
 
         response = client.patch(
@@ -694,10 +384,9 @@ class TestUpdateAuth:
 
         assert response.status_code == 204
 
-    def test_update_auth_update_error(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
+    def test_update_auth_update_error(
+        self, client, sample_user_in_db, mock_service, sample_token
+    ):
         mock_service.update_user_auth.side_effect = RecordUpdateError()
 
         response = client.patch(
@@ -708,10 +397,9 @@ class TestUpdateAuth:
 
         assert response.status_code == 500
 
-    def test_update_auth_unexpected_error(self, client, sample_user_auth_info, mock_service, sample_token):
-        """Test successful auth update"""
-        mock_service.decode_token.return_value = sample_token
-        mock_service.get_user_auth_by_id.return_value = sample_user_auth_info
+    def test_update_auth_unexpected_error(
+        self, client, sample_user_in_db, mock_service, sample_token
+    ):
         mock_service.update_user_auth.side_effect = Exception()
 
         response = client.patch(

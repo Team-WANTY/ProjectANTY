@@ -7,23 +7,21 @@ from httpx import AsyncClient
 from pwdlib import PasswordHash
 from shared.auth import authorize_operation
 from shared.db import now_timestamp
-from shared.simple_logging import logger
 from shared.exceptions.db import (
-    RecordAlreadyExistsError,
-    RecordCreationError,
-    RecordNotFoundError,
+    GeneralQueryError,
 )
 from shared.exceptions.token import TokenError, TokenExpiredError
-from shared.models.auth import UserAuthInfo
 from shared.models.token import Token
+from shared.models.users import UserInDB
 from shared.settings import settings as shared_settings
+from shared.simple_logging import logger
 
 from src.database import AuthDB
 from src.email import send_email
 from src.exceptions import (
     AuthIncorrectPasswordError,
 )
-from src.models import UserAuthUpdate, UserCreate
+from src.models import UserAuthUpdate
 from src.settings import settings
 
 pwdhasher = PasswordHash.recommended()
@@ -34,65 +32,33 @@ class AuthService:
         self.db = auth_db
         logger.debug("Created AuthService")
 
-    async def register_user(self, user_create: UserCreate) -> UserAuthInfo:
-        logger.debug(f"Trying to register new user: {user_create.model_dump()}, checking if user exists")
-
-        try:
-            await self.get_user_auth_by_username(user_create.username)
-            raise RecordAlreadyExistsError()
-        except RecordNotFoundError:
-            pass
-        try:
-            await self.get_user_auth_by_email(user_create.email)
-            raise RecordAlreadyExistsError()
-        except RecordNotFoundError:
-            pass
-
-        logger.debug(f"New user ({user_create.model_dump()}) doesn't exist, create")
-        user_auth_info = await self.db.create_user(user_create)
-
-        logger.debug(f"Reaching out to profiles service to create new profile for user with ID '{user_auth_info.id}'")
+    async def _get_user_from_service(self, identifier_type: str, identifier: str):
         async with AsyncClient() as client:
-            response = await client.post(
-                f"{settings.PROFILES_SERVICE_URL}/{user_auth_info.id}",
+            response = await client.get(
+                f"{shared_settings.USERS_SERVICE_URL}/{identifier_type}/{identifier}",
                 headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
             )
-            if response.status_code != 201:
-                raise RecordCreationError()
-        logger.debug(f"Successfully registered new user: {user_auth_info.model_dump()}")
-        return user_auth_info
+            if response.status_code != 200:
+                raise GeneralQueryError()
 
-    async def authenticate_user_by_id(
-        self, user_id: str, password: str
-    ) -> UserAuthInfo:
-        logger.debug(f"Trying to authenticate user with ID '{user_id}'")
-        user_auth_info = await self.db.get_user_auth_by_id(user_id)
-        logger.debug(f"Verifying hashed password of user with ID '{user_id}'")
-        if not pwdhasher.verify(password, user_auth_info.hashed_password):
-            logger.error(f"Invalid password for user with ID '{user_id}'")
-            raise AuthIncorrectPasswordError()
-        logger.debug(
-            f"Successfully authenticated user with ID: '{user_id}': {user_auth_info.model_dump()}"
-        )
-        return user_auth_info
+            user_in_db = UserInDB.model_validate(response.json(), extra="ignore")
+        return user_in_db
 
     async def authenticate_user_by_username(
         self, username: str, password: str
-    ) -> UserAuthInfo:
+    ) -> UserInDB:
         logger.debug(f"Trying to authenticate user with username '{username}'")
-        user_auth_info = await self.db.get_user_auth_by_username(username)
-        logger.debug(f"Verifying hashed password of user with ID '{user_auth_info.id}'")
-        if not pwdhasher.verify(password, user_auth_info.hashed_password):
-            logger.error(f"Invalid password for user with ID '{user_auth_info.id}'")
+        user_in_db = await self._get_user_from_service("username", username)
+        logger.debug(f"Verifying hashed password of user with ID '{user_in_db.id}'")
+        if not pwdhasher.verify(password, user_in_db.hashed_password):
+            logger.error(f"Invalid password for user with ID '{user_in_db.id}'")
             raise AuthIncorrectPasswordError()
         logger.debug(
-            f"Successfully authenticated user with username: '{username}': {user_auth_info.model_dump()}"
+            f"Successfully authenticated user with username: '{username}': {user_in_db.model_dump()}"
         )
-        return user_auth_info
+        return user_in_db
 
-    async def authenticate_user_by_email(
-        self, email: str, password: str
-    ) -> UserAuthInfo:
+    async def authenticate_user_by_email(self, email: str, password: str) -> UserInDB:
         try:
             logger.debug("Trying to validate passed email")
             validate_email(email)
@@ -102,45 +68,19 @@ class AuthService:
             )
             raise e
         logger.debug(f"Trying to authenticate user with email '{email}'")
-        user_auth_info = await self.db.get_user_auth_by_email(email)
-        logger.debug(f"Verifying hashed password of user with ID '{user_auth_info.id}'")
-        if not pwdhasher.verify(password, user_auth_info.hashed_password):
-            logger.error(f"Invalid password for user with ID '{user_auth_info.id}'")
+        user_in_db = await self._get_user_from_service("email", email)
+        logger.debug(f"Verifying hashed password of user with ID '{user_in_db.id}'")
+        if not pwdhasher.verify(password, user_in_db.hashed_password):
+            logger.error(f"Invalid password for user with ID '{user_in_db.id}'")
             raise AuthIncorrectPasswordError()
         logger.debug(
-            f"Successfully authenticated user with email '{email}': {user_auth_info.model_dump()}"
+            f"Successfully authenticated user with email '{email}': {user_in_db.model_dump()}"
         )
-        return user_auth_info
-
-    async def get_user_auth_by_id(self, user_id: str) -> UserAuthInfo:
-        logger.debug(f"Trying to resolve and get user record with ID '{user_id}'")
-        user_auth_info = await self.db.get_user_auth_by_id(user_id)
-        logger.debug(
-            f"Successfully got user with ID '{user_id}': {user_auth_info.model_dump()}"
-        )
-        return user_auth_info
-
-    async def get_user_auth_by_username(self, username: str) -> UserAuthInfo:
-        logger.debug(
-            f"Trying to resolve and get user record with username '{username}'"
-        )
-        user_auth_info = await self.db.get_user_auth_by_username(username)
-        logger.debug(
-            f"Successfully got user with username '{username}': {user_auth_info.model_dump()}"
-        )
-        return user_auth_info
-
-    async def get_user_auth_by_email(self, email: str) -> UserAuthInfo:
-        logger.debug(f"Trying to resolve and get user record with email '{email}'")
-        user_auth_info = await self.db.get_user_auth_by_email(email)
-        logger.debug(
-            f"Successfully got user with email '{email}': {user_auth_info.model_dump()}"
-        )
-        return user_auth_info
+        return user_in_db
 
     async def update_user_auth(
-        self, auth_update_info: UserAuthUpdate, updater: UserAuthInfo
-    ) -> UserAuthInfo:
+        self, auth_update_info: UserAuthUpdate, updater: UserInDB
+    ):
         logger.debug(
             f"Checking if {updater.id} is authorized to update {auth_update_info.id}"
         )
@@ -150,20 +90,14 @@ class AuthService:
             auth_update_info.is_active = None
             auth_update_info.is_superuser = None
         logger.debug(f"Trying to get user record with ID '{auth_update_info.id}'")
-        old_user_auth_info = await self.get_user_auth_by_id(auth_update_info.id)
+        old_user_in_db = await self._get_user_from_service("id", auth_update_info.id)
         logger.debug(f"Trying to update user with ID '{auth_update_info.id}'")
-        new_user_auth_info = await self.db.update_auth(
-            old_user_auth_info, auth_update_info
-        )
-        logger.debug(
-            f"Successfully updated UserAuthInfo: {new_user_auth_info.model_dump()}"
-        )
-        return new_user_auth_info
+        await self.db.update_auth(old_user_in_db, auth_update_info)
 
     async def request_password_reset(self, email: str):
         # Verify email exists
-        user_auth_info = await self.get_user_auth_by_email(email)
-        reset_token = await self.create_password_reset_token(user_auth_info.id)
+        user_in_db = await self._get_user_from_service("email", email)
+        reset_token = await self.create_password_reset_token(user_in_db.id)
         reset_link = (
             f"{settings.FRONTEND_URL}/redirect/app?page=recovery&token={reset_token}"
         )
@@ -173,7 +107,7 @@ class AuthService:
         await loop.run_in_executor(
             None,
             send_email,
-            user_auth_info.email,
+            user_in_db.email,
             "Password Reset Request",
             f"Click the following link to reset your password: {reset_link}\n\nThis link expires in 30 minutes.",
         )
@@ -185,13 +119,14 @@ class AuthService:
             if token.token_type != "password_reset":
                 raise TokenError("Invalid token type for password reset")
 
-            user_auth_info = await self.get_user_auth_by_id(token.sub)
+            user_in_db = await self._get_user_from_service("id", token.sub)
+
             update_data = UserAuthUpdate(
-                id=user_auth_info.id,
+                id=user_in_db.id,
                 plain_text_password=new_password,
                 is_superuser=True,
             )
-            updated_user = await self.update_user_auth(update_data, user_auth_info)
+            updated_user = await self.update_user_auth(update_data, user_in_db)
             logger.debug(f"Password reset successful for user '{token.sub}'")
             return updated_user
 
