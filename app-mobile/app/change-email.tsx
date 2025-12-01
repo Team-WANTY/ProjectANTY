@@ -33,12 +33,12 @@ export default function ChangeEmail() {
 
     try {
 
-      const res = await usersApi.update({id: userID, email: newEmail});
+      const res = await usersApi.update({ id: userID, email: newEmail });
       if (!res.ok) {
         setMessage(res.message ?? "Password change failed.");
         return;
       }
-      
+
       useUserStore.getState().setUser({ email: newEmail });
       console.log("Email changed successful");
       setIsError(false);
@@ -76,13 +76,13 @@ export default function ChangeEmail() {
           />
         </TouchableOpacity>
       </View>
-      
+
       {/* Main Content */}
       <View style={styles.container}>
         <Text style={[styles.title, { color: theme.text }]}>Change Email</Text>
 
         <Text style={[styles.instructions, { color: theme.text }]}>
-          Enter and confirm your new email.
+          Enter your new email.
         </Text>
 
         <TextInput
