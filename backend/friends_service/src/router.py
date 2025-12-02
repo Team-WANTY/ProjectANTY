@@ -1,11 +1,5 @@
-import logging
-from typing import Optional, List
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
-
-from shared.auth import get_current_user_auth
-from shared.models.auth import UserAuthInfo
+from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     GeneralQueryError,
@@ -15,277 +9,210 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
+from shared.models.users import UserInDB
+from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
-from src.models import (
-    FriendRequestCreate,
-    FriendRequest,
-    Friendship,
-    RelationshipStatus,
-)
+from src.models import FriendListResponse
 from src.service import FriendsService
-
-logger = logging.getLogger("friends_service")
 
 friends_router = APIRouter()
 
-class FriendListResponse(BaseModel):
-    friends: List[Friendship]
-    continuationToken: Optional[str] = None
-
-
-# Friend Requests
-
 
 @friends_router.post(
-    "/requests", status_code=status.HTTP_201_CREATED, tags=["friend_requests"], response_model=FriendRequest
+    "/request/{to_user_id}",
+    status_code=status.HTTP_201_CREATED,
+    tags=["friend_requests"],
 )
-async def send_request(
-    req: FriendRequestCreate,
-    me: UserAuthInfo = Depends(get_current_user_auth),
+async def request_friendship(
+    to_user_id: str,
+    me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
-    if me.id == req.to_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot send a friend request to yourself",
-        )
-
     try:
-        fr = await service.send_request(me, req)
-        return fr
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except  RecordAlreadyExistsError as e:
-        # Duplicate pending or "already friends" case
-        detail = str(e) or "There is already a friend request for this person"
+        logger.debug(
+            f"Trying to create a pending relationship '{me.id}' <-> '{to_user_id}'"
+        )
+        await service.request_friendship(me, to_user_id)
+    except RecordAlreadyExistsError:
+        logger.error(
+            f"Error creating a pending relationship '{me.id}' <-> '{to_user_id}': friendship already exists"
+        )
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=detail,
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Friendship already exists"
         )
     except RecordCreationError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating friend request",
+        logger.error(
+            f"Error creating a pending relationship '{me.id}' <-> '{to_user_id}': creation error"
         )
-    except GeneralQueryError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e) or "Error sending friend request",
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error creating a pending relationship '{me.id}' <-> '{to_user_id}', unexpected: {e}"
         )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @friends_router.get(
-    "/requests/incoming",
-    tags=["friend_requests"],
-    response_model=List[FriendRequest],
+    "/incoming", tags=["friend_requests"], response_model=FriendListResponse
 )
 async def list_incoming(
-    status_param: Optional[str] = Query(default="pending"),
-    me: UserAuthInfo = Depends(get_current_user_auth),
+    limit: int = Query(default=10, ge=1, le=200),
+    continuation: str | None = None,
+    me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:
-        data = await service.list_incoming(me, status_param)
-        return data
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        logger.debug(
+            f"Trying to get incoming friend requests for user with ID '{me.id}'"
+        )
+        requests, cont = await service.list_incoming(me, limit, continuation)
+        return FriendListResponse(friends=requests, continuationToken=cont)
     except RecordNotFoundError:
+        logger.error(
+            f"Error getting incoming friend requests for user with ID '{me.id}': no requests found"
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error listing incoming friend requests",
+        logger.error(
+            f"Error getting incoming friend requests for user with ID '{me.id}': general query error"
         )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error getting incoming friend requests for user with ID '{me.id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @friends_router.get(
-    "/requests/outgoing",
-    tags=["friend_requests"],
-    response_model=List[FriendRequest],
+    "/outgoing", tags=["friend_requests"], response_model=FriendListResponse
 )
 async def list_outgoing(
-    status_param: Optional[str] = Query(default="pending"),
-    me: UserAuthInfo = Depends(get_current_user_auth),
+    limit: int = Query(default=10, ge=1, le=200),
+    continuation: str | None = None,
+    me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:
-        data = await service.list_outgoing(me, status_param)
-        return data
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        logger.debug(
+            f"Trying to get outgoing friend requests for user with ID '{me.id}'"
+        )
+        requests, cont = await service.list_outgoing(me, limit, continuation)
+        logger.debug("Returning list of requests")
+        return FriendListResponse(friends=requests, continuationToken=cont)
     except RecordNotFoundError:
+        logger.error(
+            f"Error getting outgoing friend requests for user with ID '{me.id}': no requests found"
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error listing outgoing friend requests",
+        logger.error(
+            f"Error getting outgoing friend requests for user with ID '{me.id}': general query error"
         )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error getting outgoing friend requests for user with ID '{me.id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@friends_router.get("/", tags=["friendships"], response_model=FriendListResponse)
+async def list_friends(
+    limit: int = Query(default=10, ge=1, le=200),
+    continuation: str | None = None,
+    me: UserInDB = Depends(get_current_user),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        logger.debug(f"Trying to get all friends for user with ID '{me.id}'")
+        items, cont = await service.list_friends(me, limit, continuation)
+        return FriendListResponse(friends=items, continuationToken=cont)
+    except RecordNotFoundError:
+        logger.error(
+            f"Error getting all friends for user with ID '{me.id}': no friends found"
+        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except GeneralQueryError:
+        logger.error(
+            f"Error getting all friends for user with ID '{me.id}': general query error"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error getting all friends for user with ID '{me.id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @friends_router.post(
-    "/requests/{request_id}/accept",
-    status_code=status.HTTP_200_OK,
+    "/request/{request_id}/accept",
+    status_code=status.HTTP_204_NO_CONTENT,
     tags=["friend_requests"],
-    response_model=Friendship,
 )
 async def accept_request(
     request_id: str,
-    me: UserAuthInfo = Depends(get_current_user_auth),
-    service: FriendsService = Depends(get_friends_service),
-) -> Friendship:
-    try:
-        fs = await service.accept(me, request_id)
-        return fs
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except RecordUpdateError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error accepting friend request",
-        )
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error accepting friend request",
-        )
-
-
-@friends_router.post(
-    "/requests/{request_id}/decline",
-    status_code=status.HTTP_204_NO_CONTENT,
-    tags=["friend_requests"],
-)
-async def decline_request(
-    request_id: str,
-    me: UserAuthInfo = Depends(get_current_user_auth),
+    me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:
-        await service.decline(me, request_id)
+        logger.debug(f"Trying to accept friend request with ID '{request_id}'")
+        await service.accept(me, request_id)
     except AuthError:
+        logger.warning(
+            f"Error trying to accept friend request with ID '{request_id}': not authorized"
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        logger.error(
+            f"Error trying to accept friend request with ID '{request_id}': friendship not found"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
+        )
     except RecordUpdateError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error declining friend request",
+        logger.error(
+            f"Error trying to accept friend request with ID '{request_id}': update error"
         )
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error declining friend request",
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error trying to accept friend request with ID '{request_id}', unexpected: {e}"
         )
-
-
-@friends_router.post(
-    "/requests/{request_id}/cancel",
-    status_code=status.HTTP_204_NO_CONTENT,
-    tags=["friend_requests"],
-)
-async def cancel_request(
-    request_id: str,
-    me: UserAuthInfo = Depends(get_current_user_auth),
-    service: FriendsService = Depends(get_friends_service),
-):
-    try:
-        await service.cancel(me, request_id)
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except RecordUpdateError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error cancelling friend request",
-        )
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error cancelling friend request",
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unexpected error cancelling friend request",
-        )
-
-
-# Friendships
-
-@friends_router.get(
-    "/me",
-    tags=["friendships"],
-    response_model=FriendListResponse,
-)
-async def list_friends(
-    limit: int = Query(default=10, ge=1, le=200),
-    continuation: Optional[str] = Query(default=None),
-    me: UserAuthInfo = Depends(get_current_user_auth),
-    service: FriendsService = Depends(get_friends_service),
-):
-    try:
-        items, cont = await service.list_friends(me, limit, continuation)
-        return FriendListResponse(friends=items, continuationToken=cont)
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error listing friends",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @friends_router.delete(
-    "/{friend_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    tags=["friendships"],
+    "/{friend_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["friendships"]
 )
 async def unfriend(
     friend_id: str,
-    me: UserAuthInfo = Depends(get_current_user_auth),
+    me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:
+        logger.debug(f"Trying to delete friendship '{me.id}' <-> '{friend_id}'")
         await service.unfriend(me, friend_id)
     except AuthError:
+        logger.warning(
+            f"Error deleting friendship '{me.id}' <-> '{friend_id}': not authorized"
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        logger.error(
+            f"Error deleting friendship '{me.id}' <-> '{friend_id}': friendship not found"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
+        )
     except RecordDeletionError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error deleting friendship",
+        logger.error(
+            f"Errot deleting friendship '{me.id}' <-> '{friend_id}': deletion error"
         )
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error deleting friendship",
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Errot deleting friendship '{me.id}' <-> '{friend_id}', unexpected: {e}"
         )
-
-
-@friends_router.get(
-    "/status",
-    tags=["friendships"],
-    response_model=RelationshipStatus,
-)
-async def relationship_status(
-    user_id: str,
-    me: UserAuthInfo = Depends(get_current_user_auth),
-    service: FriendsService = Depends(get_friends_service),
-):
-    try:
-        status_obj = await service.status(me, user_id)
-        return status_obj
-    except AuthError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error getting relationship status",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
