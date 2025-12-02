@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from shared.auth import get_current_user_auth
+from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     GeneralQueryError,
@@ -11,7 +11,7 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 from shared.simple_logging import logger
 
 from src.dependencies import get_tasks_service
@@ -25,7 +25,7 @@ tasks_router = APIRouter()
 async def create_task(
     new_task: TaskCreate,
     tasks_service: TasksService = Depends(get_tasks_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         await tasks_service.create_task(new_task, current_user)
@@ -57,7 +57,7 @@ async def create_task(
 async def get_task_by_id(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         return await tasks_service.get_task_by_id(
@@ -91,7 +91,7 @@ async def get_users_task_ids_in_range(
     start_date: date,
     end_date: date,
     tasks_service: TasksService = Depends(get_tasks_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         return await tasks_service.get_users_task_ids_in_range(
@@ -125,7 +125,7 @@ async def get_users_task_ids_in_range(
 async def update_task(
     task_update: TaskUpdate,
     tasks_service: TasksService = Depends(get_tasks_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         return await tasks_service.update_task(task_update, current_user)
@@ -157,7 +157,7 @@ async def update_task(
 async def delete_task(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         await tasks_service.delete_task(task_id, current_user)

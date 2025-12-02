@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from shared.exceptions.auth import AuthError
+from shared.auth import AuthError
 from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
 
 from src.models import ProfileUpdate

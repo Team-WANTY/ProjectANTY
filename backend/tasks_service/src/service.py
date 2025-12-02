@@ -1,7 +1,7 @@
 from datetime import date
 
 from shared.auth import authorize_operation
-from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 from shared.simple_logging import logger
 
 from src.database import TaskDB
@@ -12,7 +12,7 @@ class TasksService:
     def __init__(self, task_db: TaskDB):
         self.task_db = task_db
 
-    async def create_task(self, new_task: TaskCreate, creater: UserAuthInfo):
+    async def create_task(self, new_task: TaskCreate, creater: UserInDB):
         logger.debug(
             f"Starting to create task: {new_task.model_dump()}, starting with authorization"
         )
@@ -22,13 +22,13 @@ class TasksService:
         new_task_in_db.calculate_last_relevant_date()
         await self.task_db.create_task(new_task_in_db)
 
-    async def get_task_by_id(self, task_id: str, getter: UserAuthInfo):
+    async def get_task_by_id(self, task_id: str, getter: UserInDB):
         task = await self.task_db.get_task_by_id(task_id)
         await authorize_operation(getter, task.user_id)
         return task
 
     async def get_users_task_ids_in_range(
-        self, user_id: str, start_date: date, end_date: date, getter: UserAuthInfo
+        self, user_id: str, start_date: date, end_date: date, getter: UserInDB
     ):
         logger.debug(
             f"Starting to get all tasks from dates '{start_date}' to '{end_date}' for user with ID '{user_id}', starting with authorization"
@@ -53,7 +53,7 @@ class TasksService:
         )
         return OccurrencesByDate(occurrences=results)
 
-    async def update_task(self, task_update: TaskUpdate, updater: UserAuthInfo):
+    async def update_task(self, task_update: TaskUpdate, updater: UserInDB):
         task = await self.get_task_by_id(task_update.id, updater)
         logger.debug(
             f"Starting task update on task with ID '{task_update.id}', starting with authorization"
@@ -63,7 +63,7 @@ class TasksService:
         logger.debug(f"Returning updated task: {updated_task.model_dump()}")
         return updated_task  # updates could be empty
 
-    async def delete_task(self, task_id: str, deleter: UserAuthInfo):
+    async def delete_task(self, task_id: str, deleter: UserInDB):
         task = await self.get_task_by_id(task_id, deleter)
         logger.debug(
             f"Starting to delete task with ID '{task_id}', starting with authorization"
