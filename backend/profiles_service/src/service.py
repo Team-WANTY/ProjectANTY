@@ -1,6 +1,6 @@
 from shared.auth import authorize_operation
 from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
-from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 from shared.simple_logging import logger
 
 from src.database import ProfileDB
@@ -24,9 +24,7 @@ class ProfileService:
         profile = await self.db.get_profile(user_id)
         return profile
 
-    async def update_profile(
-        self, profile_update: ProfileUpdate, updater: UserAuthInfo
-    ):
+    async def update_profile(self, profile_update: ProfileUpdate, updater: UserInDB):
         logger.debug(
             f"Trying to update profile for user with ID '{profile_update.user_id}', first authorizing"
         )
@@ -40,10 +38,9 @@ class ProfileService:
             )
             profile_update.unlocked_analytics = None
             profile_update.unlocked_badges = None
-        profile = await self.db.update_profile(profile_update)
-        return profile
+        await self.db.update_profile(profile_update)
 
-    async def delete_profile(self, user_id: str, updater: UserAuthInfo):
+    async def delete_profile(self, user_id: str, updater: UserInDB):
         logger.debug(
             f"Trying to delete profile for user with ID '{user_id}', first authorizing"
         )

@@ -1,10 +1,9 @@
-from shared.simple_logging import logger
 from functools import lru_cache
-from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
 from azure.storage.blob.aio import BlobServiceClient
 from shared.settings import settings as shared_settings
+from shared.simple_logging import logger
 
 from src.blob_store import BlobStorage
 from src.database import ImageDB

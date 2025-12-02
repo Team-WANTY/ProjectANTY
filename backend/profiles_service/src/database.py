@@ -27,7 +27,7 @@ class ProfileDB:
             )
             logger.debug(f"Trying to create profile: {new_profile.model_dump()}")
             item: CosmosDict = await self.container.create_item(
-                body=new_profile.model_dump()
+                body=new_profile.model_dump(mode="json")
             )
             logger.debug(f"Trying to validate created item returned from DB: {item}")
             created_profile = Profile.model_validate(item, extra="ignore")
@@ -66,7 +66,7 @@ class ProfileDB:
             )
             raise GeneralQueryError()
 
-    async def update_profile(self, profile_update: ProfileUpdate) -> Profile:
+    async def update_profile(self, profile_update: ProfileUpdate):
         try:
             logger.debug(f"Trying to update profile: {profile_update.model_dump()}")
             patch_operations = []
@@ -178,19 +178,20 @@ class ProfileDB:
             logger.debug(
                 f"Successfully updated profile '{profile_update.user_id}', new record: {profile.model_dump()}"
             )
-            return profile
         except exceptions.CosmosResourceNotFoundError:
             logger.warning(
                 f"Error while updating profile from user ID '{profile_update.user_id}', not found"
             )
             raise RecordNotFoundError()
+        except EmptyRecordUpdateError:
+            raise
         except Exception as e:
             logger.error(
                 f"Error while updating profile from user ID '{profile_update.user_id}', unexpected: {e}"
             )
             raise RecordUpdateError()
 
-    async def delete_profile(self, user_id: str) -> None:
+    async def delete_profile(self, user_id: str):
         try:
             logger.debug(f"Trying to delete profile with user ID '{user_id}'")
             await self.container.delete_item(item=user_id, partition_key=user_id)

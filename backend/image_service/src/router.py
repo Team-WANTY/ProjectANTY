@@ -1,7 +1,6 @@
-from shared.simple_logging import logger
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from PIL import UnidentifiedImageError
-from shared.auth import get_current_user_auth
+from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     GeneralQueryError,
@@ -10,7 +9,7 @@ from shared.exceptions.db import (
     RecordDeletionError,
     RecordNotFoundError,
 )
-from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 
 from src.dependencies import get_image_service
 from src.models import Image
@@ -30,7 +29,7 @@ async def image_upload(
     user_id: str,
     file: UploadFile = File(...),
     image_service: ImageService = Depends(get_image_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ) -> Image:
     try:
         data = await file.read()
@@ -78,7 +77,7 @@ async def get_avatar(
 async def delete_image(
     image_id: str,
     image_service: ImageService = Depends(get_image_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         await image_service.delete_img(image_id, current_user)

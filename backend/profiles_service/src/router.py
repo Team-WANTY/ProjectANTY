@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
-from shared.auth import get_current_user_auth
+from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
     EmptyRecordUpdateError,
@@ -11,8 +11,8 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.auth import UserAuthInfo
-from shared.settings import settings
+from shared.models.users import UserInDB
+from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_profiles_service
@@ -26,7 +26,6 @@ interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 @profiles_router.post(
     "/{user_id}",
     status_code=status.HTTP_201_CREATED,
-    response_model=Profile,
     tags=["interservice"],
 )
 async def create_profile(
@@ -36,7 +35,7 @@ async def create_profile(
 ):
     try:
         logger.debug("Starting profile creation, verifying interservice key")
-        if x_interservice_key != settings.INTERSERVICE_KEY:
+        if x_interservice_key != shared_settings.INTERSERVICE_KEY:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid key"
             )
@@ -97,18 +96,17 @@ async def get_profile(
         )
 
 
-@profiles_router.patch("/", response_model=Profile, tags=["profiles"])
+@profiles_router.patch("/", tags=["profiles"])
 async def update_profile(
     profile_update: ProfileUpdate,
     profile_service: ProfileService = Depends(get_profiles_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
-        profile = await profile_service.update_profile(profile_update, current_user)
         logger.debug(
-            f"Returning updated profile for user with ID {profile_update.user_id}"
+            f"User with ID '{current_user.id}' is trying to update profile: {profile_update.model_dump()}"
         )
-        return profile
+        await profile_service.update_profile(profile_update, current_user)
     except AuthError:
         logger.warning(
             f"Error updating profile for user with ID {profile_update.user_id}: authorization error"
@@ -148,7 +146,7 @@ async def update_profile(
 async def delete_profile(
     user_id: str,
     profile_service: ProfileService = Depends(get_profiles_service),
-    current_user: UserAuthInfo = Depends(get_current_user_auth),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     try:
         await profile_service.delete_profile(user_id, current_user)
