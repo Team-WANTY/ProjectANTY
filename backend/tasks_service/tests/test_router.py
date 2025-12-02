@@ -20,7 +20,7 @@ class TestRouterCreateTask:
     ):
         mock_service.create_task.return_value = sample_task_in_db
 
-        response = client.post("/", content=sample_task_create.model_dump_json())
+        response = client.post("/", json=sample_task_create.model_dump(mode="json"))
 
         assert response.status_code == 201
 
@@ -32,7 +32,7 @@ class TestRouterCreateTask:
         new_sample_task.user_id = "user321"
 
         mock_service.create_task.side_effect = AuthError()
-        response = client.post("/", content=new_sample_task.model_dump_json())
+        response = client.post("/", json=new_sample_task.model_dump(mode="json"))
 
         assert response.status_code == 401
 
@@ -42,7 +42,7 @@ class TestRouterCreateTask:
     ):
         mock_service.create_task.side_effect = RecordAlreadyExistsError()
 
-        response = client.post("/", content=sample_task_create.model_dump_json())
+        response = client.post("/", json=sample_task_create.model_dump(mode="json"))
 
         assert response.status_code == 403
 
@@ -52,7 +52,7 @@ class TestRouterCreateTask:
     ):
         mock_service.create_task.side_effect = RecordCreationError()
 
-        response = client.post("/", content=sample_task_create.model_dump_json())
+        response = client.post("/", json=sample_task_create.model_dump(mode="json"))
 
         assert response.status_code == 500
 
@@ -62,7 +62,7 @@ class TestRouterCreateTask:
     ):
         mock_service.create_task.side_effect = Exception()
 
-        response = client.post("/", content=sample_task_create.model_dump_json())
+        response = client.post("/", json=sample_task_create.model_dump(mode="json"))
 
         assert response.status_code == 500
 
@@ -211,7 +211,8 @@ class TestRouterUpdateTask:
         mock_service.update_task.return_value = new_sample_task_in_db
 
         response = client.patch(
-            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+            "/",
+            json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
         assert response.status_code == 200
@@ -225,7 +226,8 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = AuthError()
 
         response = client.patch(
-            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+            "/",
+            json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
         assert response.status_code == 401
@@ -235,7 +237,8 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = RecordNotFoundError()
 
         response = client.patch(
-            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+            "/",
+            json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
         assert response.status_code == 404
@@ -247,7 +250,8 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = RecordUpdateError()
 
         response = client.patch(
-            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+            "/",
+            json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
         assert response.status_code == 500
@@ -259,7 +263,8 @@ class TestRouterUpdateTask:
         mock_service.update_task.side_effect = Exception()
 
         response = client.patch(
-            "/", content=TaskUpdate(id="task123", name="New Name").model_dump_json()
+            "/",
+            json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
         assert response.status_code == 500
