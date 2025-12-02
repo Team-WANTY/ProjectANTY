@@ -151,9 +151,9 @@ export default function SettingsScreen() {
                 />
                 {expandedSections.account && (
                     <View style={styles.subSettingsContainer}>
-                        <NavSubSetting theme={theme} label="Change email" onPress={() => { }} />
-                        <NavSubSetting theme={theme} label="Change password" onPress={() => { }} />
-                        <NavSubSetting theme={theme} label="Delete Account" onPress={() => { }} />
+                        <NavSubSetting theme={theme} label="Change email" onPress={() => router.push("./change-email")} />
+                        <NavSubSetting theme={theme} label="Change password" onPress={() => router.push("./change-password")} />
+                        <NavSubSetting theme={theme} label="Delete Account" onPress={() => {}} />
                     </View>
                 )}
 
