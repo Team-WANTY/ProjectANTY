@@ -441,7 +441,7 @@ function getStyles(theme: any) {
         modalCloseText: {
             fontSize: 18,
             fontWeight: "700",
-            color: "#1D3B53",
+            color: theme.primary,
         },
         inputContainer: {
             marginBottom: 15,

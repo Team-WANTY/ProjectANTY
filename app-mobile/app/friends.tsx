@@ -1,95 +1,96 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Animated as RNAnimated,
+import {
+    View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Animated as RNAnimated,
     Dimensions, Modal, TextInput, Pressable, ActivityIndicator,
-    } from "react-native";
-import { useRouter, useFocusEffect  } from "expo-router";
+} from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
-import Animated, { LinearTransition, FadeIn, FadeOut} from "react-native-reanimated";
+import Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
 
 import { usersApi } from "@/services/api/users-api";
 import { friendsApi, type Friendship } from "@/services/api/friends-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
-import { useFriendsStore, type DisplayFriend, type FriendUserInfo} from "@/services/stores/friends-store";
+import { useFriendsStore, type DisplayFriend, type FriendUserInfo } from "@/services/stores/friends-store";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 
 // For /friends/me we assume owner_id === "me" and friend_id === "other user"
 async function resolveUserInfoForFriendship(friendship: Friendship): Promise<FriendUserInfo> {
-  const userId = friendship.friend_id;
+    const userId = friendship.friend_id;
 
-  let username = "Unknown user";
-  let avatarUrl: string | null = null;
+    let username = "Unknown user";
+    let avatarUrl: string | null = null;
 
-  // Get username
-  const userRes = await usersApi.getById(userId);
-  if (userRes.ok && userRes.data) {
-    username = userRes.data.username;
-  }
-
-  // Get avatar_image_id from profile
-  const profileRes = await profileApi.getById(userId);
-  if (profileRes.ok && profileRes.data && profileRes.data.avatar_image_id) {
-    const avatarImageId = profileRes.data.avatar_image_id;
-
-    // Convert avatar_image_id -> URL
-    const imgRes = await imagesApi.getUrl(avatarImageId);
-    if (imgRes.ok && imgRes.data) {
-      avatarUrl = imgRes.data;
+    // Get username
+    const userRes = await usersApi.getById(userId);
+    if (userRes.ok && userRes.data) {
+        username = userRes.data.username;
     }
-  }
 
-  return { id: userId, username, avatarUrl };
+    // Get avatar_image_id from profile
+    const profileRes = await profileApi.getById(userId);
+    if (profileRes.ok && profileRes.data && profileRes.data.avatar_image_id) {
+        const avatarImageId = profileRes.data.avatar_image_id;
+
+        // Convert avatar_image_id -> URL
+        const imgRes = await imagesApi.getUrl(avatarImageId);
+        if (imgRes.ok && imgRes.data) {
+            avatarUrl = imgRes.data;
+        }
+    }
+
+    return { id: userId, username, avatarUrl };
 }
 
 async function enrichFriendship(friendship: Friendship): Promise<DisplayFriend> {
-  const user = await resolveUserInfoForFriendship(friendship);
-  return { ...friendship, user };
+    const user = await resolveUserInfoForFriendship(friendship);
+    return { ...friendship, user };
 }
 
 function FriendItemWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <Animated.View
-      entering={FadeIn}
-      exiting={FadeOut}
-      layout={LinearTransition.springify().duration(250)}
-      style={{ width: "100%" }}
-    >
-      {children}
-    </Animated.View>
-  );
+    return (
+        <Animated.View
+            entering={FadeIn}
+            exiting={FadeOut}
+            layout={LinearTransition.springify().duration(250)}
+            style={{ width: "100%" }}
+        >
+            {children}
+        </Animated.View>
+    );
 }
 
 // Friend Item Component
 type FriendItemProps = {
-  friend: DisplayFriend;
-  theme: any;
-  onUnfriend: (userId: string) => void;
-  onViewProfile: (userId: string) => void;
+    friend: DisplayFriend;
+    theme: any;
+    onUnfriend: (userId: string) => void;
+    onViewProfile: (userId: string) => void;
 };
 
 const FriendItem: React.FC<FriendItemProps> = ({
-  friend,
-  theme,
-  onUnfriend,
-  onViewProfile,
+    friend,
+    theme,
+    onUnfriend,
+    onViewProfile,
 }) => {
-  const displayName = friend.user.username || "Unknown user";
-  const initial = displayName[0]?.toUpperCase() ?? "?";
+    const displayName = friend.user.username || "Unknown user";
+    const initial = displayName[0]?.toUpperCase() ?? "?";
 
-  const handleUnfriendPress = () => {onUnfriend(friend.friend_id)};
+    const handleUnfriendPress = () => { onUnfriend(friend.friend_id) };
 
-  return (
+    return (
         <View
-            style={[styles.friendCard, { backgroundColor: theme.cardBackground }]}
+            style={[styles.friendCard, { backgroundColor: theme.cardBackground, shadowColor: theme.shadow }]}
         >
             <View style={styles.friendBanner}>
                 {friend.user.avatarUrl ? (
-                    <Image source={{ uri: friend.user.avatarUrl }} style={styles.friendImage}/>
+                    <Image source={{ uri: friend.user.avatarUrl }} style={styles.friendImage} />
                 ) : (
                     <View
                         style={[
@@ -101,7 +102,7 @@ const FriendItem: React.FC<FriendItemProps> = ({
                             },
                         ]}
                     >
-                        <Text style={styles.friendInitial}>{initial}</Text>
+                        <Text style={[styles.friendInitial, { color: theme.onPrimary }]}>{initial}</Text>
                     </View>
                 )}
 
@@ -154,18 +155,18 @@ export default function FriendsScreen() {
             const res = await friendsApi.listFriends(50);
             if (res.ok && res.data) {
                 const enriched: DisplayFriend[] = await Promise.all(
-                res.data.friends.map((f) => enrichFriendship(f))
+                    res.data.friends.map((f) => enrichFriendship(f))
                 );
                 setFriends(enriched);
                 console.log("Loading friends");
-            } 
+            }
             else {
                 setErrorText(res.message || "Failed to load friends");
             }
-        } 
+        }
         catch (error) {
             setErrorText("Failed to load friends");
-        } 
+        }
         finally {
             setLoading(false);
         }
@@ -177,7 +178,7 @@ export default function FriendsScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
-        loadFriends(); // background refresh whenever the screen is focused
+            loadFriends(); // background refresh whenever the screen is focused
         }, [loadFriends])
     );
 
@@ -202,7 +203,7 @@ export default function FriendsScreen() {
                 }
 
                 console.log("[handleUnfriend] Success");
-            } 
+            }
             catch (err) {
                 console.log("[handleUnfriend] API error:", err);
                 // Restore the friend in the UI if we removed them
@@ -246,7 +247,7 @@ export default function FriendsScreen() {
         });
     };
 
-    const handleAddFriend = async ()  => {
+    const handleAddFriend = async () => {
         if (isSending) return;
         const trimmed = friendUsername.trim();
         if (!trimmed) {
@@ -277,15 +278,15 @@ export default function FriendsScreen() {
                 if (status === 403) {
                     if (friendRes.message.includes("Pending friend request already exist")) {
                         setAddFriendError("Pending friend request already exist");
-                    } 
+                    }
                     else {
                         setAddFriendError("Cannot send friend request.");
                         console.log("Failed to send friend request: ", friendRes.message);
                     }
-                } 
+                }
                 else if (status === 404) {
                     setAddFriendError("User not found.");
-                } 
+                }
                 else {
                     setAddFriendError(friendRes.message || "Failed to send friend request.");
                 }
@@ -298,7 +299,7 @@ export default function FriendsScreen() {
             setFriendUsername("");
             closeAddFriendModal();
         }
-        catch(err) {
+        catch (err) {
             console.log("Error sending friend request");
             setAddFriendError("Network error. Please try again.");
         }
@@ -443,20 +444,20 @@ export default function FriendsScreen() {
                                 <Text style={styles.errorText}>{addFriendError}</Text>
                             )}
                         </View>
-                        
+
                         {/* Add Button */}
                         <Pressable
                             style={[
                                 styles.addButton,
                                 { backgroundColor: theme.primary },
                                 (isSending || !friendUsername.trim()) && { opacity: 0.6 }
-                                
+
                             ]}
                             disabled={isSending || !friendUsername.trim()}
                             onPress={handleAddFriend}
                         >
                             {isSending ? (
-                                <ActivityIndicator/>
+                                <ActivityIndicator />
                             ) : (
                                 <Text style={styles.addButtonText}>Send Request</Text>
                             )}

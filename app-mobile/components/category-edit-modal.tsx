@@ -73,7 +73,7 @@ export const CategoryEditModal: React.FC<Props> = ({
             onPress={onClose}
             style={styles.modalCloseButton}
           >
-            <Text style={[styles.modalCloseText, { color: theme.background}]}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.background }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -98,16 +98,14 @@ export const CategoryEditModal: React.FC<Props> = ({
               style={[styles.saveButton, { backgroundColor: theme.primary, flex: 1 }]}
               onPress={onSubmit}
             >
-              <Text style={[styles.saveButtonText, { color: theme.text }]}>
-                Save Changes
-              </Text>
+              <Text style={[styles.saveButtonText, { color: theme.onPrimary }]}>Save Changes</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteButton, { backgroundColor: styles.errorText.color }]}
+              style={[styles.deleteButton, { backgroundColor: theme.error }]}
               onPress={onDelete}
             >
-              <Ionicons name="trash" size={20} color={theme.text} />
+              <Ionicons name="trash" size={20} color={theme.onError} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -181,6 +179,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-        color: "#ff4d4f",
-    },
+    color: "#ff4d4f",
+  },
 });

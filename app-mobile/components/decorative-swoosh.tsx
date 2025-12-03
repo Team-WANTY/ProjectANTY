@@ -1,9 +1,10 @@
 import React from "react";
 import Svg, { Path } from "react-native-svg";
+import { Colors } from '@/constants/theme';
 
 // Decorative swoosh SVG banner
 const DecorativeSwoosh = ({
-    color = "#E0E0E0",
+    color = Colors.light.border,
     width = 100,
     height = 50,
 }: {

@@ -91,7 +91,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         >
           {/* Close button */}
           <Pressable style={styles.closeButton} onPress={handleClose}>
-            <Text style={styles.closeText}>✕</Text>
+            <Text style={[styles.closeText, { color: theme.primary }]}>✕</Text>
           </Pressable>
 
           {/* Avatar */}
@@ -122,7 +122,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 ]}
                 onPress={onChangePhoto}
               >
-                <Ionicons name="pencil" size={20} color="#fff" />
+                <Ionicons name="pencil" size={20} color={theme.onPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -177,7 +177,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Error */}
           {errorMsg && (
-            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Text style={[styles.errorText, { color: theme.error }]}>{errorMsg}</Text>
           )}
 
           {/* Save */}
@@ -189,7 +189,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               { backgroundColor: theme.primary, opacity: saving ? 0.6 : 1 },
             ]}
           >
-            <Text style={styles.saveText}>
+            <Text style={[styles.saveText, { color: theme.onPrimary }]}>
               {saving ? "Saving..." : "Save Changes"}
             </Text>
           </TouchableOpacity>
@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
   closeText: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#1D3B53",
   },
   avatarSection: {
     alignItems: "center",

@@ -70,7 +70,7 @@ export const CategoryCreateModal: React.FC<Props> = ({
             onPress={onClose}
             style={styles.modalCloseButton}
           >
-            <Text style={styles.modalCloseText}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -97,9 +97,7 @@ export const CategoryCreateModal: React.FC<Props> = ({
             style={[styles.saveButton, { backgroundColor: theme.primary }]}
             onPress={onSubmit}
           >
-            <Text style={[styles.saveButtonText, { color: "#fff" }]}>
-              Add Category
-            </Text>
+            <Text style={[styles.saveButtonText, { color: theme.onPrimary }]}>Add Category</Text>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

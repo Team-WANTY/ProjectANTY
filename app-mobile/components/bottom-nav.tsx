@@ -26,10 +26,10 @@ export default function BottomNavBar() {
 
     return (
         <View style={[styles.menuBarContainer, { backgroundColor: containerBackgroundColor, paddingBottom: insets.bottom + 15 }]}>
-            <View style={[styles.menuBar, { backgroundColor: theme.border }]}>
+            <View style={[styles.menuBar, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
                 {menuItems.map((item) => {
                     const isActive = item.name === activeSegment;
-                    const iconName = isActive? item.activeIcon : item.icon;
+                    const iconName = isActive ? item.activeIcon : item.icon;
                     const iconColor = isActive ? theme.background : theme.secondaryText;
 
                     return (
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 4.65,
         elevation: 8,
-        
+
     },
     menuItem: {
         padding: 5,

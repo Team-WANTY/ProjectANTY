@@ -38,7 +38,6 @@ export default function ChangeEmail() {
         setMessage(res.message ?? "Password change failed.");
         return;
       }
-
       useUserStore.getState().setUser({ email: newEmail });
       console.log("Email changed successful");
       setIsError(false);
@@ -82,7 +81,7 @@ export default function ChangeEmail() {
         <Text style={[styles.title, { color: theme.text }]}>Change Email</Text>
 
         <Text style={[styles.instructions, { color: theme.text }]}>
-          Enter your new email.
+          Enter and confirm your new email.
         </Text>
 
         <TextInput
