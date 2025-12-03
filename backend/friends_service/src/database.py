@@ -11,6 +11,7 @@ from shared.exceptions.db import (
 from shared.simple_logging import logger
 
 from src.models import Friendship, FriendshipStatus
+from shared.db import generate_id, now_timestamp
 
 
 class FriendshipsDB:
@@ -25,20 +26,23 @@ class FriendshipsDB:
             )
 
             new_friendship = Friendship(
+                id=generate_id(),
                 from_user_id=user_id,
                 to_user_id=friend_id,
-                status=FriendshipStatus.PENDING,
+                created_at=now_timestamp(),
+                updated_at=now_timestamp(),
             )
 
             item1: CosmosDict = await self.container.create_item(
                 body=new_friendship.model_dump(mode="json")
             )
 
-            friendship = Friendship.model_validate(item1, extra="ignore")
+            created_friendship = Friendship.model_validate(item1, extra="ignore")
             logger.debug(
-                f"Created friendship from owner '{friendship.from_user_id}' -> friend '{friendship.to_user_id}'",
+                f"Created friendship from owner '{created_friendship.from_user_id}' -> friend '{created_friendship.to_user_id}'",
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error creating friendship between '{user_id}' and '{friend_id}': {e}")
             raise RecordCreationError()
 
     async def find_friendship(self, user_id: str, friend_id: str) -> Friendship:
@@ -63,7 +67,8 @@ class FriendshipsDB:
             raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error getting friendship between '{user_id}' and '{friend_id}': {e}")
             raise GeneralQueryError()
 
     async def get_by_id(self, friendship_id: str) -> Friendship:
@@ -77,7 +82,8 @@ class FriendshipsDB:
             return fs
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error getting friendship by ID '{friendship_id}': {e}")
             raise GeneralQueryError()
 
     async def list_friendships(
@@ -89,7 +95,7 @@ class FriendshipsDB:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT * FROM c "
-            "WHERE c.from_user_id = @user OR c.to_user_id = @user"
+            "WHERE c.from_user_id = @user OR c.to_user_id = @user "
             "ORDER BY c.created_at DESC"
         )
         params = [{"name": "@user", "value": user_id}]
@@ -119,7 +125,8 @@ class FriendshipsDB:
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
             return [], None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error listing friendships of user with ID '{user_id}': {e}")
             raise GeneralQueryError()
 
     async def list_incoming(
@@ -131,12 +138,12 @@ class FriendshipsDB:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT * FROM c "
-            "WHERE c.to_user_id = @user and c.status = @status"
+            "WHERE c.to_user_id = @user and c.status = @status "
             "ORDER BY c.created_at DESC"
         )
         params = [
             {"name": "@user", "value": user_id},
-            {"name": "@status", "value": FriendshipStatus.PENDING},
+            {"name": "@status", "value": str(FriendshipStatus.PENDING)},
         ]
 
         try:
@@ -163,7 +170,8 @@ class FriendshipsDB:
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
             return [], None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error listing incoming requests for user with ID '{user_id}': {e}")
             raise GeneralQueryError()
 
     async def list_outgoing(
@@ -175,12 +183,12 @@ class FriendshipsDB:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT * FROM c "
-            "WHERE c.from_user_id = @user and c.status = @status"
+            "WHERE c.from_user_id = @user and c.status = @status "
             "ORDER BY c.created_at DESC"
         )
         params = [
             {"name": "@user", "value": user_id},
-            {"name": "@status", "value": FriendshipStatus.PENDING},
+            {"name": "@status", "value": str(FriendshipStatus.PENDING)},
         ]
 
         try:
@@ -210,13 +218,14 @@ class FriendshipsDB:
             # No pages at all — just return empty with no continuation
             return [], None
         except Exception:
+            logger.error(f"Error listing outgoing requests for user with ID '{user_id}': {e}")
             raise GeneralQueryError()
 
     async def update_status(self, friendship_id: str, new_status: FriendshipStatus):
         try:
             patch_ops = [
                 {"op": "replace", "path": "/status", "value": new_status},
-                {"op": "replace", "path": "/updated_at", "value": now_timestamp()},
+                {"op": "replace", "path": "/updated_at", "value": now_timestamp().isoformat()},
             ]
 
             logger.debug(
@@ -235,7 +244,8 @@ class FriendshipsDB:
             raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error updating status of friendship with ID '{friendship_id}': {e}")
             raise RecordUpdateError()
 
     async def delete_friendship(self, friendship_id: str) -> None:
@@ -248,5 +258,6 @@ class FriendshipsDB:
             raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error deleting friendship with ID '{friendship_id}': {e}")
             raise RecordDeletionError()

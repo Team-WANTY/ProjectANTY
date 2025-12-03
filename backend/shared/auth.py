@@ -25,7 +25,7 @@ async def get_user_id_from_auth_service(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
         )
-    return response.text
+    return response.json()["user_id"]
 
 
 async def get_user_from_id(user_id: str):
@@ -45,10 +45,6 @@ async def get_user_from_id(user_id: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
         )
-
-    print(UserInDB)
-    print(AuthError)
-
     logger.debug(f"Returning UserInDB from ID '{user_id}'")
     data = response.json()
     return UserInDB.model_validate(data, extra="ignore")

@@ -20,7 +20,7 @@ class TasksService:
         new_task_in_db = new_task.to_task_in_db()
         logger.debug("Created task for DB, calculating 'last_relevant_date' field")
         new_task_in_db.calculate_last_relevant_date()
-        await self.task_db.create_task(new_task_in_db)
+        return await self.task_db.create_task(new_task_in_db)
 
     async def get_task_by_id(self, task_id: str, getter: UserInDB):
         task = await self.task_db.get_task_by_id(task_id)

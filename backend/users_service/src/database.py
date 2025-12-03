@@ -22,7 +22,8 @@ class UsersDB:
         self.container = container
         logger.debug("Created UsersDB")
 
-    async def create_user(self, user_create: UserCreate):
+    async def create_user(self, user_create: UserCreate) -> str:
+        '''return string for profile creation'''
         try:
             logger.debug(f"Trying to create user: {user_create.model_dump()}")
             user_in_db = user_create.to_user_in_db()
@@ -31,8 +32,9 @@ class UsersDB:
                 body=user_in_db.model_dump(mode="json")
             )
             logger.debug("Created item in DB successfully, validating response")
-            user_auth_info = UserInDB.model_validate(item, extra="ignore")
-            logger.debug(f"Successfully created user: {user_auth_info.model_dump()}")
+            user_in_db = UserInDB.model_validate(item, extra="ignore")
+            logger.debug(f"Successfully created user: {user_in_db.model_dump()}")
+            return user_in_db.id
         except exceptions.CosmosHttpResponseError:
             logger.warning(
                 f"Error creating user: {user_create.model_dump()}, already exists"
@@ -160,7 +162,7 @@ class UsersDB:
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": now_timestamp(),
+                    "value": now_timestamp().isoformat(),
                 }
             )
 

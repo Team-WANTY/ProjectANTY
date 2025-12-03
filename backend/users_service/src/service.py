@@ -37,20 +37,20 @@ class UsersService:
             pass
 
         logger.debug(f"Creating new user ({user_create.model_dump()}) in DB")
-        user_in_db = await self.db.create_user(user_create)
+        new_user_id = await self.db.create_user(user_create)
 
         logger.debug(
-            f"Reaching out to profiles service to create new profile for user with ID '{user_in_db.id}'"
+            f"Reaching out to profiles service to create new profile for user with ID '{new_user_id}'"
         )
         async with AsyncClient() as client:
             response = await client.post(
-                f"{settings.PROFILES_SERVICE_URL}/{user_in_db.id}",
+                f"{settings.PROFILES_SERVICE_URL}/{new_user_id}",
                 headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
             )
             if response.status_code != 201:
                 raise RecordCreationError()
 
-        logger.debug(f"Successfully registered new user: {user_in_db.model_dump()}")
+        logger.debug(f"Successfully registered new user with ID: {new_user_id}")
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
         """Get user by ID"""

@@ -96,7 +96,7 @@ async def get_profile(
         )
 
 
-@profiles_router.patch("/", tags=["profiles"])
+@profiles_router.patch("/", status_code=status.HTTP_204_NO_CONTENT, tags=["profiles"])
 async def update_profile(
     profile_update: ProfileUpdate,
     profile_service: ProfileService = Depends(get_profiles_service),

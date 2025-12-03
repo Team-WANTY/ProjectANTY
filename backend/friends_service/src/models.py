@@ -2,7 +2,6 @@ from datetime import datetime
 from enum import StrEnum, auto
 
 from pydantic import BaseModel
-from shared.db import generate_id, now_timestamp
 
 
 class FriendshipStatus(StrEnum):
@@ -11,12 +10,12 @@ class FriendshipStatus(StrEnum):
 
 
 class Friendship(BaseModel):
-    id: str = generate_id()
+    id: str
     from_user_id: str
     to_user_id: str
     status: FriendshipStatus = FriendshipStatus.PENDING
-    created_at: datetime = now_timestamp()
-    updated_at: datetime = now_timestamp()
+    created_at: datetime
+    updated_at: datetime
 
 
 class FriendListResponse(BaseModel):

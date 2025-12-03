@@ -36,7 +36,7 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> U
 @users_router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    tags=["authentication"],
+    tags=["users"],
 )
 async def create_user(
     user_create: UserCreate,
@@ -165,15 +165,15 @@ async def get_user_by_email(
         )
 
 
-@users_router.patch("/", response_model=UserInDB, tags=["users"])
+@users_router.patch("/", status_code=status.HTTP_204_NO_CONTENT, tags=["users"])
 async def update_user(
     user_update: UserUpdate,
     current_user: UserInDB = Depends(get_current_user),
     users_service: UsersService = Depends(get_users_service),
-) -> UserInDB:
+):
     """Update user (own profile or superuser can update any)"""
     try:
-        return await users_service.update_user(
+        await users_service.update_user(
             user_update, current_user
         )  # TODO should return full record since authorization needed?
     except AuthError:

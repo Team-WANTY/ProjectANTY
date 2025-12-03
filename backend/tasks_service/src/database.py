@@ -38,6 +38,7 @@ class TaskDB:
             logger.debug("Successfully sent to DB, validating response")
             created_task = TaskInDB.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created task: {created_task.model_dump()}")
+            return created_task.id
         except exceptions.CosmosResourceExistsError:
             logger.error(
                 f"Error creating task ({new_task.model_dump()}): task already exists"
@@ -104,8 +105,9 @@ class TaskDB:
 
     async def update_task(self, task_update: TaskUpdate) -> TaskInDB:
         patch_operations = []
+        task_update_json = task_update.model_dump(mode="json")
         try:
-            logger.debug(f"Trying to update task: {task_update.model_dump()}")
+            logger.debug(f"Trying to update task: {task_update_json}")
             if task_update.name is not None:
                 logger.debug(
                     f"Updating name to '{task_update.name}' for task with ID '{task_update.id}'"
@@ -136,13 +138,13 @@ class TaskDB:
 
             if task_update.first_relevant_date is not None:
                 logger.debug(
-                    f"Updating due date to '{task_update.first_relevant_date}' for task with ID '{task_update.id}'"
+                    f"Updating due date to '{task_update_json["first_relevant_date"]}' for task with ID '{task_update.id}'"
                 )
                 patch_operations.append(
                     {
                         "op": "replace",
                         "path": "/first_relevant_date",
-                        "value": task_update.first_relevant_date,
+                        "value": task_update_json["first_relevant_date"],
                     }
                 )
 
@@ -154,18 +156,18 @@ class TaskDB:
                     {
                         "op": "replace",
                         "path": "/repeat_rule",
-                        "value": task_update.repeat_rule.model_dump(),
+                        "value": task_update.repeat_rule.model_dump(mode="json"),
                     }
                 )
             if task_update.completions is not None:
                 logger.debug(
-                    f"Updating completions to '{task_update.completions}' for task with ID '{task_update.id}'"
+                    f"Updating completions to '{task_update_json["completions"]}' for task with ID '{task_update.id}'"
                 )
                 patch_operations.append(
                     {
                         "op": "replace",
                         "path": "/completions",
-                        "value": task_update.completions,
+                        "value": task_update_json["completions"],
                     }
                 )
 
@@ -182,7 +184,7 @@ class TaskDB:
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": now_timestamp(),
+                    "value": now_timestamp().isoformat(),
                 }
             )
 

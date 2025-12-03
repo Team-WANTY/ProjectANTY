@@ -99,7 +99,7 @@ class AuthDB:
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": now_timestamp(),
+                    "value": now_timestamp().isoformat(),
                 }
             )
 

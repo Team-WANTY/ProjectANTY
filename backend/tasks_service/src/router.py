@@ -10,6 +10,7 @@ from shared.exceptions.db import (
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
+    EmptyRecordUpdateError,
 )
 from shared.models.users import UserInDB
 from shared.simple_logging import logger
@@ -28,7 +29,7 @@ async def create_task(
     current_user: UserInDB = Depends(get_current_user),
 ):
     try:
-        await tasks_service.create_task(new_task, current_user)
+        return {"task_id": await tasks_service.create_task(new_task, current_user)}
     except AuthError:
         logger.warning(
             f"Error creating task: {new_task.model_dump()}: authorization error"
@@ -121,14 +122,14 @@ async def get_users_task_ids_in_range(
         )
 
 
-@tasks_router.patch("/", response_model=TaskInDB, tags=["tasks"])
+@tasks_router.patch("/", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
 async def update_task(
     task_update: TaskUpdate,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserInDB = Depends(get_current_user),
 ):
     try:
-        return await tasks_service.update_task(task_update, current_user)
+        await tasks_service.update_task(task_update, current_user)
     except AuthError:
         logger.warning(
             f"Error updating task '{task_update.model_dump()}': authorization error"
@@ -137,6 +138,12 @@ async def update_task(
     except RecordNotFoundError:
         logger.error(f"Error updating task '{task_update.model_dump()}': not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except EmptyRecordUpdateError:
+        logger.error(f"Error updating task '{task_update.model_dump()}': no update operations")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No update operations",
+        )
     except RecordUpdateError:
         logger.error(f"Error updating task '{task_update.model_dump()}': update error")
         raise HTTPException(
@@ -153,7 +160,7 @@ async def update_task(
         )
 
 
-@tasks_router.delete("/", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
+@tasks_router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
 async def delete_task(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),

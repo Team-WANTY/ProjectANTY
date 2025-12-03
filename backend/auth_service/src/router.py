@@ -20,6 +20,7 @@ from shared.simple_logging import logger
 from src.dependencies import get_auth_service
 from src.exceptions import (
     AuthIncorrectPasswordError,
+    AuthOldAndNewPasswordSameError
 )
 from src.models import PasswordResetRequest, UserAuthUpdate
 from src.service import AuthService
@@ -129,7 +130,6 @@ async def login(
 
 @auth_router.get(
     "/verify/{token}",
-    response_model=UserInDB,
     tags=["interservice"],
 )
 async def verify_token(
@@ -159,7 +159,7 @@ async def verify_token(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Invalid token type"
             )
         logger.debug(f"Got subject '{decoded_token.sub}' from token")
-        return await auth_service._get_user_from_service("id", decoded_token.sub)
+        return {"user_id":decoded_token.sub}
     except HTTPException as e:
         # logging covered above
         raise e
@@ -289,7 +289,7 @@ async def reset_password(
         )
 
 
-@auth_router.patch("/", tags=["authentication"])
+@auth_router.patch("/", status_code=status.HTTP_204_NO_CONTENT, tags=["authentication"])
 async def update_auth(
     auth_update: UserAuthUpdate,
     auth_service: AuthService = Depends(get_auth_service),
@@ -300,33 +300,36 @@ async def update_auth(
             f"Trying to update UserAuthInfo of user '{auth_update.id}' with '{auth_update.model_dump()}'"
         )
         await auth_service.update_user_auth(auth_update, current_user)
+    except AuthOldAndNewPasswordSameError:
+        logger.warning(f"Error updating user with ID '{auth_update.id}': old and new password are the same")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Old and new password are the same")
     except AuthError:
         logger.warning(
-            f"Error updating UserAuthInfo of user '{auth_update.id}': unauthorized updater with id '{current_user.id}'"
+            f"Error updating user with ID '{auth_update.id}': unauthorized updater with id '{current_user.id}'"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     except GeneralQueryError:
         logger.error(
-            f"Error updating UserAuthInfo of user '{auth_update.id}': query error"
+            f"Error updating user with ID '{auth_update.id}': query error"
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except EmptyRecordUpdateError:
         logger.warning(
-            f"Error updating UserAuthInfo of user '{auth_update.id}': no valid operations"
+            f"Error updating user with ID '{auth_update.id}': no valid operations"
         )
         raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
     except RecordUpdateError:
         logger.error(
-            f"Error updating UserAuthInfo of user '{auth_update.id}': update error"
+            f"Error updating user with ID '{auth_update.id}': update error"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Update error"
         )
     except Exception as e:
         logger.error(
-            f"Error updating UserAuthInfo with id {auth_update.id}, unexpected error: {e}"
+            f"Error updating user with ID '{auth_update.id}', unexpected error: {e}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Update error"

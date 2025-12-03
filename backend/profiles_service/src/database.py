@@ -162,7 +162,7 @@ class ProfileDB:
                 f"Updating timestamp for last update for user ID '{profile_update.user_id}'"
             )
             patch_operations.append(
-                {"op": "replace", "path": "/updated_at", "value": now_timestamp()}
+                {"op": "replace", "path": "/updated_at", "value": now_timestamp().isoformat()}
             )
 
             logger.debug(
