@@ -215,9 +215,7 @@ class TestRouterUpdateTask:
             json=TaskUpdate(id="task123", name="New Name").model_dump(mode="json"),
         )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "New Name"
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
     async def test_update_task_not_authorized(
@@ -273,7 +271,7 @@ class TestRouterUpdateTask:
 class TestRouterDeleteTask:
     @pytest.mark.asyncio
     async def test_delete_task_success(self, mock_service, client, sample_task_in_db):
-        response = client.delete("/", params={"task_id": "task123"})
+        response = client.delete("/task123")
 
         assert response.status_code == 204
 
@@ -283,7 +281,7 @@ class TestRouterDeleteTask:
     ):
         mock_service.delete_task.side_effect = AuthError()
 
-        response = client.delete("/", params={"task_id": "task123"})
+        response = client.delete("/task123")
 
         assert response.status_code == 401
 
@@ -291,7 +289,7 @@ class TestRouterDeleteTask:
     async def test_delete_task_not_found(self, mock_service, client, sample_task_in_db):
         mock_service.delete_task.side_effect = RecordNotFoundError()
 
-        response = client.delete("/", params={"task_id": "task123"})
+        response = client.delete("/tas123")
 
         assert response.status_code == 404
 
@@ -301,7 +299,7 @@ class TestRouterDeleteTask:
     ):
         mock_service.delete_task.side_effect = RecordDeletionError()
 
-        response = client.delete("/", params={"task_id": "task123"})
+        response = client.delete("/tas123")
 
         assert response.status_code == 500
 
@@ -311,6 +309,6 @@ class TestRouterDeleteTask:
     ):
         mock_service.delete_task.side_effect = Exception()
 
-        response = client.delete("/", params={"task_id": "task123"})
+        response = client.delete("/task123")
 
         assert response.status_code == 500

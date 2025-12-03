@@ -182,7 +182,7 @@ class TestVerifyToken:
             )
 
         assert response.status_code == 200
-        assert response.json()["id"] == "user123"
+        assert response.json()["user_id"] == "user123"
 
     def test_verify_token_invalid_key(self, client, mock_service):
         """Test token verification with invalid interservice key"""
@@ -356,7 +356,7 @@ class TestUpdateAuth:
             headers={"Authorization": "Bearer valid_token"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 204
 
     def test_update_auth_auth_error(
         self, client, sample_user_in_db, mock_service, sample_token

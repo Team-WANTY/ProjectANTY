@@ -138,7 +138,7 @@ class TaskDB:
 
             if task_update.first_relevant_date is not None:
                 logger.debug(
-                    f"Updating due date to '{task_update_json["first_relevant_date"]}' for task with ID '{task_update.id}'"
+                    f"Updating due date to '{task_update_json['first_relevant_date']}' for task with ID '{task_update.id}'"
                 )
                 patch_operations.append(
                     {
@@ -161,7 +161,7 @@ class TaskDB:
                 )
             if task_update.completions is not None:
                 logger.debug(
-                    f"Updating completions to '{task_update_json["completions"]}' for task with ID '{task_update.id}'"
+                    f"Updating completions to '{task_update_json['completions']}' for task with ID '{task_update.id}'"
                 )
                 patch_operations.append(
                     {

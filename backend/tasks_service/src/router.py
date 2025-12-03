@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
-    EmptyRecordUpdateError,
 )
 from shared.models.users import UserInDB
 from shared.simple_logging import logger
@@ -139,7 +139,9 @@ async def update_task(
         logger.error(f"Error updating task '{task_update.model_dump()}': not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except EmptyRecordUpdateError:
-        logger.error(f"Error updating task '{task_update.model_dump()}': no update operations")
+        logger.error(
+            f"Error updating task '{task_update.model_dump()}': no update operations"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No update operations",
@@ -160,7 +162,9 @@ async def update_task(
         )
 
 
-@tasks_router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
+@tasks_router.delete(
+    "/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"]
+)
 async def delete_task(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),

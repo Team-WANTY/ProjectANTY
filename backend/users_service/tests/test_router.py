@@ -316,7 +316,7 @@ class TestRouterUserUpdate:
         user_update = UserUpdate(id="user123")
 
         response = client.patch("/", json=user_update.model_dump())
-        assert response.status_code == 200
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
     async def test_update_user_not_found(self, client, mock_service):
@@ -376,10 +376,7 @@ class TestRouterUserUpdate:
         user_update = UserUpdate(id="user123", username="newtestuser")
 
         response = client.patch("/", json=user_update.model_dump())
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == "user123"
-        assert data["username"] == "newtestuser"
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
     async def test_update_user_success_email(
@@ -391,10 +388,7 @@ class TestRouterUserUpdate:
         user_update = UserUpdate(id="user123", email="newtest@gmail.com")
 
         response = client.patch("/", json=user_update.model_dump())
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == "user123"
-        assert data["email"] == "newtest@gmail.com"
+        assert response.status_code == 204
 
 
 # --- Tests for DELETE /{user_id} ---

@@ -15,7 +15,7 @@ from shared.auth import (
 class TestGetUserIDFromAuth:
     @pytest.mark.asyncio
     async def test_get_user_id_success(self, httpx_mock, sample_user_in_db):
-        httpx_mock.add_response(method="GET", json=sample_user_in_db.id)
+        httpx_mock.add_response(method="GET", json={"user_id": "user123"})
 
         result = await get_user_id_from_auth_service("token")
         assert "user123" in result

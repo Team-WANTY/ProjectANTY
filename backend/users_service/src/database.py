@@ -23,7 +23,7 @@ class UsersDB:
         logger.debug("Created UsersDB")
 
     async def create_user(self, user_create: UserCreate) -> str:
-        '''return string for profile creation'''
+        """return string for profile creation"""
         try:
             logger.debug(f"Trying to create user: {user_create.model_dump()}")
             user_in_db = user_create.to_user_in_db()

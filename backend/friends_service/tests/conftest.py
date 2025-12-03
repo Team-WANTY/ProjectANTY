@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 from shared.auth import get_current_user
-from shared.db import now_timestamp
+from shared.db import generate_id, now_timestamp
 from shared.models.users import UserInDB
 
 from src.database import FriendshipsDB
@@ -29,7 +29,13 @@ def sample_user_in_db():
 
 @pytest.fixture
 def sample_friendship():
-    return Friendship(from_user_id="user123", to_user_id="user321")
+    return Friendship(
+        id=generate_id(),
+        from_user_id="user123",
+        to_user_id="user321",
+        created_at=now_timestamp(),
+        updated_at=now_timestamp(),
+    )
 
 
 @pytest.fixture

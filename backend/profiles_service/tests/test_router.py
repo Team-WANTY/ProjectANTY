@@ -107,7 +107,7 @@ class TestRouterUpdateProfile:
                 mode="json"
             ),
         )
-        assert response.status_code == 200
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
     async def test_update_profile_not_authorized(self, mock_service, client):

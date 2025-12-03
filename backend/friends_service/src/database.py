@@ -1,6 +1,6 @@
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
-from shared.db import now_timestamp
+from shared.db import generate_id, now_timestamp
 from shared.exceptions.db import (
     GeneralQueryError,
     RecordCreationError,
@@ -11,7 +11,6 @@ from shared.exceptions.db import (
 from shared.simple_logging import logger
 
 from src.models import Friendship, FriendshipStatus
-from shared.db import generate_id, now_timestamp
 
 
 class FriendshipsDB:
@@ -42,7 +41,9 @@ class FriendshipsDB:
                 f"Created friendship from owner '{created_friendship.from_user_id}' -> friend '{created_friendship.to_user_id}'",
             )
         except Exception as e:
-            logger.error(f"Error creating friendship between '{user_id}' and '{friend_id}': {e}")
+            logger.error(
+                f"Error creating friendship between '{user_id}' and '{friend_id}': {e}"
+            )
             raise RecordCreationError()
 
     async def find_friendship(self, user_id: str, friend_id: str) -> Friendship:
@@ -68,7 +69,9 @@ class FriendshipsDB:
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"Error getting friendship between '{user_id}' and '{friend_id}': {e}")
+            logger.error(
+                f"Error getting friendship between '{user_id}' and '{friend_id}': {e}"
+            )
             raise GeneralQueryError()
 
     async def get_by_id(self, friendship_id: str) -> Friendship:
@@ -171,7 +174,9 @@ class FriendshipsDB:
             # No pages at all — just return empty with no continuation
             return [], None
         except Exception as e:
-            logger.error(f"Error listing incoming requests for user with ID '{user_id}': {e}")
+            logger.error(
+                f"Error listing incoming requests for user with ID '{user_id}': {e}"
+            )
             raise GeneralQueryError()
 
     async def list_outgoing(
@@ -217,15 +222,21 @@ class FriendshipsDB:
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
             return [], None
-        except Exception:
-            logger.error(f"Error listing outgoing requests for user with ID '{user_id}': {e}")
+        except Exception as e:
+            logger.error(
+                f"Error listing outgoing requests for user with ID '{user_id}': {e}"
+            )
             raise GeneralQueryError()
 
     async def update_status(self, friendship_id: str, new_status: FriendshipStatus):
         try:
             patch_ops = [
                 {"op": "replace", "path": "/status", "value": new_status},
-                {"op": "replace", "path": "/updated_at", "value": now_timestamp().isoformat()},
+                {
+                    "op": "replace",
+                    "path": "/updated_at",
+                    "value": now_timestamp().isoformat(),
+                },
             ]
 
             logger.debug(
@@ -245,7 +256,9 @@ class FriendshipsDB:
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"Error updating status of friendship with ID '{friendship_id}': {e}")
+            logger.error(
+                f"Error updating status of friendship with ID '{friendship_id}': {e}"
+            )
             raise RecordUpdateError()
 
     async def delete_friendship(self, friendship_id: str) -> None:
