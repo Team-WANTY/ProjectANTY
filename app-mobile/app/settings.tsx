@@ -50,19 +50,20 @@ const ToggleSubSetting = ({ theme, label, value, onToggle }) => (
 );
 
 // Renders a simple navigation sub-item (e.g., Change email, Theme list)
-const NavSubSetting = ({ theme, label, iconName, onPress }) => (
+const NavSubSetting = ({ theme, label, iconName, onPress, isSelected }: any) => (
     <TouchableOpacity style={styles.subSetting} onPress={onPress}>
         <View style={styles.settingItemLeft}>
             {iconName && <Ionicons name={iconName} size={18} color={theme.text} style={styles.itemIcon} />}
             <Text style={[styles.subSettingLabel, { color: theme.text }]}>{label}</Text>
         </View>
+        {isSelected ? <Ionicons name="checkmark" size={18} color={theme.primary} /> : null}
     </TouchableOpacity>
 );
 
 
 // --- Main Screen Component ---
 export default function SettingsScreen() {
-    const { theme } = useTheme();
+    const { theme, setTheme, themeName } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: screenWidth } = Dimensions.get("window");
@@ -168,9 +169,9 @@ export default function SettingsScreen() {
                 />
                 {expandedSections.colorTheme && (
                     <View style={styles.subSettingsContainer}>
-                        <NavSubSetting theme={theme} label="Blue" iconName="color-palette-outline" onPress={() => { }} />
-                        <NavSubSetting theme={theme} label="Dark" iconName="color-palette-outline" onPress={() => { }} />
-                        <NavSubSetting theme={theme} label="Light" iconName="color-palette-outline" onPress={() => { }} />
+                        <NavSubSetting theme={theme} label="Blue" iconName="color-palette-outline" onPress={() => { setTheme('blue'); }} isSelected={themeName === 'blue'} />
+                        <NavSubSetting theme={theme} label="Dark" iconName="color-palette-outline" onPress={() => { setTheme('dark'); }} isSelected={themeName === 'dark'} />
+                        <NavSubSetting theme={theme} label="Light" iconName="color-palette-outline" onPress={() => { setTheme('light'); }} isSelected={themeName === 'light'} />
                     </View>
                 )}
 

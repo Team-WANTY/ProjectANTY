@@ -128,7 +128,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             onPress={handleClose}
             style={styles.modalCloseButton}
           >
-            <Text style={styles.modalCloseText}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -433,6 +433,5 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1D3B53",
   },
 });

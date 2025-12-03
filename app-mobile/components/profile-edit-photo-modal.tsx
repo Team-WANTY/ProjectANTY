@@ -163,7 +163,7 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
               style={[
                 styles.optionText,
                 {
-                  color: "#d00",
+                  color: theme.error,
                   fontWeight: "600",
                 },
               ]}
@@ -172,7 +172,7 @@ export const EditPhotoModal: React.FC<EditPhotoModalProps> = ({
             </Text>
           </Pressable>
 
-          
+
         </Animated.View>
       </Animated.View>
     </Modal>
