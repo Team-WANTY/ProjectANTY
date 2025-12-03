@@ -27,6 +27,7 @@ jobs:
           COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
           AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
+          PROFILES_SERVICE_URL: ${{ vars.PROFILES_SERVICE_URL }}
         run: |
           cd backend/users_service
           uv sync --dev
