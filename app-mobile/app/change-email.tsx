@@ -33,20 +33,11 @@ export default function ChangeEmail() {
 
     try {
 
-<<<<<<< HEAD
       const res = await usersApi.update({ id: userID, email: newEmail });
-=======
-      const res = await usersApi.update({id: userID, email: newEmail});
->>>>>>> 48f474d (user pw/email change)
       if (!res.ok) {
         setMessage(res.message ?? "Password change failed.");
         return;
       }
-<<<<<<< HEAD
-
-=======
-
->>>>>>> 48f474d (user pw/email change)
       useUserStore.getState().setUser({ email: newEmail });
       console.log("Email changed successful");
       setIsError(false);
