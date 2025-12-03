@@ -82,7 +82,9 @@ testpaths = [
 [tool.pytest_env]
 AUTH_SERVICE_URL="http://localhost:8000"
 AUTH_EXTERNAL_URL="http://external-service"
+USERS_SERVICE_URL="http://localhost:8000"
 INTERSERVICE_KEY="supersecret"
 COSMOSDB_ENDPOINT="https://localhost:8081"
 COSMOSDB_KEY="fake-key"
 COSMOSDB_DATABASE_NAME="testdb"
+MINIMUM_LOGGING_LEVEL="debug"

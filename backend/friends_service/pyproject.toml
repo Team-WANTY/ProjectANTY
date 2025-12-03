@@ -26,6 +26,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-subtests>=0.14.2",
+    "pytest-env>=1.2.0",
     "ruff>=0.14.0",
     "ty>=0.0.1a21",
 ]
@@ -64,3 +65,22 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+
+[tool.pytest.ini_options]
+addopts = "-p no:warnings"
+pythonpath = "../"
+python_files = "test_*.py"
+testpaths = [
+    "tests",
+]
+
+[tool.pytest_env]
+AUTH_SERVICE_URL="http://localhost:8000"
+AUTH_EXTERNAL_URL="http://external-service"
+USERS_SERVICE_URL="http://localhost:8000"
+INTERSERVICE_KEY="supersecret"
+COSMOSDB_ENDPOINT="https://localhost:8081"
+COSMOSDB_KEY="fake-key"
+COSMOSDB_DATABASE_NAME="testdb"
+MINIMUM_LOGGING_LEVEL="debug"

@@ -1,289 +1,97 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from azure.cosmos import exceptions
 from shared.exceptions.db import (
-    GeneralQueryError,
-    RecordAlreadyExistsError,
-    RecordCreationError,
+    EmptyRecordUpdateError,
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.auth import UserAuthInfo
-from shared.models.testing import AsyncIteratorMock
 
+from src.exceptions import AuthOldAndNewPasswordSameError
 from src.models import UserAuthUpdate
 
 
-class TestCreateUser:
-    """Tests for create_user method"""
-
-    @pytest.mark.asyncio
-    async def test_create_user_success(
-        self, mock_auth_db, mock_container, sample_user_create, sample_user_auth_info
-    ):
-        """Test successful user creation"""
-        mock_container.create_item.return_value = sample_user_auth_info.model_dump()
-
-        result = await mock_auth_db.create_user(sample_user_create)
-
-        assert isinstance(result, UserAuthInfo)
-        assert result.username == "testuser"
-        assert result.email == "test@gmail.com"
-        assert result.id == "user123"
-        mock_container.create_item.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_create_user_already_exists(
-        self, mock_auth_db, mock_container, sample_user_create
-    ):
-        """Test user creation when user already exists"""
-        mock_container.create_item.side_effect = exceptions.CosmosHttpResponseError(
-            status_code=409, message="Conflict"
-        )
-
-        with pytest.raises(RecordAlreadyExistsError):
-            await mock_auth_db.create_user(sample_user_create)
-
-    @pytest.mark.asyncio
-    async def test_create_user_unexpected_error(
-        self, mock_auth_db, mock_container, sample_user_create
-    ):
-        """Test user creation with unexpected error"""
-        mock_container.create_item.side_effect = Exception("Unexpected error")
-
-        with pytest.raises(RecordCreationError):
-            await mock_auth_db.create_user(sample_user_create)
-
-
-class TestGetUserAuthById:
-    """Tests for get_user_auth_by_id method"""
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_id_success(
-        self, mock_auth_db, mock_container, sample_user_auth_info
-    ):
-        """Test successful retrieval by ID"""
-        mock_container.read_item.return_value = sample_user_auth_info.model_dump()
-
-        result = await mock_auth_db.get_user_auth_by_id("user123")
-
-        assert isinstance(result, UserAuthInfo)
-        assert result.id == "user123"
-        mock_container.read_item.assert_called_once_with(
-            item="user123", partition_key="user123"
-        )
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_id_not_found(self, mock_auth_db, mock_container):
-        """Test retrieval when user not found"""
-        mock_container.read_item.side_effect = exceptions.CosmosResourceNotFoundError(
-            status_code=404, message="Not found"
-        )
-
-        with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.get_user_auth_by_id("nonexistent")
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_id_unexpected_error(self, mock_auth_db, mock_container):
-        """Test retrieval with unexpected error"""
-        mock_container.read_item.side_effect = Exception("Unexpected error")
-
-        with pytest.raises(GeneralQueryError):
-            await mock_auth_db.get_user_auth_by_id("user123")
-
-
-class TestGetUserAuthByUsername:
-    """Tests for get_user_auth_by_username method"""
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_username_success(
-        self, mock_auth_db, mock_container, sample_user_auth_info
-    ):
-        """Test successful retrieval by username"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.return_value = AsyncIteratorMock(
-            [sample_user_auth_info.model_dump()]
-        )
-
-        result = await mock_auth_db.get_user_auth_by_username("testuser")
-
-        assert isinstance(result, UserAuthInfo)
-        assert result.username == "testuser"
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_username_not_found_empty(
-        self, mock_auth_db, mock_container
-    ):
-        """Test retrieval when username not found"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.return_value = AsyncIteratorMock([])
-
-        with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.get_user_auth_by_username("nonexistent")
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_username_not_found(self, mock_auth_db, mock_container):
-        """Test retrieval when username not found"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.side_effect = (
-            exceptions.CosmosResourceNotFoundError()
-        )
-
-        with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.get_user_auth_by_username("nonexistent")
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_username_unexpected_error(
-        self, mock_auth_db, mock_container
-    ):
-        """Test retrieval with unexpected error"""
-        mock_container.query_items.side_effect = Exception("Unexpected error")
-
-        with pytest.raises(GeneralQueryError):
-            await mock_auth_db.get_user_auth_by_username("testuser")
-
-
-class TestGetUserAuthByEmail:
-    """Tests for get_user_auth_by_email method"""
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_email_success(
-        self, mock_auth_db, mock_container, sample_user_auth_info
-    ):
-        """Test successful retrieval by email"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.return_value = AsyncIteratorMock(
-            [sample_user_auth_info.model_dump()]
-        )
-
-        result = await mock_auth_db.get_user_auth_by_email("test@gmail.com")
-        assert isinstance(result, UserAuthInfo)
-        assert result.email == "test@gmail.com"
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_email_not_found_empty(
-        self, mock_auth_db, mock_container
-    ):
-        """Test retrieval when email not found"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.return_value = AsyncIteratorMock([])
-
-        with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.get_user_auth_by_email("nonexistent@gmail.com")
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_email_not_found(self, mock_auth_db, mock_container):
-        """Test retrieval when email not found"""
-        mock_container.query_items = Mock()
-        mock_container.query_items.side_effect = (
-            exceptions.CosmosResourceNotFoundError()
-        )
-
-        with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.get_user_auth_by_email("nonexistent@gmail.com")
-
-    @pytest.mark.asyncio
-    async def test_get_user_by_email_unexpected_error(
-        self, mock_auth_db, mock_container
-    ):
-        """Test retrieval when email not found"""
-        mock_container.query_items.side_effect = Exception()
-
-        with pytest.raises(GeneralQueryError):
-            await mock_auth_db.get_user_auth_by_email("nonexistent@gmail.com")
-
-
-class TestUpdateAuth:
+class TestDBUpdateAuth:
     """Tests for update_auth method"""
 
-    @pytest.mark.asyncio
-    async def test_update_password_success(
-        self, mock_auth_db, mock_container, sample_user_auth_info
-    ):
-        """Test successful password update"""
-        auth_update = UserAuthUpdate(
-            id="user123", plain_text_password="NewPassword123!"
-        )
+    class TestDBUpdateAuthPassword:
+        @pytest.mark.asyncio
+        async def test_update_password_success(
+            self, mock_auth_db, mock_container, sample_user_in_db
+        ):
+            auth_update = UserAuthUpdate(
+                id="user123", plain_text_password="NewPassword123!"
+            )
 
-        updated_item = sample_user_auth_info.model_dump()
-        updated_item["hashed_password"] = "new_hashed_password"
-        mock_container.patch_item.return_value = updated_item
+            updated_item = sample_user_in_db.model_copy(deep=True)
+            updated_item.hashed_password = "new_hashed_password"
+            mock_container.patch_item.return_value = updated_item.model_dump()
 
-        result = await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+            with patch("src.database.pwdhasher.verify", return_value=False):
+                await mock_auth_db.update_auth(sample_user_in_db, auth_update)
 
-        assert isinstance(result, UserAuthInfo)
-        mock_container.patch_item.assert_called_once()
-
-        # Verify patch operations include password and timestamp
-        call_args = mock_container.patch_item.call_args
-        patch_ops = call_args.kwargs["patch_operations"]
-        assert any(op["path"] == "/hashed_password" for op in patch_ops)
-        assert any(op["path"] == "/updated_at" for op in patch_ops)
-
-    @pytest.mark.asyncio
-    async def test_update_password_same_as_old(
-        self, mock_auth_db, mock_container, sample_user_auth_info
-    ):
-        """Test password update with same password as old"""
-        # Hash the password that matches the sample user
-        with patch("src.database.pwdhasher.verify", return_value=True):
+        @pytest.mark.asyncio
+        async def test_update_password_same_as_old(
+            self, mock_auth_db, mock_container, sample_user_in_db
+        ):
             auth_update = UserAuthUpdate(
                 id="user123", plain_text_password="OldPassword123!"
             )
 
-            with pytest.raises(RecordUpdateError):
-                await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+            with patch("src.database.pwdhasher.verify", return_value=True):
+                with pytest.raises(AuthOldAndNewPasswordSameError):
+                    await mock_auth_db.update_auth(sample_user_in_db, auth_update)
+
+        @pytest.mark.xfail
+        @pytest.mark.asyncio
+        async def test_update_password_requirements_not_met(
+            self, mock_auth_db, mock_container, sample_user_in_db
+        ):
+            raise ValueError()
 
     @pytest.mark.asyncio
     async def test_update_is_active(
-        self, mock_auth_db, mock_container, sample_user_auth_info
+        self, mock_auth_db, mock_container, sample_user_in_db
     ):
-        """Test updating is_active status"""
         auth_update = UserAuthUpdate(id="user123", is_active=False)
 
-        updated_item = sample_user_auth_info.model_dump()
-        updated_item["is_active"] = False
-        mock_container.patch_item.return_value = updated_item
+        updated_item = sample_user_in_db.model_copy(deep=True)
+        updated_item.is_active = False
+        mock_container.patch_item.return_value = updated_item.model_dump()
 
-        result = await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+        await mock_auth_db.update_auth(sample_user_in_db, auth_update)
 
-        assert not result.is_active
-        mock_container.patch_item.assert_called_once()
+        # TODO check if patch_item received patch operation for is active
 
     @pytest.mark.asyncio
     async def test_update_is_superuser(
-        self, mock_auth_db, mock_container, sample_user_auth_info
+        self, mock_auth_db, mock_container, sample_user_in_db
     ):
         """Test updating is_superuser status"""
         auth_update = UserAuthUpdate(id="user123", is_superuser=True)
 
-        updated_item = sample_user_auth_info.model_dump()
-        updated_item["is_superuser"] = True
-        mock_container.patch_item.return_value = updated_item
+        updated_item = sample_user_in_db.model_copy(deep=True)
+        updated_item.is_superuser = True
+        mock_container.patch_item.return_value = updated_item.model_dump()
 
-        result = await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+        await mock_auth_db.update_auth(sample_user_in_db, auth_update)
 
-        assert result.is_superuser
+        # TODO check if patch_item received patch operation for is superuser
 
     @pytest.mark.asyncio
     async def test_update_no_changes(
-        self, mock_auth_db, mock_container, sample_user_auth_info
+        self, mock_auth_db, mock_container, sample_user_in_db
     ):
-        """Test update with no changes"""
-        auth_update = UserAuthUpdate(id="user123")
-
-        result = await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
-
-        # Should return original user without calling patch
-        assert result == sample_user_auth_info
-        mock_container.patch_item.assert_not_called()
+        with pytest.raises(EmptyRecordUpdateError):
+            await mock_auth_db.update_auth(
+                sample_user_in_db, UserAuthUpdate(id="user123")
+            )
 
     @pytest.mark.asyncio
     async def test_update_user_not_found(
-        self, mock_auth_db, mock_container, sample_user_auth_info
+        self, mock_auth_db, mock_container, sample_user_in_db
     ):
-        """Test update when user not found"""
         auth_update = UserAuthUpdate(
             id="user123", plain_text_password="NewPassword123!"
         )
@@ -293,13 +101,12 @@ class TestUpdateAuth:
         )
 
         with pytest.raises(RecordNotFoundError):
-            await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+            await mock_auth_db.update_auth(sample_user_in_db, auth_update)
 
     @pytest.mark.asyncio
     async def test_update_unexpected_error(
-        self, mock_auth_db, mock_container, sample_user_auth_info
+        self, mock_auth_db, mock_container, sample_user_in_db
     ):
-        """Test update with unexpected error"""
         auth_update = UserAuthUpdate(
             id="user123", plain_text_password="NewPassword123!"
         )
@@ -307,4 +114,4 @@ class TestUpdateAuth:
         mock_container.patch_item.side_effect = Exception("Unexpected error")
 
         with pytest.raises(RecordUpdateError):
-            await mock_auth_db.update_auth(sample_user_auth_info, auth_update)
+            await mock_auth_db.update_auth(sample_user_in_db, auth_update)

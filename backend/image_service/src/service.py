@@ -1,14 +1,10 @@
-import logging
-
 from shared.auth import authorize_operation
 from shared.exceptions.db import RecordAlreadyExistsError, RecordCreationError
-from shared.models.auth import UserAuthInfo
+from shared.models.users import UserInDB
 
 from src.blob_store import BlobStorage
 from src.database import ImageDB
 from src.models import Image
-
-logger = logging.getLogger("image_service")
 
 
 class ImageService:
@@ -17,7 +13,7 @@ class ImageService:
         self.blob = image_blob
 
     async def upload_img(
-        self, container: str, image: bytes, user_id: str, updater: UserAuthInfo
+        self, container: str, image: bytes, user_id: str, updater: UserInDB
     ) -> Image:
         await authorize_operation(updater, user_id)
         blob = await self.blob.create_blob(container=container, data=image)
@@ -32,7 +28,7 @@ class ImageService:
     async def retrieve_img(self, id: str) -> Image:
         return await self.db.get_image(id)
 
-    async def delete_img(self, id: str, updater: UserAuthInfo):
+    async def delete_img(self, id: str, updater: UserInDB):
         img = await self.retrieve_img(id)
         await authorize_operation(updater, img.uploader_user_id)
         await self.blob.delete_blob(img)

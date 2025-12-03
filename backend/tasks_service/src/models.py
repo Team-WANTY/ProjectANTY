@@ -1,6 +1,9 @@
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
+from shared.db import generate_id, now_timestamp
 
 
 class FrequencySpecifier(StrEnum):
@@ -21,11 +24,13 @@ class RepeatDuration(BaseModel):
     Duration of repetition:
     - FOREVER: value is ignored
     - NUMBER_OF_TIMES: value = how many times to repeat
-    - UNTIL_DATE: value = timestamp until which to repeat
+    - UNTIL_DATE: value = date until which to repeat
     """
 
-    specifier: DurationSpecifier | None = DurationSpecifier.FOREVER
-    value: int | None = None
+    specifier: DurationSpecifier = DurationSpecifier.FOREVER
+    value: None | int | date = (
+        None  # None for forever, int for number_of_times, date for until_date
+    )
 
 
 class RepeatFrequency(BaseModel):
@@ -39,12 +44,8 @@ class RepeatFrequency(BaseModel):
     - value: amount to repeat (ex: every x days/weeks/months/year where x is value)
     """
 
-    specifier: FrequencySpecifier | None = None
-    value: int | None = Field(default=None, ge=1)
-
-    days_of_week: list[int] | None = Field(default=None, max_items=7)
-    day_of_month: int | None = Field(default=None, ge=1, le=31)
-    month_of_year: int | None = Field(default=None, ge=1, le=12)
+    specifier: FrequencySpecifier
+    value: int = Field(default=1, ge=1)
 
 
 class RepeatRule(BaseModel):
@@ -54,36 +55,264 @@ class RepeatRule(BaseModel):
     duration: when to stop repetition
     """
 
-    frequency: RepeatFrequency | None = None
-    duration: RepeatDuration | None = None
+    frequency: RepeatFrequency
+    duration: RepeatDuration
 
 
-class Task(BaseModel):
+class TaskCreate(BaseModel):
+    user_id: str
+    name: str
+    desc: str | None = None
+    cat: str | None = None
+
+    first_relevant_date: date
+    repeat_rule: RepeatRule | None = None
+
+    def to_task_in_db(self) -> """TaskInDB""":
+        return TaskInDB(
+            id=generate_id(),
+            user_id=self.user_id,
+            name=self.name,
+            desc=self.desc,
+            cat=self.cat,
+            first_relevant_date=self.first_relevant_date,
+            repeat_rule=self.repeat_rule,
+            created_at=now_timestamp(),
+            updated_at=now_timestamp(),
+        )
+
+
+class TaskInDB(BaseModel):
     """
     Task data model
     - id: id of task, optional at creation
     - user_id: owner of task
     - name, desc, cat: descriptive fields
-    - due_date: timestamp when task is due (repetition starts here)
+
     - repeat_rule: how to repeat, if at all
     """
 
-    id: str | None = None
+    id: str
     user_id: str
     name: str
-    desc: str
+    desc: str | None = None
     cat: str | None = None
-    due_date: int
+    completions: list[date] | None = (
+        None  # TODO only supports tasks that can be completed once a day, add support for tasks that can be completed multiple times (`drank a cup of water` 4 times today)
+    )
 
+    first_relevant_date: date
+    last_relevant_date: date | None = None
     repeat_rule: RepeatRule | None = None
 
+    created_at: datetime
+    updated_at: datetime
 
-class TaskInDB(Task):
-    created_at: int = -1
-    updated_at: int = -1
+    def _add_months(self, d: date, months: int) -> date:
+        new_year = d.year + (d.month - 1 + months) // 12
+        new_month = (d.month - 1 + months) % 12 + 1
+        last_day = monthrange(new_year, new_month)[1]
+        new_day = min(self.first_relevant_date.day, last_day)
+        return date(new_year, new_month, new_day)
 
-    def to_base(self):
-        return Task.model_validate(self.model_dump(), extra="ignore")
+    @staticmethod
+    def _add_years(d: date, years: int) -> date:
+        try:
+            return d.replace(year=d.year + years)
+        except ValueError:
+            # Feb 29 → Feb 28 for non-leap years
+            return d.replace(year=d.year + years, day=28)
+
+    def calculate_last_relevant_date(self):
+        if self.repeat_rule is None:
+            return
+
+        freq = self.repeat_rule.frequency
+        dur = self.repeat_rule.duration
+
+        match dur.specifier:
+            case DurationSpecifier.FOREVER:
+                self.last_relevant_date = None
+                return
+
+            case DurationSpecifier.NUMBER_OF_TIMES:
+                n = dur.value
+                if not isinstance(n, int):
+                    raise ValueError("NUMBER_OF_TIMES duration must be int")
+
+                match freq.specifier:
+                    case FrequencySpecifier.DAILY:
+                        self.last_relevant_date = self.first_relevant_date + timedelta(
+                            days=freq.value * n
+                        )
+                    case FrequencySpecifier.WEEKLY:
+                        self.last_relevant_date = self.first_relevant_date + timedelta(
+                            weeks=freq.value * n
+                        )
+                    case FrequencySpecifier.MONTHLY:
+                        self.last_relevant_date = self._add_months(
+                            self.first_relevant_date, freq.value * n
+                        )
+                    case FrequencySpecifier.YEARLY:
+                        self.last_relevant_date = self._add_years(
+                            self.first_relevant_date, freq.value * n
+                        )
+                return
+
+            case DurationSpecifier.UNTIL_DATE:
+                if not isinstance(dur.value, date):
+                    raise ValueError("UNTIL_DATE duration must be a date")
+
+                due_date = dur.value
+                prev_d = None
+                curr_d = self.first_relevant_date
+
+                while curr_d <= due_date:
+                    prev_d = curr_d
+                    match freq.specifier:
+                        case FrequencySpecifier.DAILY:
+                            curr_d += timedelta(days=freq.value)
+                        case FrequencySpecifier.WEEKLY:
+                            curr_d += timedelta(weeks=freq.value)
+                        case FrequencySpecifier.MONTHLY:
+                            curr_d = self._add_months(curr_d, freq.value)
+                        case FrequencySpecifier.YEARLY:
+                            curr_d = self._add_years(curr_d, freq.value)
+
+                self.last_relevant_date = prev_d
+                return
+
+    def generate_occurrences_in_range(self, start: date, end: date) -> list[date]:
+        if self.repeat_rule is None:
+            return []
+
+        freq = self.repeat_rule.frequency
+        dur = self.repeat_rule.duration
+
+        def within_duration(d: date) -> bool:
+            if d > end:
+                return False
+
+            # UNTIL_DATE cutoff
+            if dur.specifier == DurationSpecifier.UNTIL_DATE and isinstance(
+                dur.value, date
+            ):
+                if d > dur.value:
+                    return False
+
+            # NUMBER_OF_TIMES cutoff
+            if dur.specifier == DurationSpecifier.NUMBER_OF_TIMES:
+                n = dur.value
+                if isinstance(n, int):
+                    match freq.specifier:
+                        case FrequencySpecifier.DAILY:
+                            last_valid = self.first_relevant_date + timedelta(
+                                days=freq.value * n
+                            )
+                        case FrequencySpecifier.WEEKLY:
+                            last_valid = self.first_relevant_date + timedelta(
+                                weeks=freq.value * n
+                            )
+                        case FrequencySpecifier.MONTHLY:
+                            last_valid = self._add_months(
+                                self.first_relevant_date, freq.value * n
+                            )
+                        case FrequencySpecifier.YEARLY:
+                            last_valid = self._add_years(
+                                self.first_relevant_date, freq.value * n
+                            )
+                    if d > last_valid:
+                        return False
+            return True
+
+        results = []
+        every = freq.value
+
+        # DAILY
+        if freq.specifier == FrequencySpecifier.DAILY:
+            if start > self.first_relevant_date:
+                raw_diff = (start - self.first_relevant_date).days
+                snap = 0 if raw_diff % every == 0 else (every - (raw_diff % every))
+                snapped_diff = raw_diff + snap
+                first = self.first_relevant_date + timedelta(days=snapped_diff)
+                if first < start:
+                    first += timedelta(days=every)
+            else:
+                first = self.first_relevant_date
+
+            if self.last_relevant_date and first > self.last_relevant_date:
+                return []
+            d = first
+            while within_duration(d):
+                results.append(d)
+                d += timedelta(days=every)
+            return results
+
+        # WEEKLY
+        if freq.specifier == FrequencySpecifier.WEEKLY:
+            if start > self.first_relevant_date:
+                raw_diff = (start - self.first_relevant_date).days // 7
+                snap = 0 if raw_diff % every == 0 else (every - (raw_diff % every))
+                snapped_diff = raw_diff + snap
+                first = self.first_relevant_date + timedelta(weeks=snapped_diff)
+                if first < start:
+                    first += timedelta(weeks=every)
+            else:
+                first = self.first_relevant_date
+
+            if self.last_relevant_date and first > self.last_relevant_date:
+                return []
+            d = first
+            while within_duration(d):
+                results.append(d)
+                d += timedelta(weeks=every)
+            return results
+
+        # MONTHLY
+        if freq.specifier == FrequencySpecifier.MONTHLY:
+            if start > self.first_relevant_date:
+                raw_diff = (start.year - self.first_relevant_date.year) * 12 + (
+                    start.month - self.first_relevant_date.month
+                )
+                snap = 0 if raw_diff % every == 0 else (every - (raw_diff % every))
+                snapped_diff = raw_diff + snap
+                first = self._add_months(self.first_relevant_date, snapped_diff)
+                if first < start:
+                    first = self._add_months(first, every)
+
+            else:
+                first = self.first_relevant_date
+
+            if self.last_relevant_date and first > self.last_relevant_date:
+                return []
+            d = first
+            while within_duration(d):
+                results.append(d)
+                d = self._add_months(d, every)
+            return results
+
+        # YEARLY
+        if freq.specifier == FrequencySpecifier.YEARLY:
+            if start <= self.first_relevant_date:
+                first = self.first_relevant_date
+            else:
+                raw_diff = start.year - self.first_relevant_date.year
+                snap = 0 if raw_diff % every == 0 else (every - (raw_diff % every))
+                snapped_diff = raw_diff + snap
+
+                first = self._add_years(self.first_relevant_date, snapped_diff)
+                if first < start:
+                    first = self._add_years(first, every)
+
+            if self.last_relevant_date and first > self.last_relevant_date:
+                return []
+            d = first
+            while within_duration(d):
+                results.append(d)
+                d = self._add_years(d, every)
+            return results
+
+        return []
 
 
 class TaskUpdate(BaseModel):
@@ -91,10 +320,10 @@ class TaskUpdate(BaseModel):
     name: str | None = None
     desc: str | None = None
     cat: str | None = None
-    due_date: int | None = None
+    completions: list[date] | None = None
+    first_relevant_date: date | None = None
     repeat_rule: RepeatRule | None = None
 
 
-class PaginatedTasks(BaseModel):
-    continuation_token: str | None = None
-    tasks: list[TaskInDB]
+class OccurrencesByDate(BaseModel):
+    occurrences: dict[date, list[str]]

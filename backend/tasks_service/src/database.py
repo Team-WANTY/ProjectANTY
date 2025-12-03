@@ -1,10 +1,11 @@
-import logging
-from json import JSONDecodeError, dumps, loads
+from datetime import date
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
+from pydantic import ValidationError
 from shared.db import generate_id, now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -12,105 +13,113 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
+from shared.simple_logging import logger
 
-from src.models import PaginatedTasks, Task, TaskInDB, TaskUpdate
-
-logger = logging.getLogger("tasks_service")
+from src.models import TaskInDB, TaskUpdate
 
 
-# TODO should these functions return TaskInDB instead?
 class TaskDB:
     def __init__(self, container: ContainerProxy):
         self.container = container
+        logger.debug("Created TaskDB")
 
-    async def create_task(self, new_task: Task) -> TaskInDB:
+    async def create_task(self, new_task: TaskInDB):
         try:
-            new_task_in_db = TaskInDB.model_validate(
-                new_task.model_dump(), extra="ignore"
+            logger.debug(
+                f"Trying to create task: {new_task.model_dump()}, first setting default values (id, create/update timestamps)"
             )
-            new_task_in_db.id = generate_id()
-            new_task_in_db.created_at: int = now_timestamp()
-            new_task_in_db.updated_at: int = now_timestamp()
+            new_task.id = generate_id()
+            new_task.created_at = now_timestamp()
+            new_task.updated_at = now_timestamp()
+            logger.debug("Sending task to DB")
             item: CosmosDict = await self.container.create_item(
-                body=new_task_in_db.model_dump()
+                body=new_task.model_dump(mode="json")
             )
+            logger.debug("Successfully sent to DB, validating response")
             created_task = TaskInDB.model_validate(item, extra="ignore")
-            return created_task
+            logger.debug(f"Successfully created task: {created_task.model_dump()}")
+            return created_task.id
         except exceptions.CosmosResourceExistsError:
+            logger.error(
+                f"Error creating task ({new_task.model_dump()}): task already exists"
+            )
             raise RecordAlreadyExistsError()
         except Exception as e:
-            logger.debug(f"Error: {e}")
+            logger.error(
+                f"Error creating task ({new_task.model_dump()}), unexpected error: {e}"
+            )
             raise RecordCreationError()
 
     async def get_task_by_id(self, task_id: str) -> TaskInDB:
         try:
+            logger.debug(f"Trying to get task with ID {task_id}")
             item: CosmosDict = await self.container.read_item(
                 item=task_id, partition_key=task_id
             )
-            print(item)
             task = TaskInDB.model_validate(item, extra="ignore")
+            logger.debug(
+                f"Successfully got task with ID {task_id}: {task.model_dump()}"
+            )
             return task
         except exceptions.CosmosResourceNotFoundError:
-            raise RecordNotFoundError()
-        except Exception:
-            raise GeneralQueryError()
-
-    async def get_tasks_by_user_id(
-        self, user_id: str, quantity: int, cont_token: str | None = None
-    ) -> PaginatedTasks:
-        def normalize_continuation_token(raw: str | None) -> str | None:
-            if not raw:
-                return None
-
-            try:
-                parsed = loads(raw)
-            except JSONDecodeError:
-                return None
-
-            if isinstance(parsed, dict):
-                return dumps(parsed)
-            elif (
-                isinstance(parsed, list)
-                and len(parsed) > 0
-                and isinstance(parsed[0], dict)
-            ):
-                return dumps(parsed[0])
-
-            return None
-
-        query = "SELECT * FROM c WHERE c.user_id = @user_id"
-        parameters: list[dict[str, object]] = [{"name": "@user_id", "value": user_id}]
-        try:
-            result_iterable = self.container.query_items(
-                query=query,
-                parameters=parameters,
-                max_item_count=quantity,
-            )
-            pager = result_iterable.by_page(cont_token)
-            tasks: list[TaskInDB] = []
-            async for page in pager:
-                async for item in page:
-                    tasks.append(TaskInDB.model_validate(item, extra="ignore"))
-                break  # do only one page
-            new_cont_token = normalize_continuation_token(pager.continuation_token)
-            return PaginatedTasks(
-                continuation_token=new_cont_token, tasks=tasks
-            )  # return continuation token, function can be recalled with the continuation token to get the next list of items
-        except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Error getting task with ID {task_id}: not found")
             raise RecordNotFoundError()
         except Exception as e:
-            logger.error(f"ERROR!: {e}")
+            logger.error(f"Error getting task with ID {task_id}, unexpected: {e}")
             raise GeneralQueryError()
 
-    async def update_task(self, task_update: TaskUpdate) -> TaskInDB | None:
-        patch_operations = []
+    async def get_users_tasks_in_range(
+        self, user_id: str, reference_start: date, reference_end: date
+    ):
+        query = """
+            SELECT * FROM c
+            WHERE c.user_id = @user_id
+            AND c.first_relevant_date <= @reference_end
+            AND c.last_relevant_date >= @reference_start
+        """
+        parameters = [
+            {"name": "@user_id", "value": user_id},
+            {"name": "@reference_start", "value": reference_start.isoformat()},
+            {"name": "@reference_end", "value": reference_end.isoformat()},
+        ]
+
         try:
+            logger.debug(
+                f"Trying to get all tasks of user with ID '{user_id}' from dates '{reference_start}' to '{reference_end}'"
+            )
+            async for item in self.container.query_items(
+                query=query, parameters=parameters
+            ):
+                try:
+                    yield TaskInDB.model_validate(item, extra="ignore")
+                except ValidationError:
+                    logger.error(
+                        f"Got invalid data when querying tasks for user with ID '{user_id}': {item}"
+                    )
+                    continue
+        except Exception as e:
+            logger.error(
+                f"Error getting all tasks of user with ID '{user_id}' from dates '{reference_start}' to '{reference_end}', unexpected: {e}"
+            )
+            raise GeneralQueryError()
+
+    async def update_task(self, task_update: TaskUpdate) -> TaskInDB:
+        patch_operations = []
+        task_update_json = task_update.model_dump(mode="json")
+        try:
+            logger.debug(f"Trying to update task: {task_update_json}")
             if task_update.name is not None:
+                logger.debug(
+                    f"Updating name to '{task_update.name}' for task with ID '{task_update.id}'"
+                )
                 patch_operations.append(
                     {"op": "replace", "path": "/name", "value": task_update.name}
                 )
 
             if task_update.desc is not None:
+                logger.debug(
+                    f"Updating description to '{task_update.desc}' for task with ID '{task_update.id}'"
+                )
                 patch_operations.append(
                     {
                         "op": "replace",
@@ -118,53 +127,102 @@ class TaskDB:
                         "value": task_update.desc,
                     }
                 )
+
             if task_update.cat is not None:
+                logger.debug(
+                    f"Updating category to '{task_update.cat}' for task with ID '{task_update.id}'"
+                )
                 patch_operations.append(
-                    {"op": "replace", "path": "/cat", "value": None if task_update.cat == "" else task_update.cat}
+                    {"op": "replace", "path": "/cat", "value": task_update.cat}
                 )
 
-            if task_update.due_date is not None:
+            if task_update.first_relevant_date is not None:
+                logger.debug(
+                    f"Updating due date to '{task_update_json['first_relevant_date']}' for task with ID '{task_update.id}'"
+                )
                 patch_operations.append(
-                    {"op": "replace", "path": "/due_date", "value": task_update.due_date}
+                    {
+                        "op": "replace",
+                        "path": "/first_relevant_date",
+                        "value": task_update_json["first_relevant_date"],
+                    }
                 )
 
             if task_update.repeat_rule is not None:
+                logger.debug(
+                    f"Updating repeat rule to '{task_update.repeat_rule}' for task with ID '{task_update.id}'"
+                )
                 patch_operations.append(
                     {
                         "op": "replace",
                         "path": "/repeat_rule",
-                        "value": task_update.repeat_rule.model_dump(),
+                        "value": task_update.repeat_rule.model_dump(mode="json"),
+                    }
+                )
+            if task_update.completions is not None:
+                logger.debug(
+                    f"Updating completions to '{task_update_json['completions']}' for task with ID '{task_update.id}'"
+                )
+                patch_operations.append(
+                    {
+                        "op": "replace",
+                        "path": "/completions",
+                        "value": task_update_json["completions"],
                     }
                 )
 
             if len(patch_operations) == 0:
-                return None
+                logger.debug(
+                    f"No valid operations when trying to update task with ID '{task_update.id}'"
+                )
+                raise EmptyRecordUpdateError()
 
+            logger.debug(
+                f"Updating 'updated_at' timestamp for task with ID '{task_update.id}'"
+            )
             patch_operations.append(
                 {
                     "op": "replace",
                     "path": "/updated_at",
-                    "value": now_timestamp(),
+                    "value": now_timestamp().isoformat(),
                 }
             )
 
+            logger.debug(f"Sending update for task with ID '{task_update.id}' to DB")
             item = await self.container.patch_item(
                 item=task_update.id,
                 partition_key=task_update.id,
                 patch_operations=patch_operations,
             )
-            task = TaskInDB.model_validate(item, extra="ignore")
-            return task
+            logger.debug("Successfully updated on DB, returning validated result")
+            new_task = TaskInDB.model_validate(item, extra="ignore")
+            if (
+                task_update.first_relevant_date is not None
+                or task_update.repeat_rule is not None
+            ):
+                new_task.calculate_last_relevant_date()
+            return new_task
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(
+                f"Error trying to update task with ID '{task_update.id}': not found"
+            )
             raise RecordNotFoundError()
+        except EmptyRecordUpdateError:
+            raise
         except Exception as e:
-            logger.error(f"ERROR!: {e}")
+            logger.error(
+                f"Error trying to update task with ID '{task_update.id}', unexpected: {e}"
+            )
             raise RecordUpdateError()
 
     async def delete_task(self, task_id: str):
         try:
+            logger.debug(f"Trying to delete task with ID '{task_id}'")
             await self.container.delete_item(item=task_id, partition_key=task_id)
+            logger.debug(f"Successfully deleted task with ID '{task_id}'")
         except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Error deleting task with ID '{task_id}': not found")
             raise RecordNotFoundError()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error deleting task with ID '{task_id}', unexpected: {e}")
             raise RecordDeletionError()

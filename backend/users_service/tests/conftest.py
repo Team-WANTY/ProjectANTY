@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
-from shared.auth import get_current_user_auth
-from shared.models.auth import UserAuthInfo
+from shared.auth import get_current_user
 from shared.models.users import UserInDB
 
 from src.database import UsersDB
 from src.dependencies import get_users_service
 from src.main import app
+from src.models import UserCreate
 from src.service import UsersService
 
 
@@ -53,28 +53,21 @@ def sample_user_in_db():
         username="testuser",
         email="test@gmail.com",
         hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        created_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
-        updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
+        created_at=(datetime.now(UTC) - timedelta(minutes=15)),
+        updated_at=(datetime.now(UTC) - timedelta(minutes=15)),
         is_active=True,
         is_superuser=False,
     )
 
 
 @pytest.fixture
-def sample_user_auth_info():
-    """Fixture for sample UserAuthInfo"""
-    return UserAuthInfo(
-        id="user123",
-        username="testuser",
-        email="test@gmail.com",
-        hashed_password="$argon2id$v=19$m=65536,t=3,p=4$hashed",
-        updated_at=int((datetime.now(UTC) - timedelta(minutes=15)).timestamp()),
-        is_active=True,
-        is_superuser=False,
+def sample_user_create():
+    return UserCreate(
+        email="test@gmail.com", username="testuser", plain_text_password="plainText"
     )
 
 
 @pytest.fixture(autouse=True)
-def dependency_overrides(mock_service, sample_user_auth_info):
+def dependency_overrides(mock_service, sample_user_in_db):
     app.dependency_overrides[get_users_service] = lambda: mock_service
-    app.dependency_overrides[get_current_user_auth] = lambda: sample_user_auth_info
+    app.dependency_overrides[get_current_user] = lambda: sample_user_in_db

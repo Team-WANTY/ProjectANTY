@@ -1,27 +1,23 @@
+from datetime import datetime
+from enum import StrEnum, auto
+
 from pydantic import BaseModel
-from typing import Optional, Literal
 
-FriendRequestStatus = Literal["pending", "accepted", "declined", "cancelled"]
 
-class FriendRequestCreate(BaseModel):
-    to_user_id: str
+class FriendshipStatus(StrEnum):
+    PENDING = auto()
+    ACCEPTED = auto()
 
-class FriendRequest(BaseModel):
-    id: str
-    from_user_id: str
-    to_user_id: str
-    status: FriendRequestStatus
-    created_at: int
-    updated_at: int
 
 class Friendship(BaseModel):
     id: str
-    owner_id: str
-    friend_id: str
-    created_at: int
+    from_user_id: str
+    to_user_id: str
+    status: FriendshipStatus = FriendshipStatus.PENDING
+    created_at: datetime
+    updated_at: datetime
 
-class RelationshipStatus(BaseModel):
-    is_self: bool
-    are_friends: bool
-    incoming_request: Optional[FriendRequest] = None
-    outgoing_request: Optional[FriendRequest] = None
+
+class FriendListResponse(BaseModel):
+    friends: list[Friendship]
+    continuationToken: str | None = None

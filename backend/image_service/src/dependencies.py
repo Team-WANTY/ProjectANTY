@@ -1,23 +1,14 @@
-import logging
 from functools import lru_cache
-from sys import stdout
 
 from azure.cosmos.aio import CosmosClient
 from azure.storage.blob.aio import BlobServiceClient
 from shared.settings import settings as shared_settings
+from shared.simple_logging import logger
 
 from src.blob_store import BlobStorage
 from src.database import ImageDB
 from src.service import ImageService
 from src.settings import settings
-
-logging.basicConfig(
-    stream=stdout,
-    level=logging.INFO,
-    format="%(levelname)s | %(pathname)s @ %(funcName)s @ #%(lineno)d | %(message)s",
-)
-
-logger = logging.getLogger("image_service")
 
 logger.debug("Connecting to Azure Blob Storage")
 blob_client = BlobServiceClient.from_connection_string(settings.BLOB_CONNECTION_STRING)

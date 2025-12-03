@@ -1,5 +1,3 @@
-import logging
-
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from shared.exceptions.db import (
@@ -9,10 +7,9 @@ from shared.exceptions.db import (
     RecordDeletionError,
     RecordNotFoundError,
 )
+from shared.simple_logging import logger
 
 from src.models import Image
-
-logger = logging.getLogger("image_service")
 
 
 class ImageDB:
@@ -23,7 +20,7 @@ class ImageDB:
         try:
             logger.debug(f"Trying to create image: {new_image.model_dump()}")
             item: CosmosDict = await self.container.create_item(
-                body=new_image.model_dump()
+                body=new_image.model_dump(mode="json")
             )
             created_image = Image.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created image: {created_image.model_dump()}")

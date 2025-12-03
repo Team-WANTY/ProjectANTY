@@ -1,9 +1,8 @@
-import logging
-
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from shared.db import now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
     RecordAlreadyExistsError,
     RecordCreationError,
@@ -11,27 +10,30 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
+from shared.simple_logging import logger
 
 from src.models import Profile, ProfileUpdate
-
-logger = logging.getLogger("profile_service")
 
 
 class ProfileDB:
     def __init__(self, container: ContainerProxy):
         self.container = container
+        logger.debug("Created ProfileDB")
 
-    async def create_profile(self, new_profile: Profile) -> Profile:
+    async def create_profile(self, user_id: str):
         try:
+            new_profile = Profile(
+                id=user_id, created_at=now_timestamp(), updated_at=now_timestamp()
+            )
             logger.debug(f"Trying to create profile: {new_profile.model_dump()}")
             item: CosmosDict = await self.container.create_item(
-                body=new_profile.model_dump()
+                body=new_profile.model_dump(mode="json")
             )
+            logger.debug(f"Trying to validate created item returned from DB: {item}")
             created_profile = Profile.model_validate(item, extra="ignore")
             logger.debug(
                 f"Successfully created profile: {created_profile.model_dump()}"
             )
-            return created_profile
         except exceptions.CosmosResourceExistsError:
             logger.warning(
                 f"Error while creating profile: {new_profile.model_dump()}, already exists"
@@ -49,6 +51,7 @@ class ProfileDB:
             item: CosmosDict = await self.container.read_item(
                 item=user_id, partition_key=user_id
             )
+            logger.debug(f"Trying to validate returned profile data: {item}")
             profile = Profile.model_validate(item, extra="ignore")
             logger.debug(f"Got from user ID '{user_id}': {profile.model_dump()}")
             return profile
@@ -63,8 +66,9 @@ class ProfileDB:
             )
             raise GeneralQueryError()
 
-    async def update_profile(self, profile_update: ProfileUpdate) -> Profile:
+    async def update_profile(self, profile_update: ProfileUpdate):
         try:
+            logger.debug(f"Trying to update profile: {profile_update.model_dump()}")
             patch_operations = []
 
             if profile_update.bio is not None:
@@ -148,11 +152,21 @@ class ProfileDB:
                     }
                 )
 
+            if len(patch_operations) == 0:
+                logger.debug(
+                    f"No valid update operations when updating profile for user ID '{profile_update.user_id}'"
+                )
+                raise EmptyRecordUpdateError()
+
             logger.debug(
                 f"Updating timestamp for last update for user ID '{profile_update.user_id}'"
             )
             patch_operations.append(
-                {"op": "replace", "path": "/updated_at", "value": now_timestamp()}
+                {
+                    "op": "replace",
+                    "path": "/updated_at",
+                    "value": now_timestamp().isoformat(),
+                }
             )
 
             logger.debug(
@@ -163,24 +177,25 @@ class ProfileDB:
                 partition_key=profile_update.user_id,
                 patch_operations=patch_operations,
             )
-
+            logger.debug(f"Trying to validate updated profile returned from DB: {item}")
             profile = Profile.model_validate(item, extra="ignore")
             logger.debug(
                 f"Successfully updated profile '{profile_update.user_id}', new record: {profile.model_dump()}"
             )
-            return profile
         except exceptions.CosmosResourceNotFoundError:
             logger.warning(
                 f"Error while updating profile from user ID '{profile_update.user_id}', not found"
             )
             raise RecordNotFoundError()
+        except EmptyRecordUpdateError:
+            raise
         except Exception as e:
             logger.error(
                 f"Error while updating profile from user ID '{profile_update.user_id}', unexpected: {e}"
             )
             raise RecordUpdateError()
 
-    async def delete_profile(self, user_id: str) -> None:
+    async def delete_profile(self, user_id: str):
         try:
             logger.debug(f"Trying to delete profile with user ID '{user_id}'")
             await self.container.delete_item(item=user_id, partition_key=user_id)

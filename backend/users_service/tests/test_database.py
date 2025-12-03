@@ -1,10 +1,13 @@
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from azure.cosmos import exceptions
 from shared.db import now_timestamp
 from shared.exceptions.db import (
+    EmptyRecordUpdateError,
     GeneralQueryError,
+    RecordAlreadyExistsError,
+    RecordCreationError,
     RecordDeletionError,
     RecordNotFoundError,
     RecordUpdateError,
@@ -13,6 +16,36 @@ from shared.models.testing import AsyncIteratorMock
 from shared.models.users import UserInDB
 
 from src.models import UserUpdate
+
+
+class TestDBCreateUser:
+    @pytest.mark.asyncio
+    async def test_create_user_success(
+        self, mock_container, mock_users_db, sample_user_create, sample_user_in_db
+    ):
+        mock_container.create_item.return_value = sample_user_in_db.model_dump(
+            mode="json"
+        )
+
+        await mock_users_db.create_user(sample_user_create)
+
+    @pytest.mark.asyncio
+    async def test_create_user_already_exists(
+        self, mock_container, mock_users_db, sample_user_create
+    ):
+        mock_container.create_item.side_effect = exceptions.CosmosHttpResponseError()
+
+        with pytest.raises(RecordAlreadyExistsError):
+            await mock_users_db.create_user(sample_user_create)
+
+    @pytest.mark.asyncio
+    async def test_create_user_unexpected_error(
+        self, mock_container, mock_users_db, sample_user_create
+    ):
+        mock_container.create_item.side_effect = Exception()
+
+        with pytest.raises(RecordCreationError):
+            await mock_users_db.create_user(sample_user_create)
 
 
 class TestDBGetUserByID:
@@ -60,7 +93,7 @@ class TestDBGetUserByUsername:
         assert result.username == "testuser"
 
     @pytest.mark.asyncio
-    async def test_get_user_by_username_not_found_empty(
+    async def test_get_user_by_username_not_found_cosmos(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
         mock_container.query_items = Mock()
@@ -72,7 +105,7 @@ class TestDBGetUserByUsername:
             await mock_users_db.get_user_by_username("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_get_user_by_username_not_found_cosmos(
+    async def test_get_user_by_username_not_found_empty(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
         mock_container.query_items = Mock()
@@ -139,25 +172,6 @@ class TestDBGetUserByEmail:
 
 class TestDBUpdateUser:
     @pytest.mark.asyncio
-    async def test_update_user_email_success(
-        self, mock_container, mock_users_db, sample_user_in_db
-    ):
-        new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
-        new_sample_user_in_db.email = "newtest@gmail.com"
-        mock_container.patch_item.return_value = new_sample_user_in_db
-
-        user_update = UserUpdate(id="user123", email="newtest@gmail.com")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
-
-        assert isinstance(result, UserInDB)
-        assert result.email == "newtest@gmail.com"
-
-    @pytest.mark.asyncio
-    @pytest.mark.notimplemented
-    async def test_update_user_email_failed_validation(self):
-        pass
-
-    @pytest.mark.asyncio
     async def test_update_user_username_success(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
@@ -166,26 +180,36 @@ class TestDBUpdateUser:
         mock_container.patch_item.return_value = new_sample_user_in_db
 
         user_update = UserUpdate(id="user123", username="newtestuser")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        await mock_users_db.update_user(user_update)
 
-        assert isinstance(result, UserInDB)
-        assert result.username == "newtestuser"
+        mock_container.patch_item.assert_awaited_once_with(
+            item="user123",
+            partition_key="user123",
+            patch_operations=[
+                {"op": "replace", "path": "/username", "value": "newtestuser"},
+                {"op": "replace", "path": "/updated_at", "value": ANY},
+            ],  # We can do deeper checks below
+        )
 
     @pytest.mark.asyncio
-    @pytest.mark.notimplemented
-    async def test_update_user_username_failed_validation(self):
-        pass
-
-    @pytest.mark.asyncio
-    async def test_update_user_no_input(
+    async def test_update_user_email_success(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
-        user_update = UserUpdate(id="user123")
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
+        new_sample_user_in_db.email = "newtest@gmail.com"
+        mock_container.patch_item.return_value = new_sample_user_in_db
 
-        assert isinstance(result, UserInDB)
-        assert result.username == sample_user_in_db.username
-        assert result.email == sample_user_in_db.email
+        user_update = UserUpdate(id="user123", email="newtest@gmail.com")
+        await mock_users_db.update_user(user_update)
+
+        mock_container.patch_item.assert_awaited_once_with(
+            item="user123",
+            partition_key="user123",
+            patch_operations=[
+                {"op": "replace", "path": "/email", "value": "newtest@gmail.com"},
+                {"op": "replace", "path": "/updated_at", "value": ANY},
+            ],  # We can do deeper checks below
+        )
 
     @pytest.mark.asyncio
     async def test_update_user_timestamp_updated(
@@ -195,31 +219,54 @@ class TestDBUpdateUser:
         new_sample_user_in_db = sample_user_in_db.model_copy(deep=True)
         new_sample_user_in_db.updated_at = now_timestamp()
         mock_container.patch_item.return_value = new_sample_user_in_db
-        result = await mock_users_db.update_user(sample_user_in_db, user_update)
+        await mock_users_db.update_user(user_update)
 
-        assert isinstance(result, UserInDB)
-        assert result.updated_at != sample_user_in_db.updated_at
+        mock_container.patch_item.assert_awaited_once_with(
+            item="user123",
+            partition_key="user123",
+            patch_operations=[
+                {"op": "replace", "path": "/email", "value": "newtest@gmail.com"},
+                {"op": "replace", "path": "/updated_at", "value": ANY},
+            ],  # We can do deeper checks below
+        )
+
+        args, kwargs = mock_container.patch_item.call_args
+        updated_at = kwargs["patch_operations"][1]["value"]
+        assert updated_at != sample_user_in_db.updated_at
 
     @pytest.mark.asyncio
-    async def test_update_user_not_found(
+    @pytest.mark.notimplemented
+    async def test_update_user_username_failed_validation(self):
+        pass
+
+    @pytest.mark.asyncio
+    @pytest.mark.notimplemented
+    async def test_update_user_email_failed_validation(self):
+        pass
+
+    @pytest.mark.asyncio
+    async def test_update_user_no_input(
         self, mock_container, mock_users_db, sample_user_in_db
     ):
+        with pytest.raises(EmptyRecordUpdateError):
+            await mock_users_db.update_user(UserUpdate(id="user123"))
+
+    @pytest.mark.asyncio
+    async def test_update_user_not_found(self, mock_container, mock_users_db):
         mock_container.patch_item.side_effect = exceptions.CosmosResourceNotFoundError()
 
         with pytest.raises(RecordNotFoundError):
             await mock_users_db.update_user(
-                sample_user_in_db, UserUpdate(id="user321", username="newusername")
+                UserUpdate(id="user321", username="newusername")
             )
 
     @pytest.mark.asyncio
-    async def test_update_user_unexpected_error(
-        self, mock_container, mock_users_db, sample_user_in_db
-    ):
+    async def test_update_user_unexpected_error(self, mock_container, mock_users_db):
         mock_container.patch_item.side_effect = Exception()
 
         with pytest.raises(RecordUpdateError):
             await mock_users_db.update_user(
-                sample_user_in_db, UserUpdate(id="user123", username="newusername")
+                UserUpdate(id="user123", username="newusername")
             )
 
 

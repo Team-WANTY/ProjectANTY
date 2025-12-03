@@ -18,6 +18,10 @@ class RecordUpdateError(DBError):
     pass
 
 
+class EmptyRecordUpdateError(RecordUpdateError):
+    pass
+
+
 class RecordDeletionError(DBError):
     pass
 

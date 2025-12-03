@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Integration Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+        h1 { text-align: center; }
+        .test-step { margin: 10px 0; }
+        .status { font-weight: bold; color: green; }
+        .status.failed { color: red; }
+    </style>
+</head>
+<body>
+
+<h1>Integration Test Results</h1>
+
+<label for="interservice-key">Enter Interservice Key:</label>
+<input type="text" id="interservice-key" placeholder="Enter Key">
+
+<button onclick="runAllTests()">Run All Tests</button>
+
+<div id="test-results"></div>
+
+<script>
+    // Global state to keep track of created objects
+    let state = {
+        user1: {},
+        tasks: [],
+        image: {},
+        user2: {},
+        friendRequestId: null
+    };
+    
+    //HELPER FUNCTIONS
+    async function loginUser(username, password){
+        const url = 'http://localhost/auth/login';
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded'
+            
+        };
+        const body = new URLSearchParams({
+            grant_type: 'password',
+            username: username,  // Replace with actual username
+            password: password   // Replace with actual password
+        }).toString();
+        const response = await fetch(url, {method:"POST", headers:headers, body:body,credentials: "include"});
+        if (response.status === 200){
+            const responseData = await response.json();
+            if (responseData.token_type === "bearer"){
+                return responseData.access_token;
+            }
+        }
+    }
+
+    function logResult(step, success) {
+        const resultsDiv = document.getElementById("test-results");
+        const resultElem = document.createElement("div");
+        resultElem.classList.add("test-step");
+        resultElem.innerHTML = `${step}: <span class="status ${success ? '' : 'failed'}">${success ? 'Success' : 'Failed'}</span>`;
+        resultsDiv.appendChild(resultElem);
+        resultElem.scrollIntoView();
+    }
+
+    //ACTUAL TESTS
+    async function step1_createNewUser() {
+        const url = 'http://localhost/users/';
+        const data = {
+            email: 'integrationtestuser@gmail.com',
+            username: 'integrationtestuser',
+            plain_text_password: 'integrationtestuser'
+        };
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        };
+
+        const response = await fetch(url, {method:'POST', headers:headers, body:JSON.stringify(data)});
+
+        if (response.status === 201) {
+            logResult('Create New User', true);
+            state.user1.email = data.email;
+            state.user1.username = data.username;
+            state.user1.password = data.plain_text_password
+        } else {
+            console.error("Creating a user did not return a 201")
+            throw "Create New User"
+        }
+    }
+
+    async function step2_getUserMe() {
+        const url = 'http://localhost/users/me';
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'GET', body:null, headers:headers});
+
+        if (response.status == 200){
+            logResult("Get User Me", true);
+            const responseData = await response.json();
+            state.user1.id = responseData.id;
+        }
+        else{
+            console.error("Getting user info did not return a 200")
+            throw "Get User Me"
+        }
+    }
+
+    async function step3_1_updateUsername() {
+        const url = 'http://localhost/users/';
+        const newUsername = "testintegrationuserNEW";
+        const data = {
+            id: state.user1.id,
+            username: newUsername,
+        };
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers:headers});
+
+        if(response.status == 204){
+            const meurl = 'http://localhost/users/me';
+            const meheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+            const verifyResponse = await fetch(meurl, {method:'GET', body:null, headers:meheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.username == newUsername){
+                    logResult("Update Username", true);
+                    state.user1.username = newUsername;
+                }
+                else{
+                    console.error("User's username is not the new one")
+                    throw "Update Username"
+                }
+            }
+            else{
+                console.error("Getting user info did not return 200")
+                throw "Update Username"
+            }
+        }
+        else{
+            console.error("Updating username did not return a 204")
+            throw "Update Username"
+        }
+    }
+
+    async function step3_2_updateEmail() {    
+        const url = 'http://localhost/users/';
+        const newEmail ="testintegrationuserNEW@gmail.com"
+        const data = {
+            id: state.user1.id,
+            email: newEmail,
+        };
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers:headers});
+
+        if(response.status == 204){
+            const meurl = 'http://localhost/users/me';
+            const meheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+            const verifyResponse = await fetch(meurl, {method:'GET', body:null, headers:meheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.email == newEmail){
+                    logResult("Update Email", true);
+                    state.user1.email = newEmail;
+                }
+                else{
+                    console.error("User's Email is not the new one")
+                    throw "Update Email"
+                }
+            }
+            else{
+                console.error("Getting user info did not return 200")
+                throw "Update Email"
+            }
+        }
+        else{
+            console.error("Updating user's email did not return a 204")
+            throw "Update Email"
+        }
+    }
+
+    async function step4_getByID() {
+        const interserviceKey = document.getElementById("interservice-key").value;
+
+        if (!interserviceKey) {
+            alert("Please enter the Interservice Key");
+            return;
+        }
+
+        const url = `http://localhost/users/id/${state.user1.id}`;
+        
+        const headers = {
+            'Accept': 'application/json',
+            'X-Interservice-Key': interserviceKey
+        };
+
+        const response = await fetch(url, {method:'GET', headers:headers});
+        if (response.status == 200){
+            logResult("Test Getting By ID", true);
+        }
+        else{
+            console.error("Getting user by ID did not return a 200")
+            throw "Testing Getting By ID"
+        }
+    }
+
+    async function step5_getByUsername() {
+        const interserviceKey = document.getElementById("interservice-key").value;
+
+        if (!interserviceKey) {
+            alert("Please enter the Interservice Key");
+            return;
+        }
+
+        const url = `http://localhost/users/username/${state.user1.username}`;
+        
+        const headers = {
+            'Accept': 'application/json',
+            'X-Interservice-Key': interserviceKey
+        };
+
+        const response = await fetch(url, {method:'GET', headers:headers});
+        if(response.status == 200){
+            logResult("Test Get By Username", true);
+        }
+        else{
+            console.error("Getting user by username did not return a 200")
+            throw "Test Get By Username"
+        }
+    }
+
+    async function step6_getByEmail() {
+        const interserviceKey = document.getElementById("interservice-key").value;
+
+        if (!interserviceKey) {
+            alert("Please enter the Interservice Key");
+            return;
+        }
+
+        const url = `http://localhost/users/email/${state.user1.email}`;
+        
+        const headers = {
+            'Accept': 'application/json',
+            'X-Interservice-Key': interserviceKey
+        };
+
+        const response = await fetch(url, {method:'GET', headers});
+        if(response.status == 200){
+            logResult("Test Get By Email", true);
+        }
+        else{
+            console.error("Getting user by email did not return a 200")
+            throw "Test Get By Email"
+        }
+    }
+
+    async function step7_loginUser() {
+        state.user1.token = await loginUser(state.user1.username, state.user1.password);
+        logResult("Login User", true);
+    }
+
+    async function step8_refreshToken() {
+        const url = 'http://localhost/auth/refresh';
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'GET', headers, credentials: "include"});
+        if (response.status == 200){
+            logResult("Refresh Token", true);
+            const responseData = await response.json();
+            state.user1.token = responseData.access_token;
+        }
+        else{
+            console.error("Refreshing token did not return a 200")
+            throw "Refresh Token";
+        }
+    }
+
+    async function step9_1_updatePassword() {
+        const newPassword = 'newpassword123'; // The new password for the user
+
+        const url = 'http://localhost/auth/';
+        const data = {
+            id: state.user1.id,
+            plain_text_password: newPassword
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            try{
+               state.user1.token = await loginUser(state.user1.username, newPassword);
+            }
+            catch(e){
+                console.error("Could not login with updated password");
+                throw "Update Password";
+            }
+            logResult("Update Password", true);
+            state.user1.password = newPassword;
+        }
+        else{
+            console.error("Updating user password did not return a 204")
+            throw "Update Password";
+        }
+    }
+
+    async function step9_2_updateActiveStatus() {
+        return //WILL MAKE USER NOT ACCESSIBLE WHICH BREAKS CLEANUP
+        const newIsActiveStatus = false;  // Set to false to deactivate the user (set to true to activate)
+
+        const url = 'http://localhost/auth/';
+        const data = {
+            id: state.user1.id,
+            is_active: newIsActiveStatus
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            logResult("Update Active", true);
+        }
+        else{
+            console.error("Updating active status did not return a 204")
+            throw "Update Active";
+        }
+    }
+
+    async function step9_3_updateSuperuserStatus() {
+        return //WILL BREAK SINCE USER IS TRYING TO UPDATE RESTRICTED DATA
+        const userId = state.user1.id;  // Assuming user1 has been created and has an ID
+        const newIsSuperuserStatus = true;  // Set to true to make the user a superuser (set to false to revoke superuser status)
+
+        const url = 'http://localhost/auth/';
+        const data = {
+            id: userId,
+            is_superuser: newIsSuperuserStatus
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            logResult("Update Superuser Status", true);
+        }
+        else{
+            console.error("Updating superuser did not return a 204");
+            throw "Update Superuser Status"
+        }
+    }
+
+    async function step10_verifyToken() {
+        if (!state.user1.token) {
+            logResult('Verify Token', false);
+            console.error('No token found to verify');
+            return;
+        }
+
+        const interserviceKey = document.getElementById("interservice-key").value;
+
+        if (!interserviceKey) {
+            alert("Please enter the Interservice Key");
+            return;
+        }
+
+        const url = `http://localhost/auth/verify/${state.user1.token}`;
+        
+        const headers = {
+            'Accept': 'application/json',
+            'X-Interservice-Key': interserviceKey,
+        };
+
+        const response = await fetch(url, {method:'GET', headers});
+        if (response.status == 200){
+            logResult("Verify Token", true);
+        }
+        else{
+            console.error("Verifying token did not return 200");
+            throw "Verify Token"
+        }
+    }
+
+    async function step11_getUserProfile() {
+        const url = `http://localhost/profiles/${state.user1.id}`;
+        
+        const headers = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'GET', headers});
+        if (response.status == 200){
+            logResult("Get User Profile", true);
+        }
+        else{
+            throw "Get User Profile"
+        }
+    }
+
+    async function step12_1_updateBio() {
+        const newBio = "This is the new bio content.";  // Replace with the actual bio
+
+        const url = 'http://localhost/profiles/';
+        const data = {
+            user_id: state.user1.id,
+            bio: newBio
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+            
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            const profileurl = `http://localhost/profiles/${state.user1.id}`;
+            
+            const profileheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+            const verifyResponse = await fetch(profileurl, {method:'GET', headers:profileheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if (verifyData.bio === newBio){
+                    logResult("Update Bio", true);
+                }
+                else{
+                    console.error("Bio update verification failed")
+                    throw "Update Bio"
+                }
+            }
+            else{
+                console.error("Getting updated profile did not return 200")
+                throw "Update Bio"
+            }
+        }
+        else{
+            console.error("Updating profile did not return 204")
+            throw "Update Bio"
+        }
+    }
+
+    async function step12_2_updateEquippedBadges() {
+        const equippedBadges = ["badge1", "badge2"];  // Replace with actual badge IDs
+
+        const url = 'http://localhost/profiles/';
+        const data = {
+            user_id: state.user1.id,
+            equipped_badges: equippedBadges
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            const profileurl = `http://localhost/profiles/${state.user1.id}`;
+            
+            const profileheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+            const verifyResponse = await fetch(profileurl, {method:'GET', headers:profileheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if (JSON.stringify(verifyData.equipped_badges) === JSON.stringify(equippedBadges)){
+                    logResult("Update Equipped badges", true);
+                }
+                else{
+                    console.error("Equipped badges update verification failed")
+                    throw "Update Equipped badges"
+                }
+            }
+            else{
+                console.error("Getting updated profile did not return 200")
+                throw "Update Equipped badges"
+            }
+        }
+        else{
+            console.error("Updating profile did not return 204")
+            throw "Update Equipped badges"
+        }
+    }
+
+    async function step12_3_updateEquippedAnalytics() {
+        const equippedAnalytics = ["analytics1", "analytics2"];  // Replace with actual analytics
+
+        const url = 'http://localhost/profiles/';
+        const data = {
+            user_id: state.user1.id,
+            equipped_analytics: equippedAnalytics
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            const profileurl = `http://localhost/profiles/${state.user1.id}`;
+            
+            const profileheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+            const verifyResponse = await fetch(profileurl, {method:'GET', headers:profileheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if (JSON.stringify(verifyData.equipped_analytics) === JSON.stringify(equippedAnalytics)){
+                    logResult("Update Equipped Analytics", true);
+                }
+                else{
+                    console.log(verifyData);
+                    console.error("Equipped Analytics update verification failed")
+                    throw "Update Equipped Analytics"
+                }
+            }
+            else{
+                console.error("Getting updated profile did not return 200")
+                throw "Update Equipped Analytics"
+            }
+        }
+        else{
+            console.error("Updating profile did not return 204")
+            throw "Update Equipped Analytics"
+        }
+    }
+
+    async function step12_4_updateUnlockedBadges() {
+        return //WILL FAIL SINCE NEW USER IS NOT SUPERUSER
+        const newUnlockedBadges = ["badge3", "badge4"];  // Replace with actual analytics
+
+        const url = 'http://localhost/profiles/';
+        const data = {
+            user_id: state.user1.id,
+            unlocked_badges: newUnlockedBadges
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            const profileurl = `http://localhost/profiles/${state.user1.id}`;
+            
+            const profileheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+            const verifyResponse = await fetch(profileurl, {method:'GET', headers:profileheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if (JSON.stringify(verifyData.unlocked_badges) === JSON.stringify(newUnlockedBadges)){
+                    logResult("Update Unlocked Badges", true);
+                }
+                else{
+                    console.log(verifyData);
+                    console.error("Unlocked Badges update verification failed")
+                    throw "Update Unlocked Badges"
+                }
+            }
+            else{
+                console.error("Getting updated profile did not return 200")
+                throw "Update Unlocked Badges"
+            }
+        }
+        else{
+            console.error("Updating profile did not return 204")
+            throw "Update Unlocked Badges"
+        }
+    }
+
+    async function step12_5_updateUnlockedAnalytics() {
+        return //WILL FAIL SINCE NEW USER IS NOT SUPERUSER
+        const unlockedAnalytics = ["analytics3", "analytics4"];  // Replace with actual analytics
+
+        const url = 'http://localhost/profiles/';
+        const data = {
+            user_id: state.user1.id,
+            unlocked_analytics: unlockedAnalytics
+        };
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(data), headers});
+        if (response.status == 204){
+            const profileurl = `http://localhost/profiles/${state.user1.id}`;
+            
+            const profileheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+            const verifyResponse = await fetch(profileurl, {method:'GET', headers:profileheaders});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if (JSON.stringify(verifyData.unlocked_analytics) === JSON.stringify(unlockedAnalytics)){
+                    logResult("Update Unlocked Analytics", true);
+                }
+                else{
+                    console.error("Unlocked Analytics update verification failed")
+                    throw "Update Unlocked Analytics"
+                }
+            }
+            else{
+                console.error("Getting updated profile did not return 200")
+                throw "Update Unlocked Analytics"
+            }
+        }
+        else{
+            console.error("Updating profile did not return 204")
+            throw "Update Unlocked Analytics"
+        }
+    }
+
+    async function step13_1_createOneOffTask() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        const taskData = {
+            user_id: state.user1.id,
+            name: "One-off Task",
+            desc: "This is a one-off task.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: null
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create One Off Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create One Off Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create One Off Task";
+        }
+    }
+
+    async function step13_2_createDailyTaskForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Daily Task Forever",
+            desc: "This is a daily task that repeats forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "daily", value: 1 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Daily Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Daily Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Daily Forever Task";
+        }
+    }
+
+    async function step13_3_createDailyTaskWith10Repeats() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Daily Task with 10 Repeats",
+            desc: "This is a daily task that repeats 10 times.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "daily", value: 1 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Daily 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Daily 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Daily 10 Repeats Task";
+        }
+    }
+
+    async function step13_4_createDailyTaskUntil3Years() {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years from now
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Daily Task Until 3 Years",
+            desc: "This task repeats daily until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "daily", value: 1 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Daily Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Daily Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Daily Until 3 Years Task";
+        }
+    }
+
+    async function step13_5_createTaskEvery3DaysForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Days Forever",
+            desc: "This task repeats every 3 days forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "daily", value: 3 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Days Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Days Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Days Forever Task";
+        }
+    }
+
+    async function step13_6_createTaskEvery3Days10Times() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Days 10 Times",
+            desc: "This task repeats every 3 days for 10 times.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "daily", value: 3 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Days 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Days 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Days 10 Repeats Task";
+        }
+    }
+
+    async function step13_7_createMonthlyTaskForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const userId = state.user1.id;
+        const taskData = {
+            user_id: userId,
+            name: "Monthly Task Forever",
+            desc: "This task repeats every month forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 1 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Monthly Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Monthly Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Monthly Forever Task";
+        }
+    }
+
+    async function step13_8_createMonthlyTaskWith10Repeats() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const userId = state.user1.id;
+        const taskData = {
+            user_id: userId,
+            name: "Monthly Task with 10 Repeats",
+            desc: "This task repeats every month for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 1 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Monthly 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Monthly 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Monthly 10 Repeats Task";
+        }
+    }
+
+    async function step13_9_createMonthlyTaskUntil3Years(){
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Monthly Task Until 3 Years",
+            desc: "This task repeats every month until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 1 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Monthly Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Monthly Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Monthly Until 3 Years Task";
+        }
+    }
+
+    async function step13_10_createTaskEvery3MonthsForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Months Forever",
+            desc: "This task repeats every 3 months forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 3 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Months Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Months Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Months Forever Task";
+        }
+    }
+
+    async function step13_11_createTaskEvery3Months10Times() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Months 10 Times",
+            desc: "This task repeats every 3 months for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 3 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Months 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Months 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Months 10 Repeats Task";
+        }
+    }
+
+    async function step13_12_createTaskEvery3MonthsUntil3Years() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Months Until 3 Years",
+            desc: "This task repeats every 3 months until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "monthly", value: 3 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Months Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Months Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Months Until 3 Years Task";
+        }
+    }
+
+    async function step13_13_createWeeklyTaskForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Weekly Task Forever",
+            desc: "This task repeats every week forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 1 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+            if (response.status == 201){
+                const responseData = await response.json();
+                const taskID = responseData.task_id
+                const taskurl = `http://localhost/tasks/id/${taskID}`;
+                const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${state.user1.token}`,
+                }});
+                if (verifyResponse.status == 200){
+                    logResult("Create Weekly Forever Task", true)
+                    state.tasks.push(taskID);
+                }
+                else{
+                    console.error("Getting created task did not return 200");
+                    throw "Create Weekly Forever Task";
+                }
+            }
+            else{
+                console.error("Creating task did not return 201");
+                throw "Create Weekly Forever Task";
+            }
+    }
+
+    async function step13_14_createWeeklyTaskWith10Repeats() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Weekly Task with 10 Repeats",
+            desc: "This task repeats every week for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 1 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Weekly 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Weekly 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Weekly 10 Repeats Task";
+        }
+    }
+
+    async function step13_15_createWeeklyTaskUntil3Years() {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Weekly Task Until 3 Years",
+            desc: "This task repeats every week until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 1 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Weekly Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Weekly Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Weekly Until 3 Years Task";
+        }
+    }
+
+    async function step13_16_createTaskEvery3WeeksForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Weeks Forever",
+            desc: "This task repeats every 3 weeks forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 3 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Weeks Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Weeks Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Weeks Forever Task";
+        }
+    }
+
+    async function step13_17_createTaskEvery3Weeks10Times() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Weeks 10 Times",
+            desc: "This task repeats every 3 weeks for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 3 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Weeks 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Weeks 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Weeks 10 Repeats Task";
+        }
+    }
+
+    async function step13_18_createTaskEvery3WeeksUntil3Years() {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Weeks Until 3 Years",
+            desc: "This task repeats every 3 weeks until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "weekly", value: 3 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Weeks Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Weeks Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Weeks Until 3 Years Task";
+        }
+    }
+
+    async function step13_19_createYearlyTaskForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Yearly Task Forever",
+            desc: "This task repeats every year forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 1 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Yearly Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Yearly Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Yearly Forever Task";
+        }
+    }
+
+    async function step13_20_createYearlyTaskWith10Repeats() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Yearly Task with 10 Repeats",
+            desc: "This task repeats every year for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 1 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Yearly 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Yearly 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Yearly 10 Repeats Task";
+        }
+    }
+
+    async function step13_21_createYearlyTaskUntil3Years() {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Yearly Task Until 3 Years",
+            desc: "This task repeats every year until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 1 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Yearly Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Yearly Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Yearly Until 3 Years Task";
+        }
+    }
+
+    async function step13_22_createTaskEvery3YearsForever() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Years Forever",
+            desc: "This task repeats every 3 years forever.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 3 },
+                duration: { specifier: "forever", value: 0 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Years Forever Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Years Forever Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Years Forever Task";
+        }
+    }
+
+    async function step13_23_createTaskEvery3Years10Times() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Years 10 Times",
+            desc: "This task repeats every 3 years for 10 occurrences.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 3 },
+                duration: { specifier: "number_of_times", value: 10 }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Years 10 Repeats Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Years 10 Repeats Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Years 10 Repeats Task";
+        }
+    }
+
+    async function step13_24_createTaskEvery3YearsUntil3Years() {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);  // Adding 3 years
+        const futureDateStr = futureDate.toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const taskData = {
+            user_id: state.user1.id,
+            name: "Task Every 3 Years Until 3 Years",
+            desc: "This task repeats every 3 years until 3 years from now.",
+            cat: "General",
+            first_relevant_date: todayStr,
+            repeat_rule: {
+                frequency: { specifier: "yearly", value: 3 },
+                duration: { specifier: "until_date", value: futureDateStr }
+            }
+        };
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        };
+
+        const url = 'http://localhost/tasks/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(taskData), headers});
+        if (response.status == 201){
+            const responseData = await response.json();
+            const taskID = responseData.task_id
+            const taskurl = `http://localhost/tasks/id/${taskID}`;
+            const verifyResponse = await fetch(taskurl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                logResult("Create Every 3 Years Until 3 Years Task", true)
+                state.tasks.push(taskID);
+            }
+            else{
+                console.error("Getting created task did not return 200");
+                throw "Create Every 3 Years Until 3 Years Task";
+            }
+        }
+        else{
+            console.error("Creating task did not return 201");
+            throw "Create Every 3 Years Until 3 Years Task";
+        }
+    }
+
+    async function step14_getTaskById() {
+        const url = `http://localhost/tasks/id/${state.tasks[0]}`;
+        
+        const response = await fetch(url, {method:'GET', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        if (response.status == 200){
+            logResult("Get Task by ID", true);
+        }
+        else{
+            console.error("Getting task by ID did not return a 200");
+            throw "Get Task By ID"
+        }
+    }
+
+    async function step15_getUsersTasksInRange() {
+        const today = new Date()
+        const laterDate = new Date()
+        laterDate.setMonth(today.getMonth() + 1);
+        const todayStr = today.toISOString().split('T')[0];
+        const LaterDateStr = laterDate.toISOString().split('T')[0];
+        
+        const url = `http://localhost/tasks/user_id/${state.user1.id}?start_date=${todayStr}&end_date=${LaterDateStr}`;
+        
+        const response = await fetch(url, {method:'GET', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if(response.status == 200){
+            logResult("Get User Tasks In Range", true);
+        }
+        else{
+            console.error("Getting User Tasks in Range did not return 200");
+            throw "Get User Tasks In Range";
+        }
+    }
+
+    async function step16_deleteAllCreatedTasks() {
+        //covered in cleanup
+        return
+    }
+
+    async function step17_1_updateTaskName() {
+        const newName = "Updated Task Name"
+        const taskData = {
+            id: state.tasks[0],
+            name: newName,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.name == newName){
+                    logResult("Update Task Name", true);
+                }
+                else{
+                    console.error("Task name was not updated in verification")
+                    throw "Update Task Name"
+                }
+            }else{
+                console.error("Verifying task name update did not return 200")
+                throw "Update Task Name"
+            }
+        }
+        else{
+            console.error("Updating task name did not return 204")
+                throw "Update Task Name"
+        }
+    }
+
+    async function step17_2_updateTaskDescription() {
+        const newDesc = "Updated task description."
+        const taskData = {
+            id: state.tasks[0],
+            desc: newDesc,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.desc == newDesc){
+                    logResult("Update Task Description", true);
+                }
+                else{
+                    console.error("Task description was not updated in verification")
+                    throw "Update Task Description"
+                }
+            }else{
+                console.error("Verifying task description update did not return 200")
+                throw "Update Task Description"
+            }
+        }
+        else{
+            console.error("Updating task description did not return 204")
+                throw "Update Task Description"
+        }
+    }
+
+    async function step17_3_updateTaskCategory() {
+        const newCat = "Updated Task Category";  // Use the actual task ID here
+        const taskData = {
+            id: state.tasks[0],
+            cat: newCat,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.cat == newCat){
+                    logResult("Update Task category", true);
+                }
+                else{
+                    console.error("Task category was not updated in verification")
+                    throw "Update Task category"
+                }
+            }else{
+                console.error("Verifying task category update did not return 200")
+                throw "Update Task category"
+            }
+        }
+        else{
+            console.error("Updating task category did not return 204")
+                throw "Update Task category"
+        }
+    }
+
+    async function step17_4_updateTaskCompletions() {
+        const newCompletions = [new Date().toISOString().split('T')[0]];  // Use the actual task ID here
+        const taskData = {
+            id: state.tasks[0],
+            completions: newCompletions,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(JSON.stringify(verifyData.completions) === JSON.stringify(newCompletions)){
+                    logResult("Update Task completions", true);
+                }
+                else{
+                    console.error("Task completions was not updated in verification")
+                    throw "Update Task completions"
+                }
+            }else{
+                console.error("Verifying task completions update did not return 200")
+                throw "Update Task completions"
+            }
+        }
+        else{
+            console.error("Updating task completions did not return 204")
+                throw "Update Task completions"
+        }
+    }
+
+    async function step17_5_updateTaskFirstRelevanceDate() {
+        const newFirstRelevantDate = new Date()
+        newFirstRelevantDate.setMonth(newFirstRelevantDate.getMonth() + 1)
+        const newFirstRelevantDateStr = newFirstRelevantDate.toISOString().split('T')[0]
+        const taskData = {
+            id: state.tasks[0],
+            first_relevant_date: newFirstRelevantDateStr,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.first_relevant_date === newFirstRelevantDateStr){
+                    logResult("Update Task first relevant date", true);
+                }
+                else{
+                    console.error("Task first relevant date was not updated in verification")
+                    throw "Update Task first relevant date"
+                }
+            }else{
+                console.error("Verifying task first relevant date update did not return 200")
+                throw "Update Task first relevant date"
+            }
+        }
+        else{
+            console.error("Updating task first relevant date did not return 204")
+                throw "Update Task first relevant date"
+        }
+    }
+
+    async function step17_6_updateTaskFrequencySpecifier() {
+        const newRepeatRule = {
+            frequency: {specifier:"yearly", value: 1},
+            duration: {specifier:"forever", value: null}
+        };
+        const taskData = {
+            id: state.tasks[0],
+            repeat_rule: newRepeatRule,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.repeat_rule.frequency.specifier == newRepeatRule.frequency.specifier){
+                    logResult("Update Task frequency specifier", true);
+                }
+                else{
+                    console.error("Task frequency specifier was not updated in verification")
+                    throw "Update Task frequency specifier"
+                }
+            }else{
+                console.error("Verifying task frequency specifier update did not return 200")
+                throw "Update Task frequency specifier"
+            }
+        }
+        else{
+            console.error("Updating task frequency specifier did not return 204")
+                throw "Update Task frequency specifier"
+        }
+    }
+
+    async function step17_7_updateTaskFrequencyValue() {
+        const newRepeatRule = {
+            frequency: {specifier:"daily", value: 100},
+            duration: {specifier:"forever", value: null}
+        };
+        const taskData = {
+            id: state.tasks[0],
+            repeat_rule: newRepeatRule,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.repeat_rule.frequency.value == newRepeatRule.frequency.value){
+                    logResult("Update Task frequency value", true);
+                }
+                else{
+                    console.error("Task frequency value was not updated in verification")
+                    throw "Update Task frequency value"
+                }
+            }else{
+                console.error("Verifying task frequency value update did not return 200")
+                throw "Update Task frequency value"
+            }
+        }
+        else{
+            console.error("Updating task frequency value did not return 204")
+                throw "Update Task frequency value"
+        }
+    }
+
+    async function step17_8_updateTaskDurationSpecifier() {
+        const newRepeatRule = {
+            frequency: {specifier:"daily", value: 1},
+            duration: {specifier:"number_of_times", value: 1}
+        };
+        const taskData = {
+            id: state.tasks[0],
+            repeat_rule: newRepeatRule,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.repeat_rule.duration.specifier == newRepeatRule.duration.specifier){
+                    logResult("Update Task duration specifier", true);
+                }
+                else{
+                    console.error("Task duration specifier was not updated in verification")
+                    throw "Update Task duration specifier"
+                }
+            }else{
+                console.error("Verifying task duration specifier update did not return 200")
+                throw "Update Task duration specifier"
+            }
+        }
+        else{
+            console.error("Updating task duration specifier did not return 204")
+                throw "Update Task duration specifier"
+        }
+    }
+
+    async function step17_9_updateTaskDurationValue() {
+        const newRepeatRule = {
+            frequency: {specifier:"daily", value: 1},
+            duration: {specifier:"number_of_times", value: 100}
+        };
+        const taskData = {
+            id: state.tasks[0],
+            repeat_rule: newRepeatRule,
+        };
+
+        const url = `http://localhost/tasks/`;
+        const response = await fetch(url, {method:'PATCH', body:JSON.stringify(taskData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+        
+        if (response.status == 204){
+            const verifyUrl = `http://localhost/tasks/id/${state.tasks[0]}`;
+            const verifyResponse = await fetch(verifyUrl, {method:'GET', headers:{
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+            if (verifyResponse.status == 200){
+                const verifyData = await verifyResponse.json();
+                if(verifyData.repeat_rule.duration.value == newRepeatRule.duration.value){
+                    logResult("Update Task duration value", true);
+                }
+                else{
+                    console.error("Task duration value was not updated in verification")
+                    throw "Update Task duration value"
+                }
+            }else{
+                console.error("Verifying task duration value update did not return 200")
+                throw "Update Task duration value"
+            }
+        }
+        else{
+            console.error("Updating task duration value did not return 204")
+                throw "Update Task duration value"
+        }
+}
+
+    async function step18_createBrandNewUser() {
+        const userData = {
+            email: "testintegrationfriend@example.com",
+            username: "testintegrationfriend",
+            plain_text_password: "testintegrationfriend"
+        };
+
+        const url = 'http://localhost/users/';
+        const response = await fetch(url, {method:'POST', body:JSON.stringify(userData), headers:{
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }});
+
+        if (response.status === 201) {
+            state.user2.token = await loginUser(userData.username, userData.plain_text_password);
+            const meurl = 'http://localhost/users/me';
+            const meheaders = {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${state.user2.token}`,
+            };
+            const meresponse = await fetch(meurl, {method:'GET', body:null, headers:meheaders});
+
+            if (meresponse.status == 200){
+                logResult("Create Friend User", true);
+                const meResponseData = await meresponse.json();
+                state.user2.id = meResponseData.id;
+                state.user2.email = userData.email;
+                state.user2.username = userData.username;
+                state.user2.password = userData.plain_text_password;
+            }
+            else{
+                console.error("Getting user info did not return a 200")
+                throw "Create Friend User"
+            }
+        } else {
+            console.error("Creating friend user did not return a 201")
+            throw "Create Friend User"
+        }
+    }
+
+    async function step19_makeFriendRequest() {
+
+        const url = `http://localhost/friends/request/${state.user2.id}`;
+        const response = await fetch(url, {method:'POST', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if (response.status == 201){
+            logResult("Make new friend request", true);
+        }
+        else{
+            console.error("Making new friend request did not return 201");
+            throw "Make new friend request"
+        }
+    }
+
+    async function step20_listUser2IncomingRequests() {
+        const url = 'http://localhost/friends/incoming';
+        const response = await fetch(url, {method:'GET', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user2.token}`,
+        }});
+
+        if (response.status == 200){
+            const responseData = await response.json();
+            let requestID = ""
+            for(let fr of responseData.friends){
+                if(fr.from_user_id === state.user1.id && fr.to_user_id === state.user2.id){
+                    requestID = fr.id;
+                }
+            }
+            if (requestID !== ""){
+                logResult("List Incoming Requests", true);
+                state.friendRequestId = requestID 
+            }
+            else{
+                console.log(responseData.friends);
+                console.log(state.user1.id);
+                console.log(state.user2.id);
+                console.error("Could not verify that user1 is in user2's incoming requests")
+                throw "List Incoming Requests"
+            }
+        }else{
+            console.error("Listing incoming requests did not return 200");
+            throw "List Incoming Requests"
+        }
+    }
+
+    async function step21_listUser1OutgoingRequests() {
+        const url = 'http://localhost/friends/outgoing';
+        const response = await fetch(url, {method:'GET', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if (response.status == 200){
+            const responseData = await response.json();
+            let requestID = ""
+            for(let fr of responseData.friends){
+                if(fr.from_user_id === state.user1.id && fr.to_user_id === state.user2.id){
+                    requestID = fr.id;
+                }
+            }
+            if (requestID !== ""){
+                logResult("List outgoing Requests", true);
+            }
+            else{
+                console.log(responseData.friends);
+                console.log(state.user1.id);
+                console.log(state.user2.id);
+                console.error("Could not verify that user1 is in user2's outgoing requests")
+                throw "List outgoing Requests"
+            }
+        }else{
+            console.error("Listing outgoing requests did not return 200");
+            throw "List outgoing Requests"
+        }
+    }
+
+    async function step22_acceptFriendRequest() {
+        const url = `http://localhost/friends/request/${state.friendRequestId}/accept`;
+        const response = await fetch(url, {method:'POST', headers:{
+            'Accept': '*/*',
+            'Authorization': `Bearer ${state.user2.token}`,
+        }});
+
+        if (response.status == 204){
+            logResult("Accept User 1's Request", true);
+        }
+        else{
+            console.error("Accepting friend request did not return 204");
+            throw "Accept User 1's Request"
+        }
+    }
+
+    async function step23_listFriends() {
+        const url = 'http://localhost/friends/';
+        const response = await fetch(url, {method:'GET', headers:{
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if (response.status == 200){
+            logResult("List User 1's friends", true);
+        }
+        else{
+            console.error("Listing user 1's friends did not return 200");
+            throw "List User 1's friends"
+        }
+    }
+
+    async function step24_unfriendUser2() {
+        const url = `http://localhost/friends/${state.user2.id}`;
+        const response = await fetch(url, {method:'DELETE', headers:{
+            'Accept': '*/*',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if (response.status == 204){
+            logResult("User 1 Unfriends User 2", true);
+        }
+        else{
+            console.error("Unfriending User 2 did not return 204");
+            throw "User 1 Unfriends User 2"
+        }
+    }
+
+    async function runAllTests() {
+        const resultsDiv = document.getElementById("test-results");
+        resultsDiv.innerHTML = '';
+        logResult("Running all tests...", true);
+
+        try {
+            await step1_createNewUser();
+            state.user1.token = await loginUser(state.user1.username,state.user1.password);
+            await step2_getUserMe();
+            await step3_1_updateUsername();
+            await step3_2_updateEmail();
+            await step4_getByID();
+            await step5_getByUsername();
+            await step6_getByEmail();
+            await step7_loginUser();
+            await step8_refreshToken();
+            await step9_1_updatePassword();
+
+            await step10_verifyToken();
+            await step11_getUserProfile();
+            await step12_1_updateBio();
+            await step12_2_updateEquippedBadges();
+            await step12_3_updateEquippedAnalytics();
+            await step13_1_createOneOffTask();
+            await step13_2_createDailyTaskForever();
+            await step13_3_createDailyTaskWith10Repeats();
+            await step13_4_createDailyTaskUntil3Years();
+            await step13_5_createTaskEvery3DaysForever();
+            await step13_6_createTaskEvery3Days10Times();
+            await step13_7_createMonthlyTaskForever();
+            await step13_8_createMonthlyTaskWith10Repeats();
+            await step13_9_createMonthlyTaskUntil3Years();
+            await step13_10_createTaskEvery3MonthsForever();
+            await step13_11_createTaskEvery3Months10Times();
+            await step13_12_createTaskEvery3MonthsUntil3Years();
+            await step13_13_createWeeklyTaskForever();
+            await step13_14_createWeeklyTaskWith10Repeats();
+            await step13_15_createWeeklyTaskUntil3Years();
+            await step13_16_createTaskEvery3WeeksForever();
+            await step13_17_createTaskEvery3Weeks10Times();
+            await step13_18_createTaskEvery3WeeksUntil3Years();
+            await step13_19_createYearlyTaskForever();
+            await step13_20_createYearlyTaskWith10Repeats();
+            await step13_21_createYearlyTaskUntil3Years();
+            await step13_22_createTaskEvery3YearsForever();
+            await step13_23_createTaskEvery3Years10Times();
+            await step13_24_createTaskEvery3YearsUntil3Years();
+            await step14_getTaskById();
+            await step15_getUsersTasksInRange();
+            await step16_deleteAllCreatedTasks();
+            await step17_1_updateTaskName();
+            await step17_2_updateTaskDescription();
+            await step17_3_updateTaskCategory();
+            await step17_4_updateTaskCompletions();
+            await step17_5_updateTaskFirstRelevanceDate();
+            await step17_6_updateTaskFrequencySpecifier();
+            await step17_7_updateTaskFrequencyValue();
+            await step17_8_updateTaskDurationSpecifier();
+            await step17_9_updateTaskDurationValue();
+            await step18_createBrandNewUser();
+            await step19_makeFriendRequest();
+            await step20_listUser2IncomingRequests();
+            await step21_listUser1OutgoingRequests();
+            await step22_acceptFriendRequest();
+            await step23_listFriends();
+            await step24_unfriendUser2();
+
+            await step9_2_updateActiveStatus();
+            await step9_3_updateSuperuserStatus();
+            await step12_4_updateUnlockedBadges();
+            await step12_5_updateUnlockedAnalytics();
+            logResult("All Tests Complete", true);
+        } catch (e) {
+            logResult("Integration Test Failed, check console for error", false);
+            console.error(e)
+            alert("Integration Test Failed, check console for error. Close this dialog to cleanup");
+            await cleanup();
+        }
+    }
+
+    async function cleanup(){
+        for (let taskID of state.tasks) {
+            const url = `http://localhost/tasks/${taskID}`;
+            const response = await fetch(url, {method:'DELETE', headers:{
+                'Accept': '*/*',
+                'Authorization': `Bearer ${state.user1.token}`,
+            }});
+        }
+
+        await fetch(`http://localhost/friends/${state.user2.id}`, {method:'DELETE', headers:{
+            'Accept': '*/*',
+            'Authorization': `Bearer ${state.user1.token}`,
+        }});
+
+        if(state.user1.id){
+            const headers = {
+                'Accept': '*/*',
+                'Authorization': `Bearer ${state.user1.token}`,
+            };
+            await fetch(`http://localhost/profiles/${state.user1.id}`, {method:"DELETE", headers:headers})
+            await fetch(`http://localhost/users/${state.user1.id}`, {method:"DELETE", headers:headers})        }
+        if(state.user2.id){
+            const url = `http://localhost/users/${state.user2.id}`;
+            const headers = {
+                'Accept': '*/*',
+                'Authorization': `Bearer ${state.user2.token}`,
+            };
+            await fetch(`http://localhost/profiles/${state.user2.id}`, {method:"DELETE", headers:headers})
+            await fetch(`http://localhost/users/${state.user2.id}`, {method:"DELETE", headers:headers})        }
+    }
+
+</script>
+
+</body>
+</html>

@@ -34,3 +34,6 @@ Installing mkcert:
 `mkdir -p certs` 
 `mv localhost+x-key.pem certs/key.pem` 
 `mv localhost+x.pem certs/cert.pem` 
+
+
+`python -m http.server 8080 --bind 127.0.0.1`
