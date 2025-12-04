@@ -132,6 +132,33 @@ class FriendshipsDB:
             logger.error(f"Error listing friendships of user with ID '{user_id}': {e}")
             raise GeneralQueryError()
 
+    async def list_all_friends(
+        self,
+        user_id: str,
+    ):
+        # List friends for a given user_id with pagination.
+        query = (
+            "SELECT * FROM c "
+            "WHERE c.from_user_id = @user OR c.to_user_id = @user "
+            "ORDER BY c.created_at DESC"
+        )
+        params = [{"name": "@user", "value": user_id}]
+
+        try:
+            result_iterable = self.container.query_items(
+                query=query,
+                parameters=params,
+            )
+
+            async for item in result_iterable:
+                fs = Friendship.model_validate(item, extra="ignore")
+                yield fs.to_user_id if fs.from_user_id == user_id else fs.from_user_id
+        except exceptions.CosmosResourceNotFoundError:
+            raise RecordNotFoundError()
+        except Exception as e:
+            logger.error(f"Error listing friends of user with ID '{user_id}': {e}")
+            raise GeneralQueryError()
+
     async def list_incoming(
         self,
         user_id: str,

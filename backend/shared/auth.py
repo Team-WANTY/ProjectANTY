@@ -18,6 +18,12 @@ async def get_user_id_from_auth_service(token: str):
             headers={"X-Interservice-Key": settings.INTERSERVICE_KEY},
         )
     if response.status_code != 200:
+        if response.status_code == 401:
+            logger.debug(f"Token {token} is expired! Refresh!")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh",
+            )
         logger.debug(
             f"Response from auth service on verifying token {token} was not 200: {response.status_code} | {response.text}"
         )
