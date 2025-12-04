@@ -71,7 +71,9 @@ async def get_post_by_id(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@posts_router.get("/user/{user_id}", response_model=tuple[list[str],str|None], tags=["posts"])
+@posts_router.get(
+    "/user/{user_id}", response_model=tuple[list[str], str | None], tags=["posts"]
+)
 async def get_users_post_ids(
     user_id: str,
     max_items: int,
@@ -93,7 +95,9 @@ async def get_users_post_ids(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@posts_router.get("/relevant/{user_id}", response_model=tuple[list[str],str|None], tags=["posts"])
+@posts_router.get(
+    "/relevant/{user_id}", response_model=tuple[list[str], str | None], tags=["posts"]
+)
 async def get_users_relevant_post_ids(
     user_id: str,
     max_items: int,
@@ -120,7 +124,10 @@ async def get_users_relevant_post_ids(
         logger.error(
             f"Error getting relevant posts of user with ID '{user_id}': friend query failed"
         )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend query failed, no friends?")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Friend query failed, no friends?",
+        )
     except RecordNotFoundError:
         logger.error(
             f"Error getting relevant posts of user with ID '{user_id}': not found"

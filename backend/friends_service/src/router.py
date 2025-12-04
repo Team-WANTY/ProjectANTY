@@ -11,12 +11,12 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 from shared.models.users import UserInDB
+from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
 from src.models import FriendListResponse
 from src.service import FriendsService
-from shared.settings import settings as shared_settings
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 friends_router = APIRouter()
@@ -130,7 +130,7 @@ async def list_friendships(
 ):
     try:
         logger.debug(f"Trying to get all friendships for user with ID '{me.id}'")
-        items, cont = await service.list_friends(me, limit, continuation)
+        items, cont = await service.list_friendships(me, limit, continuation)
         return FriendListResponse(friends=items, continuationToken=cont)
     except RecordNotFoundError:
         logger.error(
@@ -148,10 +148,11 @@ async def list_friendships(
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @friends_router.get("/{user_id}", tags=["interservice"], response_model=list[str])
 async def list_all_friends(
     user_id: str,
-    x_interservice_key:str = Depends(interservice_scheme),
+    x_interservice_key: str = Depends(interservice_scheme),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:

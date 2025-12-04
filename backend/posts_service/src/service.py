@@ -15,7 +15,7 @@ class PostsService:
     def __init__(self, posts_db: PostsDB):
         self.posts_db = posts_db
 
-    async def get_friends(self, user_id:str):
+    async def get_friends(self, user_id: str):
         async with AsyncClient() as client:
             response = await client.get(
                 f"{settings.FRIENDS_SERVICE_URL}/{user_id}",

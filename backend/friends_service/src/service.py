@@ -41,7 +41,7 @@ class FriendsService:
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
 
-    async def list_all_friends(self, user_id:str):
+    async def list_all_friends(self, user_id: str):
         return [friend_id async for friend_id in self.db.list_all_friends(user_id)]
 
     async def accept(self, me: UserInDB, friendship_id: str):
