@@ -6,7 +6,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => screenWidth * (pct / 100);
 const hp = (pct: number) => screenHeight * (pct / 100);
 
-const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike }) => {
+const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount }) => {
     const heartIconName = isLiked ? "heart" : "heart-outline";
     const heartIconColor = theme.background;
 
@@ -25,9 +25,22 @@ const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike }) => {
             <View style={styles.friendActions}>
                 <TouchableOpacity
                     onPress={() => onToggleLike(activity.id)}
-                    style={styles.heartButton}
+                    style={styles.actionButton}
                 >
                     <Ionicons name={heartIconName} size={wp(5)} color={heartIconColor} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => onCommentPress(activity.id)}
+                    style={styles.actionButton}
+                >
+                    <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
+                    {commentsCount > 0 && (
+                        <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}>
+                            <Text style={[styles.commentBadgeText, { color: theme.background }]}>
+                                {commentsCount}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
                 <Text style={[styles.friendTime, { color: theme.background }]}>
                     {activity.time}
@@ -70,8 +83,24 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginLeft: wp(2),
     },
-    heartButton: {
+    actionButton: {
         marginBottom: hp(0.5),
+        position: "relative",
+    },
+    commentBadge: {
+        position: "absolute",
+        top: -5,
+        right: -8,
+        minWidth: wp(4),
+        height: wp(4),
+        borderRadius: wp(2),
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: wp(0.5),
+    },
+    commentBadgeText: {
+        fontSize: wp(2.5),
+        fontWeight: "bold",
     },
     friendTime: {
         fontSize: wp(2.8),
