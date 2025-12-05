@@ -11,7 +11,7 @@ from shared.exceptions.db import (
 )
 from shared.models.testing import AsyncIteratorMock
 
-from src.models import Friendship, FriendshipStatus
+from src.models import FriendshipStatus
 
 
 class TestDBCreateFriendship:
@@ -108,11 +108,11 @@ class TestDBListFriendshipsOfUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.model_dump(mode="json"),
-                        sample_friendship.model_dump(mode="json"),
+                        sample_friendship.id,
+                        sample_friendship.id,
                     ]
                 ),
-                [sample_friendship.model_dump(mode="json")],
+                [sample_friendship.id],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
@@ -126,7 +126,7 @@ class TestDBListFriendshipsOfUser:
         items, cont_token = await mock_friends_db.list_friendships("user123", 1)
         assert isinstance(items, list)
         assert len(items) > 0
-        assert isinstance(items[0], Friendship)
+        assert isinstance(items[0], str)
 
     @pytest.mark.asyncio
     async def test_list_friendships_async_end(
@@ -140,7 +140,8 @@ class TestDBListFriendshipsOfUser:
 
         mock_container.query_items = Mock()
         mock_container.query_items.return_value = mock_iteratable
-        items, cont_token = await mock_friends_db.list_friendships("user123", 1)
+        with pytest.raises(RecordNotFoundError):
+            await mock_friends_db.list_friendships("user123", 1)
 
     @pytest.mark.asyncio
     async def test_list_friendships_not_found(self, mock_container, mock_friends_db):
@@ -170,11 +171,11 @@ class TestDBListIncomingRequestsToUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.model_dump(mode="json"),
-                        sample_friendship.model_dump(mode="json"),
+                        sample_friendship.id,
+                        sample_friendship.id,
                     ]
                 ),
-                [sample_friendship.model_dump(mode="json")],
+                [sample_friendship.id],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
@@ -187,7 +188,7 @@ class TestDBListIncomingRequestsToUser:
         items, _ = await mock_friends_db.list_incoming("user123", 1)
         assert isinstance(items, list)
         assert len(items) > 0
-        assert isinstance(items[0], Friendship)
+        assert isinstance(items[0], str)
 
     @pytest.mark.asyncio
     async def test_list_incoming_async_end(
@@ -201,7 +202,8 @@ class TestDBListIncomingRequestsToUser:
 
         mock_container.query_items = Mock()
         mock_container.query_items.return_value = mock_iteratable
-        items, cont_token = await mock_friends_db.list_incoming("user123", 1)
+        with pytest.raises(RecordNotFoundError):
+            await mock_friends_db.list_incoming("user123", 1)
 
     @pytest.mark.asyncio
     async def test_list_incoming_not_found(self, mock_container, mock_friends_db):
@@ -231,11 +233,11 @@ class TestDBListOutgoingRequestsFromUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.model_dump(mode="json"),
-                        sample_friendship.model_dump(mode="json"),
+                        sample_friendship.id,
+                        sample_friendship.id,
                     ]
                 ),
-                [sample_friendship.model_dump(mode="json")],
+                [sample_friendship.id],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
@@ -248,7 +250,7 @@ class TestDBListOutgoingRequestsFromUser:
         items, _ = await mock_friends_db.list_outgoing("user123", 1)
         assert isinstance(items, list)
         assert len(items) > 0
-        assert isinstance(items[0], Friendship)
+        assert isinstance(items[0], str)
 
     @pytest.mark.asyncio
     async def test_list_outgoing_async_end(
@@ -262,7 +264,8 @@ class TestDBListOutgoingRequestsFromUser:
 
         mock_container.query_items = Mock()
         mock_container.query_items.return_value = mock_iteratable
-        items, cont_token = await mock_friends_db.list_outgoing("user123", 1)
+        with pytest.raises(RecordNotFoundError):
+            await mock_friends_db.list_outgoing("user123", 1)
 
     @pytest.mark.asyncio
     async def test_list_outgoing_not_found(self, mock_container, mock_friends_db):

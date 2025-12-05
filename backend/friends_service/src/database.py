@@ -94,7 +94,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str | None]:
+    ) -> tuple[list[str], str]:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT c.id FROM c "
@@ -119,13 +119,15 @@ class FriendshipsDB:
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                Raise RecordNotFoundError()
+                raise RecordNotFoundError()
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            Raise RecordNotFoundError()
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Error listing friendships of user with ID '{user_id}': {e}")
             raise GeneralQueryError()
@@ -194,6 +196,8 @@ class FriendshipsDB:
             if items is None:
                 raise RecordNotFoundError
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
@@ -241,6 +245,8 @@ class FriendshipsDB:
             if items is None:
                 raise RecordNotFoundError()
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:

@@ -3,7 +3,7 @@ from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
 from shared.models.users import UserInDB
 
 from src.database import FriendshipsDB
-from src.models import Friendship, FriendshipStatus
+from src.models import FriendshipStatus
 
 
 class FriendsService:
@@ -22,21 +22,21 @@ class FriendsService:
 
     async def list_outgoing(
         self, me: UserInDB, limit: int, continuation: str | None
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str | None]:
         return await self.db.list_outgoing(
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
 
     async def list_incoming(
         self, me: UserInDB, limit: int, continuation: str | None
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str]:
         return await self.db.list_incoming(
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
 
     async def list_friendships(
         self, me: UserInDB, limit: int, continuation: str | None
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str | None]:
         return await self.db.list_friendships(
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
@@ -56,5 +56,5 @@ class FriendsService:
             await self.db.update_status(friendship_id, FriendshipStatus.ACCEPTED)
 
     async def unfriend(self, me: UserInDB, friend_id: str):
-        friendship = await self.db.find_friendship(me.id, friend_id)
-        await self.db.delete_friendship(friendship.id)
+        friendship_id = await self.db.find_friendship(me.id, friend_id)
+        await self.db.delete_friendship(friendship_id)

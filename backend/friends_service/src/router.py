@@ -15,7 +15,6 @@ from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
-from src.models import FriendListResponse
 from src.service import FriendsService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
@@ -88,7 +87,7 @@ async def list_incoming(
 
 
 @friends_router.get(
-    "/outgoing", tags=["friend_requests"], response_model=tuple[list[str],str]
+    "/outgoing", tags=["friend_requests"], response_model=tuple[list[str], str]
 )
 async def list_outgoing(
     limit: int = Query(default=10, ge=1, le=200),
@@ -118,7 +117,7 @@ async def list_outgoing(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@friends_router.get("/", tags=["friendships"], response_model=tuple[list[str],str])
+@friends_router.get("/", tags=["friendships"], response_model=tuple[list[str], str])
 async def list_friendships(
     limit: int = Query(default=10, ge=1, le=200),
     continuation: str | None = None,
