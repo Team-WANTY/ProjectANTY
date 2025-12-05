@@ -68,3 +68,19 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+
+  posts-service:
+    build:
+      dockerfile: posts_service/Dockerfile.dev
+    container_name: posts-service
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  comments-service:
+    build:
+      dockerfile: comments_service/Dockerfile.dev
+    container_name: comments-service
+    expose:
+      - "8000"
+    restart: unless-stopped

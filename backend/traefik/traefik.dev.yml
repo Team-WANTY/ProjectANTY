@@ -27,6 +27,14 @@ http:
       rule: "PathPrefix(`/images`)"
       service: image-service
 
+    posts:
+      rule: "PathPrefix(`/posts`)"
+      service: posts-service
+
+    comments:
+      rule: "PathPrefix(`/comments`)"
+      service: comments-service
+
   services:
     auth-service:
       loadBalancer:
@@ -62,3 +70,13 @@ http:
       loadBalancer:
         servers:
           - url: "http://friends-service:8000"
+
+    posts-service:
+      loadBalancer:
+        servers:
+          - url: "http://posts-service:8000"
+
+    comments-service:
+      loadBalancer:
+        servers:
+          - url: "http://comments-service:8000"

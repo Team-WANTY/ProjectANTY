@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import APIKeyHeader
 from shared.auth import get_current_user
 from shared.exceptions.auth import AuthError
 from shared.exceptions.db import (
@@ -10,12 +11,14 @@ from shared.exceptions.db import (
     RecordUpdateError,
 )
 from shared.models.users import UserInDB
+from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
 from src.models import FriendListResponse
 from src.service import FriendsService
 
+interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 friends_router = APIRouter()
 
 
@@ -119,29 +122,61 @@ async def list_outgoing(
 
 
 @friends_router.get("/", tags=["friendships"], response_model=FriendListResponse)
-async def list_friends(
+async def list_friendships(
     limit: int = Query(default=10, ge=1, le=200),
     continuation: str | None = None,
     me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
     try:
-        logger.debug(f"Trying to get all friends for user with ID '{me.id}'")
-        items, cont = await service.list_friends(me, limit, continuation)
+        logger.debug(f"Trying to get all friendships for user with ID '{me.id}'")
+        items, cont = await service.list_friendships(me, limit, continuation)
         return FriendListResponse(friends=items, continuationToken=cont)
     except RecordNotFoundError:
         logger.error(
-            f"Error getting all friends for user with ID '{me.id}': no friends found"
+            f"Error getting all friendships for user with ID '{me.id}': no friendships found"
         )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
         logger.error(
-            f"Error getting all friends for user with ID '{me.id}': general query error"
+            f"Error getting all friendships for user with ID '{me.id}': general query error"
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         logger.error(
-            f"Error getting all friends for user with ID '{me.id}', unexpected: {e}"
+            f"Error getting all friendships for user with ID '{me.id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@friends_router.get("/{user_id}", tags=["interservice"], response_model=list[str])
+async def list_all_friends(
+    user_id: str,
+    x_interservice_key: str = Depends(interservice_scheme),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        logger.debug(f"Trying to get all friends for user with ID '{user_id}'")
+        logger.debug("Checking if interservice key is valid")
+        if x_interservice_key != shared_settings.INTERSERVICE_KEY:
+            logger.warning(f"Interservice key '{x_interservice_key}' was not valid")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid key"
+            )
+        return await service.list_all_friends(user_id)
+    except RecordNotFoundError:
+        logger.error(
+            f"Error getting all friends for user with ID '{user_id}': no friends found"
+        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except GeneralQueryError:
+        logger.error(
+            f"Error getting all friends for user with ID '{user_id}': general query error"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Error getting all friends for user with ID '{user_id}', unexpected: {e}"
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
