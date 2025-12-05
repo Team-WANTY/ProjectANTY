@@ -100,6 +100,7 @@ async def get_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
 
+
 @users_router.get(
     "/username/{username}", response_model=UserInDB, tags=["interservice"]
 )
