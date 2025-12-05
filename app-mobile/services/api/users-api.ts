@@ -5,9 +5,10 @@ import { api } from "../http/client";
 
 const paths = {
 	me: "/users/me",
-	byId: "/users/id/{user_id}",
-  byUsername: "/users/lookup/{username}",
-	update: "/users/",
+  byUsername: "/users/username/{username}", // GET IDs from partial username
+  publicById: "/users/public/id/{user_id}", // GET username from ID
+	update: "/users", // POST PATCH
+  delete: "/users/{user_id}" // DELETE
 };
 
 // helper to fill {user_id}
@@ -41,29 +42,47 @@ export const usersApi = {
     }
   },
 
-  // /{user_id}
-  async getById(userId: string): Promise<ApiResult<SimpleUser>> {
+  // GET username from ID
+  async getPublicById(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
-      const res = await api.get(fillId(paths.byId, userId));
-      return { 
-        ok: true, 
-        status: res.status, 
-        message: res.statusText || "Request successful", 
-        data: res.data 
+      const res = await api.get(fillId(paths.publicById, userId));
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Request successful",
+        data: res.data,
       };
-    }
-    catch (error: any) {
+    } catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
-      const msg = status === 404 ? "User not found" : toMessage(data, "Failed to load user");
-      return {ok: false, status, message: msg, detail:data };
+      const msg =
+        status === 404 ? "User not found" : toMessage(data, "Failed to load user");
+      return { ok: false, status, message: msg, detail: data };
     }
   },
-
-  // /id/{username}
+  // GET /users/username/{username} implemented by assuming client will always do exact match username
   async getByUsername(username: string): Promise<ApiResult<SimpleUser>> {
     try {
-      const res = await api.get(fillUsername(paths.byUsername,username));
+      const searchUrl = `/users/search/${encodeURIComponent(username)}`;
+      const res = await api.get(searchUrl, {
+        params: {
+          max_items: 1,
+          continuation_token: ""   // always blank for first call
+        }
+      });
+
+      // Response format: [ ["userId"], continuationToken ]
+      const [ids] = res.data;
+      if (!ids || ids.length === 0) {
+        return {
+          ok: false,
+          status: 404,
+          message: "User not found",
+        };
+      }
+
+      const userId = ids[0];
+
       return { 
         ok: true, 
         status: res.status, 
@@ -81,7 +100,7 @@ export const usersApi = {
 
   async remove(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
-      const res = await api.delete(fillId(paths.byId, userId));
+      const res = await api.delete(fillId(paths.delete, userId));
       return { 
         ok: true, 
         status: res.status, 

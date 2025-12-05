@@ -53,7 +53,11 @@ class FriendsService:
         ):
             await authorize_operation(me, friendship.to_user_id)
             # update friendship to accepted
-            await self.db.update_status(friendship_id, FriendshipStatus.ACCEPTED)
+            friendship = await self.db.update_status(
+                friendship_id, FriendshipStatus.ACCEPTED
+            )
+            return friendship
+        
 
     async def unfriend(self, me: UserInDB, friend_id: str):
         friendship_id = await self.db.find_friendship(me.id, friend_id)
