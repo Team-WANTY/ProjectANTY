@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from httpx import AsyncClient
 from shared.auth import authorize_operation
 from shared.exceptions.db import RecordCreationError
@@ -7,6 +8,14 @@ from shared.simple_logging import logger
 
 from src.database import CommentsDB
 from src.models import CommentCreate, CommentUpdate, ContentType
+=======
+from shared.auth import authorize_operation
+from shared.models.users import UserInDB
+from shared.simple_logging import logger
+
+from src.database import CommentsDB
+from src.models import CommentCreate, CommentUpdate
+>>>>>>> d8ffcd77f76dc15cb255d2c458e32cb321ea4051
 
 
 class CommentsService:
