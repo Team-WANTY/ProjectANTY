@@ -19,7 +19,7 @@ from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_users_service
-from src.models import UserCreate, UserUpdate, UsernameOnly
+from src.models import UserCreate, UsernameOnly, UserUpdate
 from src.service import UsersService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
@@ -148,7 +148,7 @@ async def get_user_ids_given_username_part(
 async def get_public_user_by_id(
     user_id: str,
     users_service: UsersService = Depends(get_users_service),
-    current_user: UserInDB = Depends(get_current_user),
+    _current_user: UserInDB = Depends(get_current_user),
 ):
     """
     Client-facing: return only id + username for a given user_id.
