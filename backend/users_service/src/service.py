@@ -12,7 +12,6 @@ from shared.simple_logging import logger
 
 from src.database import UsersDB
 from src.models import UserCreate, UserUpdate
-from src.settings import settings
 
 
 class UsersService:
@@ -44,7 +43,7 @@ class UsersService:
         )
         async with AsyncClient() as client:
             response = await client.post(
-                f"{settings.PROFILES_SERVICE_URL}/{new_user_id}",
+                f"{shared_settings.PROFILES_SERVICE_URL}/{new_user_id}",
                 headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
             )
             if response.status_code != 201:
@@ -72,6 +71,13 @@ class UsersService:
         user_in_db = await self.db.get_user_by_email(email)
         logger.debug(f"Successfully got user with email '{email}'")
         return user_in_db
+
+    async def get_user_ids_given_username_part(
+        self, partial_username: str, max_items: int, continuation_token: str
+    ):
+        return await self.db.get_user_ids_given_username_part(
+            partial_username, max_items, continuation_token
+        )
 
     async def update_user(self, user_update: UserUpdate, updater: UserInDB):
         """Update user"""

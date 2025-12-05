@@ -8,7 +8,6 @@ from shared.simple_logging import logger
 
 from src.database import PostsDB
 from src.models import PostCreate, PostUpdate
-from src.settings import settings
 
 
 class PostsService:
@@ -18,7 +17,7 @@ class PostsService:
     async def get_friends(self, user_id: str):
         async with AsyncClient() as client:
             response = await client.get(
-                f"{settings.FRIENDS_SERVICE_URL}/{user_id}",
+                f"{shared_settings.FRIENDS_SERVICE_URL}/{user_id}",
                 headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
             )
 

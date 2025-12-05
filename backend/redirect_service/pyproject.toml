@@ -60,3 +60,16 @@ ignore = [
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+[tool.pytest_env]
+AUTH_EXTERNAL_URL="http://external-service"
+AUTH_SERVICE_URL="http://auth-service:8000"
+USERS_SERVICE_URL="http://users-service:8000"
+PROFILES_SERVICE_URL="http://profiles-service:8000"
+POSTS_SERVICE_URL="http://posts-service:8000"
+FRIENDS_SERVICE_URL="http://friends-service:8000"
+INTERSERVICE_KEY="supersecret"
+COSMOSDB_ENDPOINT="https://localhost:8081"
+COSMOSDB_KEY="fake-key"
+COSMOSDB_DATABASE_NAME="testdb"
+MINIMUM_LOGGING_LEVEL="debug"
