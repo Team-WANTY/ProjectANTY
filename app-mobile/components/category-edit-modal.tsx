@@ -48,21 +48,17 @@ export const CategoryEditModal: React.FC<Props> = ({
       onRequestClose={onClose}
       animationType="none"
     >
-      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Animated.View
+        style={[styles.modalOverlay, { opacity: fadeAnim }]}
+      >
         <Animated.View
           style={[
             styles.modalContent,
             {
               backgroundColor: theme.border,
               transform: [
-                {
-                  scale: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.95, 1],
-                  }),
-                },
+                { scale: 1 },
               ],
             },
           ]}
