@@ -100,27 +100,46 @@ async def get_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
 
+
 @users_router.get(
-    "/search/{partial_username}", response_model=tuple[list[str], str|None], tags=["users"]
+    "/search/{partial_username}",
+    response_model=tuple[list[str], str | None],
+    tags=["users"],
 )
 async def get_user_ids_given_username_part(
-    partial_username:str,
-    max_items:int,
-    continuation_token:str,
-    users_service: UserService = Depends(get_users_service),
-    current_user = Depends(get_current_user),
+    partial_username: str,
+    max_items: int,
+    continuation_token: str,
+    users_service: UsersService = Depends(get_users_service),
+    current_user=Depends(get_current_user),
 ):
     try:
-        return await users_service.get_user_ids_given_username_part(partial_username, max_items, continuation_token)
+        logger.debug(
+            f"User {current_user.id} is looking for usernames like: {partial_username}"
+        )  # using current user to avoid error
+        return await users_service.get_user_ids_given_username_part(
+            partial_username, max_items, continuation_token
+        )
     except RecordNotFoundError:
-        logger.error(f"Error getting user IDs from partial username '{partial_username}': not found")
+        logger.error(
+            f"Error getting user IDs from partial username '{partial_username}': not found"
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     except GeneralQueryError:
-        logger.error(f"Error getting user IDs from partial username '{partial_username}': query error")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Query error")
+        logger.error(
+            f"Error getting user IDs from partial username '{partial_username}': query error"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Query error"
+        )
     except Exception as e:
-        logger.error(f"Error getting user IDs from partial username '{partial_username}', unexpected: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error")
+        logger.error(
+            f"Error getting user IDs from partial username '{partial_username}', unexpected: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
+
 
 @users_router.get(
     "/username/{username}", response_model=UserInDB, tags=["interservice"]

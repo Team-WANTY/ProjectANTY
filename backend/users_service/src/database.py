@@ -64,11 +64,17 @@ class UsersDB:
             logger.error(f"Error getting user with ID '{user_id}', unexpected: {e}")
             raise GeneralQueryError()
 
-    async def get_user_ids_given_username_part(self, partial_username:str, max_items:int, continuation_token:str) -> str:
+    async def get_user_ids_given_username_part(
+        self, partial_username: str, max_items: int, continuation_token: str
+    ) -> tuple[list[str], str]:
         query = "SELECT c.id FROM c WHERE CONTAINS(c.username, @partial)"
-        parameters: list[dict[str, object]] = [{"name": "@partial", "value": partial_username}]
+        parameters: list[dict[str, object]] = [
+            {"name": "@partial", "value": partial_username}
+        ]
         try:
-            logger.debug(f"Trying to get user ID from partial username: '{partial_username}'")
+            logger.debug(
+                f"Trying to get user ID from partial username: '{partial_username}'"
+            )
             result_iterable = self.container.query_items(
                 query=query,
                 parameters=parameters,
@@ -78,7 +84,6 @@ class UsersDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                async for id in page:
                 items: list[str] = [id async for id in page]
                 break
 
@@ -87,7 +92,18 @@ class UsersDB:
             if items is None:
                 raise RecordNotFoundError()
             return items, new_cont
-        except:
+        except RecordNotFoundError as e:
+            raise e
+        except exceptions.CosmosResourceNotFoundError:
+            logger.error(
+                f"Error trying to get user IDs with partial username '{partial_username}': not found"
+            )
+            raise RecordNotFoundError()
+        except Exception as e:
+            logger.error(
+                f"Error trying to get user IDs with partial username '{partial_username}', unexpected: {e}"
+            )
+            raise GeneralQueryError()
 
     async def get_user_by_username(self, username: str) -> UserInDB:
         """Get user by username"""
