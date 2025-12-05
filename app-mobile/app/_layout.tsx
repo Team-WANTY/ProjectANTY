@@ -1,6 +1,14 @@
+import React, { useState, createContext, useContext } from "react";
+import Notifications from "@/components/notifications";
 import { Stack } from "expo-router";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import DevMenu from "@/components/DevMenu";
+import { HeaderBar } from "@/components/header-bar";
+
+// Context to provide notification modal handler
+const NotificationContext = createContext({ showNotifications: () => {} });
+export const useNotificationModal = () => useContext(NotificationContext);
 
 function ThemedStack() {
   const { themeName } = useTheme();
@@ -23,10 +31,21 @@ function ThemedStack() {
 }
 
 export default function RootLayout() {
+  const [notifVisible, setNotifVisible] = useState(false);
+  const showNotifications = () => setNotifVisible(true);
+  const hideNotifications = () => setNotifVisible(false);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <ThemedStack />
+        <NotificationContext.Provider value={{ showNotifications }}>
+          <>
+            <ThemedStack />
+            <DevMenu />
+            {/* Render Notifications last so it is always on top */}
+            <Notifications visible={notifVisible} onClose={hideNotifications} />
+          </>
+        </NotificationContext.Provider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

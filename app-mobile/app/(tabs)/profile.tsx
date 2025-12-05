@@ -29,6 +29,7 @@ import { EditProfileModal} from "@/components/profile-edit-modal"
 import { changeAvatar } from "@/services/actions/avatar-update";
 import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
 import { useFriendsStore} from "@/services/stores/friends-store"
+import { useNotificationModal } from "@/app/_layout";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
     const { theme } = useTheme();
     const router = useRouter();
     const styles = getStyles(theme);
+    const { showNotifications } = useNotificationModal();
     const insets = useSafeAreaInsets();
 
     // Pull user and profile from Zustand
@@ -229,7 +231,7 @@ export default function ProfileScreen() {
                 <HeaderBar
                     title="Home"
                     showTitle={false}
-                    onNotificationPress={() => {}}
+                    onNotificationPress={showNotifications}
                     onSettingsPress={() => router.push("../settings")}
                 />
 

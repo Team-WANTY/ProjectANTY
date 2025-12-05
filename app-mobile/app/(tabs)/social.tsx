@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import FriendActivityItem from "@/components/friend-activity";
+import { useNotificationModal } from "@/app/_layout";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -89,6 +90,8 @@ export default function SocialPage() {
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [commentText, setCommentText] = useState("");
 
+    const { showNotifications } = useNotificationModal();
+
     const handleToggleLike = (id: string) => {
         setLikedItems((prev) =>
             prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -157,7 +160,7 @@ export default function SocialPage() {
             <HeaderBar
                 title="Social"
                 showTitle={true}
-                onNotificationPress={() => { /* navigate to notifications */ }}
+                onNotificationPress={showNotifications}
                 onSettingsPress={() => { /* navigate to settings */ }}
             />
 
