@@ -14,7 +14,7 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.users import UserInDB, UserBase
+from shared.models.users import UserBase, UserInDB
 from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
