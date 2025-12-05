@@ -35,10 +35,24 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
     const insets = useSafeAreaInsets();
     const { showNotifications } = useNotificationModal();
 
-    // The header uses the light background color from the blue or dark theme
     const barColor = theme.border;
-    // The icons and text use the main dark color for contrast
     const contentColor = theme.background;
+
+    const handleLeftPress = () => {
+        if (showBack) {
+            if (onBackPress) {
+                onBackPress();
+            }
+            return;
+        }
+
+        // default: notifications behavior
+        if (onNotificationPress) {
+            onNotificationPress();
+        } else {
+            showNotifications();
+        }
+    };
 
     return (
         <View
@@ -53,7 +67,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             {/* LEFT: back arrow OR notification bell */}
             <TouchableOpacity
                 style={styles.iconButton}
-                onPress={onNotificationPress || showNotifications}
+                onPress={handleLeftPress}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
                 {showBack ? (
@@ -85,8 +99,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </View>
     );
 };
-
-// --- STYLES ---
 
 const styles = StyleSheet.create({
     headerBar: {
