@@ -35,14 +35,14 @@ const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentP
                 >
                     <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
                     {commentsCount > 0 && (
-                        <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}>
-                            <Text style={[styles.commentBadgeText, { color: theme.background }]}>
+                        <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
+                            <Text style={[styles.commentBadgeText, { color: theme.background }]}> 
                                 {commentsCount}
                             </Text>
                         </View>
                     )}
                 </TouchableOpacity>
-                <Text style={[styles.friendTime, { color: theme.background }]}>
+                <Text style={[styles.friendTime, { color: theme.background }]}> 
                     {activity.time}
                 </Text>
             </View>

@@ -9,25 +9,16 @@ import FriendActivityItem from "@/components/friend-activity";
 
 const { width } = Dimensions.get("window");
 
-// --- NEW Mock Data for Carousel ---
-const dashboardItems = [
-    { id: 1, label: "Current Task Progress", tasksDone: 4, tasksTotal: 12, percent: 33, colorKey: 'background' },
-    { id: 2, label: "Weekly Focus Score", tasksDone: 80, tasksTotal: 100, percent: 80, colorKey: 'primary' },
-    { id: 3, label: "Upcoming Deadlines", tasksDone: 3, tasksTotal: 5, percent: 60, colorKey: 'secondary' },
-];
 
-// --- Mock Data for Friend Activity (Unchanged) ---
-const friendActivities = [
-    { id: 1, name: "tinnguyen", message: "Has completed tasks 10 days in a row!", time: "2 hrs. ago", img: require("@/assets/images/default-avatar.png"), },
-    { id: 2, name: "nickfan", message: "Has logged in 20 days in a row!", time: "just now", img: require("@/assets/images/default-avatar.png"), },
-    { id: 3, name: "yunis", message: "Finished the group project!", time: "4 hrs. ago", img: require("@/assets/images/default-avatar.png"), },
-    { id: 4, name: "samantha_k", message: "Reached a new productivity score of 85!", time: "Yesterday", img: require("@/assets/images/default-avatar.png"), },
-    { id: 5, name: "david_a", message: "Completed a focus session of 60 minutes!", time: "1 day ago", img: require("@/assets/images/default-avatar.png"), },
-    { id: 6, name: "emily_c", message: "Set a new goal for fitness tracking.", time: "2 days ago", img: require("@/assets/images/default-avatar.png"), },
-];
+import { useTasksStore } from "@/services/stores/tasks-store";
 
 // --- CircularProgress Component (Updated to accept dynamic color) ---
-const CircularProgress = ({ percent, theme, colorKey }) => {
+type CircularProgressProps = {
+    percent: number;
+    theme: any;
+    colorKey: string;
+};
+const CircularProgress = ({ percent, theme, colorKey }: CircularProgressProps) => {
     const size = 80;
     const strokeWidth = 8;
     // Use the theme property for the circle color (e.g., theme.background, theme.primary, etc.)
@@ -44,7 +35,17 @@ const CircularProgress = ({ percent, theme, colorKey }) => {
 };
 
 // --- Dashboard Card Component (New component for carousel item) ---
-const DashboardCard = ({ item, theme }) => {
+type DashboardCardProps = {
+    item: {
+        label: string;
+        tasksDone: number;
+        tasksTotal: number;
+        percent: number;
+        colorKey: string;
+    };
+    theme: any;
+};
+const DashboardCard = ({ item, theme }: DashboardCardProps) => {
     // Determine text based on the card data
     const tasksText = `${item.tasksDone}/${item.tasksTotal} Tasks`;
     const progressText = item.tasksTotal === 100 ? `${item.label}` : 'Done';
@@ -62,30 +63,31 @@ const DashboardCard = ({ item, theme }) => {
 };
 
 export default function Home() {
+        // TODO: Replace with real friend activity data from your backend or store
+        const friendActivities: any[] = [];
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
     const containerBackgroundColor = theme.background;
     const router = useRouter();
+    const tasks = useTasksStore((s) => s.tasks);
 
-    const [likedActivities, setLikedActivities] = useState({});
-    const [activeIndex, setActiveIndex] = useState(0); // State to track visible carousel card
-
-    const handleToggleLike = (id) => {
-        setLikedActivities(prev => ({
-            ...prev,
-            [id]: !prev[id],
-        }));
-    };
-
-    // Handler to update the active index when the carousel scrolls
-    const handleScroll = (event) => {
-        const xOffset = event.nativeEvent.contentOffset.x;
-        const index = Math.round(xOffset / (width * 0.9 + 20)); // Card width + margin
-        setActiveIndex(index);
-    };
+    // Calculate today's completion rate
+    const today = new Date();
+    const todayTasks = tasks.filter((t) => {
+        if (!t.due_date) return false;
+        const d = new Date(t.due_date * 1000);
+        return (
+            d.getFullYear() === today.getFullYear() &&
+            d.getMonth() === today.getMonth() &&
+            d.getDate() === today.getDate()
+        );
+    });
+    const completedCount = todayTasks.filter((t) => t.completed).length;
+    const totalCount = todayTasks.length;
+    const percent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
     return (
-        <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
+        <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}> 
             {/* Header Bar */}
             <HeaderBar
                 title="Home"
@@ -98,53 +100,45 @@ export default function Home() {
             >
                 {/* Dashboard Section Title */}
                 <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Dashboard</Text>
-                {/* 1 & 2. Horizontal ScrollView for Carousel */}
-                <ScrollView
-                    horizontal
-                    pagingEnabled // Snaps to card boundaries
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                    contentContainerStyle={styles.carouselContainer}
-                >
-                    {dashboardItems.map((item, index) => (
-                        <DashboardCard key={item.id} item={item} theme={theme} />
-                    ))}
-                </ScrollView>
-                {/* 3. Dynamic Carousel Dots */}
-                <>
-                  <View style={styles.swiperDotsContainer}>
-                      {dashboardItems.map((_, index) => (
-                          <View
-                              key={index}
-                              style={[
-                                  styles.dot,
-                                  {
-                                      backgroundColor: index === activeIndex ? theme.text : theme.border,
-                                      opacity: index === activeIndex ? 1 : 0.5,
-                                  }
-                              ]}
-                          />
-                      ))}
-                  </View>
-                  {/* End Dynamic Carousel Dots */}
-                  {/* Friend Activity Section Title */}
-                  <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Friend Activity</Text>
-                  {/* Friend Activity Feed */}
-                  <View style={styles.friendActivityList}>
-                      {friendActivities.map((activity) => (
-                          <FriendActivityItem
-                              key={activity.id}
-                              activity={activity}
-                              theme={theme}
-                              isLiked={!!likedActivities[activity.id]}
-                              onToggleLike={handleToggleLike}
-                          />
-                      ))}
-                  </View>
-                </>
-        </ScrollView>
-    </View>
+                {/* Only show today's completion rate card */}
+                <View style={styles.carouselContainer}>
+                    <DashboardCard
+                        item={{
+                            label: "Today's Completion Rate",
+                            tasksDone: completedCount,
+                            tasksTotal: totalCount,
+                            percent,
+                            colorKey: 'background',
+                        }}
+                        theme={theme}
+                    />
+                </View>
+                {/* Friend Activity Section Title */}
+                <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Friend Activity</Text>
+                {/* Friend Activity Feed or Empty State */}
+                <View style={styles.friendActivityList}>
+                    {friendActivities.length === 0 ? (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
+                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
+                                There are no friends activity. Add friends to see what they've been up to!
+                            </Text>
+                        </View>
+                    ) : (
+                        friendActivities.map((activity: any) => (
+                            <FriendActivityItem
+                                key={activity.id}
+                                activity={activity}
+                                theme={theme}
+                                isLiked={false}
+                                onToggleLike={() => {}}
+                                onCommentPress={() => {}}
+                                commentsCount={activity.commentsCount || 0}
+                            />
+                        ))
+                    )}
+                </View>
+            </ScrollView>
+        </View>
     );
 }
 
