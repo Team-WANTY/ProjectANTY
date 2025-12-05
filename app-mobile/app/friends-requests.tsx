@@ -350,7 +350,10 @@ const FriendRequestsScreen: React.FC = () => {
 
   const handleViewProfile = (user: FriendUserInfo) => {
     console.log("[FriendRequests] View profile:", user.id);
-    // router.push(`/profile/${id}`); // later
+    router.push({
+      pathname: "/profile/[userId]",
+      params: {userId: user.id},
+    });
   };
 
   const handleAccept = async (req: DisplayRequest) => {

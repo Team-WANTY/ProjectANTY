@@ -219,7 +219,10 @@ export default function FriendsScreen() {
     const handleViewProfile = (userId: string) => {
         // Navigate to friend's profile - implement when backend is ready
         console.log("View profile:", userId);
-        // router.push(`/profile/${friendId}`); ?
+        router.push({
+            pathname: "/profile/[userId]",
+            params: {userId},
+        });
     };
 
     const handleViewFriendRequests = () => {
@@ -228,7 +231,7 @@ export default function FriendsScreen() {
     };
 
     const openAddFriendModal = () => {
-        setAddFriendModalVisible(true);
+        setAddFriendModalVisible(true); 
         RNAnimated.timing(fadeAnim, {
             toValue: 1,
             duration: 200,
