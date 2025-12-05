@@ -12,12 +12,14 @@ class Post(BaseModel):
     created_at: datetime
     updated_at: datetime
     image_ids: list[str] = []
+    allow_comments:bool
 
 
 class PostCreate(BaseModel):
     creator_id: str
     text: str
     image_ids: list[str] = []
+    allow_comments:bool
 
     def to_post(self) -> """Post""":
         return Post(
