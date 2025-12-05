@@ -86,23 +86,18 @@ export default function Home() {
 
     return (
         <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
-
             {/* Header Bar */}
             <HeaderBar
                 title="Home"
                 showTitle={false}
-                onNotificationPress={() => { /* navigation.navigate('Notifications') */ }}
                 onSettingsPress={() => { router.push("../settings") }}
             />
-
             {/* Content ScrollView (main vertical scroll) */}
             <ScrollView
-                // Remove the inline style and put it back in contentContainerStyle for better practice
                 contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}
             >
                 {/* Dashboard Section Title */}
                 <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Dashboard</Text>
-
                 {/* 1 & 2. Horizontal ScrollView for Carousel */}
                 <ScrollView
                     horizontal
@@ -116,41 +111,40 @@ export default function Home() {
                         <DashboardCard key={item.id} item={item} theme={theme} />
                     ))}
                 </ScrollView>
-
                 {/* 3. Dynamic Carousel Dots */}
-                <View style={styles.swiperDotsContainer}>
-                    {dashboardItems.map((_, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                styles.dot,
-                                {
-                                    backgroundColor: index === activeIndex ? theme.text : theme.border,
-                                    opacity: index === activeIndex ? 1 : 0.5,
-                                }
-                            ]}
-                        />
-                    ))}
-                </View>
-
-                {/* Friend Activity Section Title */}
-                <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Friend Activity</Text>
-
-                {/* Friend Activity Feed */}
-                <View style={styles.friendActivityList}>
-                    {friendActivities.map((activity) => (
-                        <FriendActivityItem
-                            key={activity.id}
-                            activity={activity}
-                            theme={theme}
-                            isLiked={!!likedActivities[activity.id]}
-                            onToggleLike={handleToggleLike}
-                        />
-                    ))}
-                </View>
-            </ScrollView>
-
-        </View>
+                <>
+                  <View style={styles.swiperDotsContainer}>
+                      {dashboardItems.map((_, index) => (
+                          <View
+                              key={index}
+                              style={[
+                                  styles.dot,
+                                  {
+                                      backgroundColor: index === activeIndex ? theme.text : theme.border,
+                                      opacity: index === activeIndex ? 1 : 0.5,
+                                  }
+                              ]}
+                          />
+                      ))}
+                  </View>
+                  {/* End Dynamic Carousel Dots */}
+                  {/* Friend Activity Section Title */}
+                  <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Friend Activity</Text>
+                  {/* Friend Activity Feed */}
+                  <View style={styles.friendActivityList}>
+                      {friendActivities.map((activity) => (
+                          <FriendActivityItem
+                              key={activity.id}
+                              activity={activity}
+                              theme={theme}
+                              isLiked={!!likedActivities[activity.id]}
+                              onToggleLike={handleToggleLike}
+                          />
+                      ))}
+                  </View>
+                </>
+        </ScrollView>
+    </View>
     );
 }
 
