@@ -109,7 +109,7 @@ async def get_user(
 async def get_user_ids_given_username_part(
     partial_username: str,
     max_items: int,
-    continuation_token: str,
+    continuation_token: str | None = None,
     users_service: UsersService = Depends(get_users_service),
     current_user=Depends(get_current_user),
 ):
