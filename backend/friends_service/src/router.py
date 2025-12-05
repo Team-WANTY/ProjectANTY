@@ -57,7 +57,7 @@ async def request_friendship(
 
 
 @friends_router.get(
-    "/incoming", tags=["friend_requests"], response_model=FriendListResponse
+    "/incoming", tags=["friend_requests"], response_model=tuple[list[str], str]
 )
 async def list_incoming(
     limit: int = Query(default=10, ge=1, le=200),
@@ -69,8 +69,7 @@ async def list_incoming(
         logger.debug(
             f"Trying to get incoming friend requests for user with ID '{me.id}'"
         )
-        requests, cont = await service.list_incoming(me, limit, continuation)
-        return FriendListResponse(friends=requests, continuationToken=cont)
+        return await service.list_incoming(me, limit, continuation)
     except RecordNotFoundError:
         logger.error(
             f"Error getting incoming friend requests for user with ID '{me.id}': no requests found"
@@ -89,7 +88,7 @@ async def list_incoming(
 
 
 @friends_router.get(
-    "/outgoing", tags=["friend_requests"], response_model=FriendListResponse
+    "/outgoing", tags=["friend_requests"], response_model=tuple[list[str],str]
 )
 async def list_outgoing(
     limit: int = Query(default=10, ge=1, le=200),
@@ -101,9 +100,7 @@ async def list_outgoing(
         logger.debug(
             f"Trying to get outgoing friend requests for user with ID '{me.id}'"
         )
-        requests, cont = await service.list_outgoing(me, limit, continuation)
-        logger.debug("Returning list of requests")
-        return FriendListResponse(friends=requests, continuationToken=cont)
+        return await service.list_outgoing(me, limit, continuation)
     except RecordNotFoundError:
         logger.error(
             f"Error getting outgoing friend requests for user with ID '{me.id}': no requests found"
@@ -121,7 +118,7 @@ async def list_outgoing(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@friends_router.get("/", tags=["friendships"], response_model=FriendListResponse)
+@friends_router.get("/", tags=["friendships"], response_model=tuple[list[str],str])
 async def list_friendships(
     limit: int = Query(default=10, ge=1, le=200),
     continuation: str | None = None,
@@ -130,8 +127,7 @@ async def list_friendships(
 ):
     try:
         logger.debug(f"Trying to get all friendships for user with ID '{me.id}'")
-        items, cont = await service.list_friendships(me, limit, continuation)
-        return FriendListResponse(friends=items, continuationToken=cont)
+        return await service.list_friendships(me, limit, continuation)
     except RecordNotFoundError:
         logger.error(
             f"Error getting all friendships for user with ID '{me.id}': no friendships found"

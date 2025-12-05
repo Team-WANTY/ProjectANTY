@@ -72,7 +72,7 @@ async def get_post_by_id(
 
 
 @posts_router.get(
-    "/user/{user_id}", response_model=tuple[list[str], str | None], tags=["posts"]
+    "/user/{user_id}", response_model=tuple[list[str], str], tags=["posts"]
 )
 async def get_users_post_ids(
     user_id: str,
@@ -96,7 +96,7 @@ async def get_users_post_ids(
 
 
 @posts_router.get(
-    "/relevant/{user_id}", response_model=tuple[list[str], str | None], tags=["posts"]
+    "/relevant/{user_id}", response_model=tuple[list[str], str], tags=["posts"]
 )
 async def get_users_relevant_post_ids(
     user_id: str,

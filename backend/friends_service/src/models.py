@@ -16,8 +16,3 @@ class Friendship(BaseModel):
     status: FriendshipStatus = FriendshipStatus.PENDING
     created_at: datetime
     updated_at: datetime
-
-
-class FriendListResponse(BaseModel):
-    friends: list[Friendship]
-    continuationToken: str | None = None

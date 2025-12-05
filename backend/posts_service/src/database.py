@@ -67,7 +67,7 @@ class PostsDB:
     ):
         # get all post ids from user, sorted in descending order of creation
         query = """
-            SELECT * FROM c
+            SELECT c.id FROM c
             WHERE c.creator_id = @user_id
             ORDER BY c.created_at DESC
         """
@@ -86,21 +86,19 @@ class PostsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [
-                    Post.model_validate(i, extra="ignore").id async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Error getting post IDs of user with ID '{user_id}': {e}")
             raise GeneralQueryError()
@@ -113,7 +111,7 @@ class PostsDB:
     ):
         # get all post ids from user and friends, sorted in descending order of creation
         query = """
-            SELECT * FROM c
+            SELECT c.id FROM c
             WHERE ARRAY_CONTAINS(@user_ids, c.creator_id)
             ORDER BY c.created_at DESC
         """
@@ -131,21 +129,19 @@ class PostsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [
-                    Post.model_validate(i, extra="ignore").id async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(
                 f"Error relevant posts of user with ID'{relevant_user_ids[0]}': {e}"
@@ -160,7 +156,7 @@ class PostsDB:
         continuation_token: str | None,
     ):
         query = """
-            SELECT * FROM c
+            SELECT c.id FROM c
             WHERE ARRAY_CONTAINS(@user_ids, c.creator_id) AND c.created_at >= @timestamp
             ORDER BY c.created_at ASC
         """
@@ -179,21 +175,19 @@ class PostsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [
-                    Post.model_validate(i, extra="ignore").id async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(
                 f"Error getting relevant posts of user with ID '{relevant_user_ids[0]}' after timestamp '{timestamp}': {e}"

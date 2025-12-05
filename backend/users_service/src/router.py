@@ -101,7 +101,7 @@ async def get_user(
         )
 
 @users_router.get(
-    "/search/{partial_username}", response_model=tuple[list[str], str|None], tags=["users"]
+    "/search/{partial_username}", response_model=tuple[list[str], str], tags=["users"]
 )
 async def get_user_ids_given_username_part(
     partial_username:str,
