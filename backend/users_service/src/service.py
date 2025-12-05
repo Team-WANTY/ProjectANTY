@@ -12,7 +12,6 @@ from shared.simple_logging import logger
 
 from src.database import UsersDB
 from src.models import UserCreate, UserUpdate
-from src.settings import settings
 
 
 class UsersService:
@@ -44,7 +43,7 @@ class UsersService:
         )
         async with AsyncClient() as client:
             response = await client.post(
-                f"{settings.PROFILES_SERVICE_URL}/{new_user_id}",
+                f"{shared_settings.PROFILES_SERVICE_URL}/{new_user_id}",
                 headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
             )
             if response.status_code != 201:
