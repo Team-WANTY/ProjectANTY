@@ -46,9 +46,9 @@ class FriendshipsDB:
             )
             raise RecordCreationError()
 
-    async def find_friendship(self, user_id: str, friend_id: str) -> Friendship:
+    async def find_friendship(self, user_id: str, friend_id: str) -> str:
         query = (
-            "SELECT * FROM c "
+            "SELECT c.id FROM c "
             "WHERE (c.from_user_id = @user AND c.to_user_id = @friend) OR (c.to_user_id = @user AND c.from_user_id = @friend)"
             "ORDER BY c.created_at DESC"
         )
@@ -60,7 +60,7 @@ class FriendshipsDB:
             async for item in self.container.query_items(
                 query=query, parameters=params
             ):
-                return Friendship.model_validate(item, extra="ignore")
+                return item
 
             raise RecordNotFoundError()
 
@@ -94,10 +94,10 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str]:
         # List friends for a given user_id with pagination.
         query = (
-            "SELECT * FROM c "
+            "SELECT c.id FROM c "
             "WHERE c.from_user_id = @user OR c.to_user_id = @user "
             "ORDER BY c.created_at DESC"
         )
@@ -113,21 +113,21 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[Friendship] = [
-                    Friendship.model_validate(i, extra="ignore") async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(f"Error listing friendships of user with ID '{user_id}': {e}")
             raise GeneralQueryError()
@@ -138,7 +138,7 @@ class FriendshipsDB:
     ):
         # List friends for a given user_id with pagination.
         query = (
-            "SELECT * FROM c "
+            "SELECT c.from_user_id, c.to_user_id, c.created_at FROM c "
             "WHERE c.from_user_id = @user OR c.to_user_id = @user "
             "ORDER BY c.created_at DESC"
         )
@@ -151,8 +151,11 @@ class FriendshipsDB:
             )
 
             async for item in result_iterable:
-                fs = Friendship.model_validate(item, extra="ignore")
-                yield fs.to_user_id if fs.from_user_id == user_id else fs.from_user_id
+                if item["from_user_id"] == user_id:
+                    yield item["to_user_id"]
+                else:
+                    yield item["from_user_id"]
+
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
@@ -164,10 +167,10 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str]:
         # List friends for a given user_id with pagination.
         query = (
-            "SELECT * FROM c "
+            "SELECT c.id FROM c "
             "WHERE c.to_user_id = @user and c.status = @status "
             "ORDER BY c.created_at DESC"
         )
@@ -185,21 +188,21 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[Friendship] = [
-                    Friendship.model_validate(i, extra="ignore") async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError
         except Exception as e:
             logger.error(
                 f"Error listing incoming requests for user with ID '{user_id}': {e}"
@@ -211,10 +214,10 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[Friendship], str | None]:
+    ) -> tuple[list[str], str]:
         # List friends for a given user_id with pagination.
         query = (
-            "SELECT * FROM c "
+            "SELECT c.id FROM c "
             "WHERE c.from_user_id = @user and c.status = @status "
             "ORDER BY c.created_at DESC"
         )
@@ -233,22 +236,22 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[Friendship] = [
-                    Friendship.model_validate(i, extra="ignore") async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
 
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(
                 f"Error listing outgoing requests for user with ID '{user_id}': {e}"

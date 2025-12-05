@@ -69,7 +69,7 @@ class CommentsDB:
     ):
         # get all post ids from user, sorted in descending order of creation
         query = """
-            SELECT * FROM c
+            SELECT c.id FROM c
             WHERE c.parent_content_id = @content_id
             ORDER BY c.created_at DESC
         """
@@ -90,21 +90,19 @@ class CommentsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [
-                    Comment.model_validate(i, extra="ignore").id async for i in page
-                ]
+                items: list[str] = [id async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
             if items is None:
-                return [], None
+                raise RecordNotFoundError()
             return items, new_cont
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
             # No pages at all — just return empty with no continuation
-            return [], None
+            raise RecordNotFoundError()
         except Exception as e:
             logger.error(
                 f"Error getting comments under content with ID '{parent_content_id}': {e}"
