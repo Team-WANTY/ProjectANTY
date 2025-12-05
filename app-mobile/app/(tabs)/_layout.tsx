@@ -14,9 +14,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      {showNotifications && (
-        <Notifications onClose={toggleNotifications} />
-      )}
+      <Notifications visible={showNotifications} onClose={toggleNotifications} />
 
       <Tabs
         screenOptions={{

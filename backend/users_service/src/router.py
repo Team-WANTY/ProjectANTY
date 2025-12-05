@@ -102,16 +102,21 @@ async def get_user(
 
 
 @users_router.get(
-    "/search/{partial_username}", response_model=tuple[list[str], str], tags=["users"]
+    "/search/{partial_username}",
+    response_model=tuple[list[str], str | None],
+    tags=["users"],
 )
 async def get_user_ids_given_username_part(
     partial_username: str,
     max_items: int,
     continuation_token: str,
-    users_service: UserService = Depends(get_users_service),
+    users_service: UsersService = Depends(get_users_service),
     current_user=Depends(get_current_user),
 ):
     try:
+        logger.debug(
+            f"User {current_user.id} is looking for usernames like: {partial_username}"
+        )  # using current user to avoid error
         return await users_service.get_user_ids_given_username_part(
             partial_username, max_items, continuation_token
         )

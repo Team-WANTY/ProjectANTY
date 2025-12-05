@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
+import { useNotificationModal } from "@/app/_layout";
 
 import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
 import { useUserStore } from "@/services/stores/users-store";
@@ -241,6 +242,7 @@ export default function TasksScreen() {
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { showNotifications } = useNotificationModal();
 
     const [date, setDate] = useState(new Date());
     const display = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
@@ -650,7 +652,7 @@ export default function TasksScreen() {
             <HeaderBar
                 title="Tasks"
                 showTitle={false}
-                onNotificationPress={() => { }}
+                onNotificationPress={showNotifications}
                 onSettingsPress={() => {
                     router.push("../settings");
                 }}

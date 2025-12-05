@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// NOTE: Ensure your useTheme hook is accessible to this component
 import { useTheme } from '@/context/ThemeContext';
+import { useNotificationModal } from '@/app/_layout';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +26,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 }) => {
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
+    const { showNotifications } = useNotificationModal();
 
     // The header uses the light background color from the blue or dark theme
     const barColor = theme.border;
@@ -44,7 +45,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         >
             <TouchableOpacity
                 style={styles.iconButton}
-                onPress={onNotificationPress}
+                onPress={onNotificationPress || showNotifications}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
                 <Ionicons name="notifications-outline" size={28} color={contentColor} />
