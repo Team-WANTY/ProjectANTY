@@ -20,6 +20,29 @@ class FriendsService:
             pass
         await self.db.request_friendship(me.id, requestee_id)
 
+    async def get_by_id(self, friendship_id: str, getter:UserInDB):
+        friendship = self.db.get_by_id(friendship_id)
+        authorized = False
+        try:
+            await authorize_operation(getter, friendship.from_user_id)
+            authorized = True
+        except AuthError:
+            pass
+        try:
+            await authorize_operation(getter, friendship.to_user_id)
+            authorized = True
+        except AuthError:
+            pass
+
+        if authorized:
+            return friendship
+        else:
+            raise AuthError()
+
+    async find_friendship(self, user_id: str, friend_id:str, finder:UserInDB):
+        await authorize_operation(finder, user_id)
+        return await find_friendship(self, user_id: str, friend_id: str)
+    
     async def list_outgoing(
         self, me: UserInDB, limit: int, continuation: str | None
     ) -> tuple[list[str], str | None]:
