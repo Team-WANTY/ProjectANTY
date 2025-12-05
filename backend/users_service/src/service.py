@@ -12,7 +12,6 @@ from shared.simple_logging import logger
 
 from src.database import UsersDB
 from src.models import UserCreate, UserUpdate
-from src.settings import settings
 
 
 class UsersService:

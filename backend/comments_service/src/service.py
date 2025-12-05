@@ -1,12 +1,13 @@
-from shared.auth import authorize_operation
-from shared.models.users import UserInDB
-from shared.simple_logging import logger
 from httpx import AsyncClient
+from shared.auth import authorize_operation
+from shared.exceptions.db import RecordCreationError
+from shared.models.users import UserInDB
+from shared.settings import settings as shared_settings
+from shared.simple_logging import logger
 
 from src.database import CommentsDB
 from src.models import CommentCreate, CommentUpdate, ContentType
-from shared.settings import settings as shared_settings
-from shared.exceptions.db import GeneralQueryError, RecordCreationError
+
 
 class CommentsService:
     def __init__(self, comments_db: CommentsDB):
@@ -17,16 +18,21 @@ class CommentsService:
             f"Starting to create comment: {new_comment.model_dump()}, starting with authorization"
         )
         await authorize_operation(creator, new_comment.creator_id)
-        #if comment is on post, make request to post service to see if comments are allowed
+        # if comment is on post, make request to post service to see if comments are allowed
         match new_comment.parent_content_type:
             case ContentType.POST:
                 async with AsyncClient() as client:
                     response = await client.get(
                         f"{shared_settings.POSTS_SERVICE_URL}/{new_comment.parent_content_id}",
-                        headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
+                        headers={
+                            "X-Interservice-Key": shared_settings.INTERSERVICE_KEY
+                        },
                     )
 
-                    if response.status_code != 200 or not response.json()["allow_comments"]:
+                    if (
+                        response.status_code != 200
+                        or not response.json()["allow_comments"]
+                    ):
                         raise RecordCreationError
 
             case ContentType.COMMENT:

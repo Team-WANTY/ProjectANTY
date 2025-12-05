@@ -8,7 +8,6 @@ from shared.simple_logging import logger
 
 from src.database import PostsDB
 from src.models import PostCreate, PostUpdate
-from src.settings import settings
 
 
 class PostsService:

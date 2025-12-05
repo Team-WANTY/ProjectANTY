@@ -10,6 +10,7 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
+    AUTH_EXTERNAL_URL: str
     AUTH_SERVICE_URL: str  # TODO temporary while auth service not deployed with DNS
     USERS_SERVICE_URL: str  # TODO temporary while users service not deployed with DNS
     PROFILES_SERVICE_URL: str
