@@ -12,6 +12,10 @@ const paths = {
   outgoing: "/friends/outgoing",
   list: "/friends",
 
+  // Single friendship + search
+  id: "/friends/id/{friendship_id}",
+  search: "/friends/search/{friend_id}",
+
   // Unfriend (by other user's ID)
   delete: "/friends/{friend_id}",
 };
@@ -27,33 +31,25 @@ function fillRequestId(tpl: string, id: string) {
   	return tpl.replace("{request_id}", encodeURIComponent(id));
 }
 
-export type FriendRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
+// helper to fill {friendship_id}
+function fillFriendshipId(tpl: string, id: string) {
+  return tpl.replace("{friendship_id}", encodeURIComponent(id));
+}
+
+export type FriendRequestStatus = "pending" | "accepted";
 export type FriendRequestCreate = {
   to_user_id: string,
 }
 
-export type FriendRequest = {
+export type Friendship = {
   id: string;
   from_user_id: string;
   to_user_id: string;
   status: FriendRequestStatus;
-  created_at: number;
-  updated_at: number;
+  created_at: Date;
+  updated_at: Date;
 };
 
-export type Friendship = {
-  id: string;
-  owner_id: string;
-  friend_id: string;
-  created_at: number;
-};
-
-export type RelationshipStatus = {
-  is_self: boolean;
-  are_friends: boolean;
-  incoming_request: FriendRequest | null;
-  outgoing_request: FriendRequest | null;
-};
 
 export type IdPage = {
   ids: string[];
@@ -61,8 +57,23 @@ export type IdPage = {
 };
 
 export const friendsApi = {
-  // friend_request
+  // POST /friends/request/{to_user_id}
   async create(toUserId: string): Promise<ApiResult<null>> {
+    if (
+      !toUserId ||
+      typeof toUserId !== "string" ||
+      toUserId === "undefined" ||
+      toUserId === "null"
+    ) {
+      console.error("[friendsApi.create] Invalid toUserId:", toUserId);
+      return {
+        ok: false,
+        status: 400,
+        message: "Invalid friend id.",
+        detail: null,
+      };
+    }
+    
     try {
       const url = `${paths.request}/${encodeURIComponent(toUserId)}`;
       const res = await api.post<void>(url);
@@ -125,7 +136,7 @@ export const friendsApi = {
     }
   },
 
-  // GET /friends/requests/outgoing
+  // GET /friends/outgoing?limit=&continuation=
   async listOutgoing(
     limit = 10,
     continuation?: string | null
@@ -290,8 +301,68 @@ export const friendsApi = {
       return { ok: false, status, message: msg, detail: data };
     }
   },
+ 
+  // GET /friends/id/{friendship_id} get friendship document
+  async getById(friendshipId: string): Promise<ApiResult<Friendship>> {
+    try {
+      const url = fillFriendshipId(paths.id, friendshipId);
+      const res = await api.get<Friendship>(url);
 
-  // DELETE /{friend_id}
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Loaded friendship",
+        data: res.data,
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      const msg =
+        status === 401
+          ? "Not authenticated"
+          : status === 404
+          ? "Friendship not found"
+          : status && status >= 500
+          ? "Server error"
+          : toMessage(data, "Failed to load friendship");
+
+      return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+  // GET /friends/search/{friend_id}
+  // Returns the friendship ID if a relationship exists between the current user and friend_id
+  async findFriendship(friendId: string): Promise<ApiResult<string>> {
+    try {
+      const url = fillFriendId(paths.search, friendId);
+      const res = await api.get<string>(url);
+
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Friendship found",
+        data: res.data,
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      const msg =
+        status === 401
+          ? "Not authenticated"
+          : status === 404
+          ? "Friendship not found"
+          : status && status >= 500
+          ? "Server error"
+          : toMessage(data, "Failed to search friendship");
+
+      return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+
+  // DELETE /friends/{friend_id}
   async unfriend(friendId: string): Promise<ApiResult<null>> {
     try {
       const res = await api.delete<void>(fillFriendId(paths.delete, friendId));

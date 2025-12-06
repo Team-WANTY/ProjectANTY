@@ -69,7 +69,7 @@ export default function FriendProfileScreen() {
 
       try {
         const [user, profile] = await Promise.all([
-          usersApi.getPublicById(userId as string),
+          usersApi.getById(userId as string),
           profileApi.getById(userId as string),
         ]);
 

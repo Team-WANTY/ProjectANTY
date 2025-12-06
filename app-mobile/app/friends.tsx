@@ -15,6 +15,7 @@ import { friendsApi, type Friendship } from "@/services/api/friends-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
 import { useFriendsStore, type DisplayFriend, type FriendUserInfo } from "@/services/stores/friends-store";
+import { useUserStore } from "@/services/stores/users-store";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -25,7 +26,7 @@ async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo>
     let avatarUrl: string | null = null;
 
     // Get username
-    const userRes = await usersApi.getPublicById(userId);
+    const userRes = await usersApi.getById(userId);
     if (userRes.ok && userRes.data) {
         username = userRes.data.username;
     }
@@ -45,19 +46,36 @@ async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo>
     return { id: userId, username, avatarUrl };
 }
 
-// Build a DisplayFriend from a friend user id
-async function enrichFriend(friendUserId: string): Promise<DisplayFriend> {
+// Build a DisplayFriend from a friendship_id
+async function enrichFriend(friendshipId: string): Promise<DisplayFriend | null> {
+    const friendshipRes = await friendsApi.getById(friendshipId);    
+    if (!friendshipRes.ok || !friendshipRes.data) {
+        console.log("[enrichFriendship] failed for", friendshipId, friendshipRes.message);
+        return null;
+    }
+
+    const friendship: Friendship = friendshipRes.data;
+    const meId = useUserStore.getState().userId;
+    if (!meId) {
+        console.warn("[enrichFriendship] missing current user id");
+        return null;
+    }
+
+    // Figure out who the other user is
+    const friendUserId =
+    friendship.from_user_id === meId
+      ? friendship.to_user_id
+      : friendship.to_user_id === meId
+      ? friendship.from_user_id
+      : friendship.to_user_id; // fallback
+
     const user = await resolveUserInfoForUserId(friendUserId);
-    const base = {
-        id: friendUserId,
-        owner_id: "",
-        friend_id: friendUserId,
-        created_at: Date.now(),
-    };
+
     return {
-        ...(base as any),
+        ...friendship,
+        friendUserId,
         user,
-    } as DisplayFriend;
+    };
 }
 
 function FriendItemWrapper({ children }: { children: React.ReactNode }) {
@@ -90,7 +108,7 @@ const FriendItem: React.FC<FriendItemProps> = ({
     const displayName = friend.user.username || "Unknown user";
     const initial = displayName[0]?.toUpperCase() ?? "?";
 
-    const handleUnfriendPress = () => { onUnfriend(friend.friend_id) };
+    const handleUnfriendPress = () => { onUnfriend(friend.friendUserId) };
 
     return (
         <View
@@ -156,16 +174,19 @@ export default function FriendsScreen() {
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
 
     // Load friends in the background
-    // mapped in friendsApi.listFriends -> IdPage { ids, continuationToken }
+    // friendsApi.listFriends returns friendship IDs
+    // hydrate each via GET /friends/id/{friendship_id}
     const loadFriends = React.useCallback(async () => {
         setErrorText(null);
         setLoading(true);
         try {
-            const res = await friendsApi.listFriends(50);
+            const res = await friendsApi.listFriends(20);
             if (res.ok && res.data) {
-                // res.data.ids are treated as *friend user IDs*
-                const enriched: DisplayFriend[] = await Promise.all(
-                    res.data.ids.map((friendUserId) => enrichFriend(friendUserId))
+                const enrichedResults = await Promise.all(
+                    res.data.ids.map((friendshipId) => enrichFriend(friendshipId))
+                );
+                const enriched: DisplayFriend[] = enrichedResults.filter(
+                    (f): f is DisplayFriend => f !== null
                 );
                 setFriends(enriched);
                 console.log("Loaded friends:", enriched.length);
@@ -180,10 +201,6 @@ export default function FriendsScreen() {
         }
     }, [setFriends]);
 
-    useEffect(() => {
-        loadFriends(); // background refresh on first mount
-    }, [loadFriends]);
-
     useFocusEffect(
         React.useCallback(() => {
             loadFriends(); // background refresh whenever the screen is focused
@@ -191,20 +208,20 @@ export default function FriendsScreen() {
     );
 
 
-    const handleUnfriend = (friendId: string) => {
+    const handleUnfriend = (friendUserId: string) => {
         // Find the friend to re-add to the store incase the API fail
         const prevFriend = friends.find(
-            (f) => f.friend_id === friendId || f.user.id === friendId
+            (f) => f.friendUserId === friendUserId || f.user.id === friendUserId
         );
 
         // Optimistically remove friend from the store
-        removeFriend(friendId);
+        removeFriend(friendUserId);
         setErrorText(null);
 
         (async () => {
             try {
                 // Call the API in the background
-                const res = await friendsApi.unfriend(friendId);
+                const res = await friendsApi.unfriend(friendUserId);
 
                 if (!res.ok) {
                     throw new Error(res.message || "Failed to unfriend.");
@@ -271,17 +288,22 @@ export default function FriendsScreen() {
             // GET other_user_id by looking up username
             const res = await usersApi.getByUsername(friendUsername.trim());
             if (!res.ok || !res.data) {
-                console.log("User not found:", res.message);
+                console.log("[handleAddFriend] looking up username failed:", res.message);
                 setAddFriendError(res.message || "User not found");
                 return;
             }
+            const friend_id = res.data;
 
-            const friend_id = res.data.id;
+            if (!friend_id || typeof friend_id !== "string") {
+                console.error("[handleAddFriend] Invalid friend_id from getByUsername:",friend_id);
+                setAddFriendError("Could not resolve that user's ID. Please try again.");
+                return;
+            }
 
-            console.log("[handleAddFriend] Sending friend request to:", friendUsername);
+            console.log("[handleAddFriend] Sending friend request:", trimmed);
 
-            // Send friend request
             const friendRes = await friendsApi.create(friend_id);
+
 
             if (!friendRes.ok) {
                 const status = friendRes.status;
@@ -302,7 +324,7 @@ export default function FriendsScreen() {
                 }
                 return;
             }
-
+            console.log("[handleAddFriend]: Request Sent Successfully");
             setAddFriendError(null);
             setFriendUsername("");
             closeAddFriendModal();
