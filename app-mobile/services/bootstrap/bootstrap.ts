@@ -6,7 +6,7 @@ import { useProfileStore } from "../stores/profiles-store";
 import { tasksApi } from "../api/tasks-api";
 import { useTasksStore } from "../stores/tasks-store";
 import { imagesApi } from "../api/image-api";
-
+import type { Task } from "../api/tasks-api";
 
 export async function loadUser() {
   const result = await usersApi.me();
@@ -61,7 +61,16 @@ export async function loadProfile(userId?: string) {
 export async function loadTasks(userId?: string){
   const id = userId ?? useUserStore.getState().userId;
   if (!id) return null;
-  const result = await tasksApi.getByUserID(id,30);
+
+  // Build date range: yesterday -> tmr
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 1);
+
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 1);
+
+  const result = await tasksApi.getByUserID(id, startDate, endDate);
   if (!result.ok) {
     if (result.status === 404) {
       useTasksStore.getState().setTasks([]);
@@ -70,15 +79,40 @@ export async function loadTasks(userId?: string){
     throw new Error(result.message ?? "Failed to load tasks");
   }
 
-  const getTasks = result?.data?.tasks ?? [];
-  // map API tasks -> store tasks and add completed UI flag
-  const mapped = getTasks.map((t) => ({
-    ...t,
-    completed: false,
-  }));
+  // result.data is OccurrencesByDate: { occurrences: { "YYYY-MM-DD": [taskId, ...], ... } }
+  const occurrences = result.data?.occurrences ?? {};
 
-  useTasksStore.getState().setTasks(mapped);
-  return mapped;
+  const uniqueTaskIds = Array.from(
+    new Set(
+      Object.values(occurrences).flat() // flatten list of lists
+    )
+  );
+
+  if (uniqueTaskIds.length === 0) {
+    useTasksStore.getState().setTasks([]);
+    return [];
+  }
+
+  // Hydrate each task ID via GET /tasks/id/{task_id}
+  const taskResults = await Promise.all(
+    uniqueTaskIds.map((taskId) => tasksApi.getByID(taskId))
+  );
+
+  
+  const tasks: (Task & { completed: boolean })[] = [];
+
+  for (const res of taskResults) {
+    if (!res.ok) continue;
+    if (!res.data) continue;
+
+    tasks.push({
+      ...res.data,
+      completed: false, // UI flag
+    });
+  }
+
+  useTasksStore.getState().setTasks(tasks);
+  return tasks;
 }
 
 export async function safeBootstrap() {

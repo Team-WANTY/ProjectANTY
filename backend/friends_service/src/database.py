@@ -1,3 +1,4 @@
+from typing import List, Optional
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from shared.db import generate_id, now_timestamp
@@ -94,14 +95,18 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
-        # List friends for a given user_id with pagination.
+    ) -> tuple[list[str], str | None]:
         query = (
-            "SELECT c.id FROM c "
-            "WHERE c.from_user_id = @user OR c.to_user_id = @user "
+            "SELECT c.from_user_id, c.to_user_id, c.status, c.created_at "
+            "FROM c "
+            "WHERE (c.from_user_id = @user OR c.to_user_id = @user) "
+            "  AND c.status = @status "
             "ORDER BY c.created_at DESC"
         )
-        params = [{"name": "@user", "value": user_id}]
+        params = [
+            {"name": "@user", "value": user_id},
+            {"name": "@status", "value": FriendshipStatus.ACCEPTED.value},
+        ]
 
         try:
             result_iterable = self.container.query_items(
@@ -110,17 +115,31 @@ class FriendshipsDB:
                 max_item_count=max_items,
             )
 
-            items = None
+            friend_user_ids: list[str] | None = None
+
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
-                break
+                friend_user_ids = []
+                async for item in page:
+                    owner_id = item["from_user_id"]
+                    friend_id = item["to_user_id"]
 
-            # Continuation token for the next page (or None if no more)
+                    other_id = friend_id if owner_id == user_id else owner_id
+
+                    if other_id not in friend_user_ids:
+                        friend_user_ids.append(other_id)
+                break  # first page only
+
             new_cont: str | None = pager.continuation_token
-            if items is None:
-                raise RecordNotFoundError()
-            return items, new_cont
+
+            if friend_user_ids is None:
+                # No pages at all: just "no friends yet"
+                return [], None
+
+            return friend_user_ids, new_cont
+
+
+
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:
@@ -167,7 +186,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT c.id FROM c "
@@ -188,7 +207,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -214,7 +233,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT c.id FROM c "
@@ -236,7 +255,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -281,6 +300,7 @@ class FriendshipsDB:
             logger.debug(
                 f"Updated friendship with ID '{friendship_id}': {updated.model_dump()}",
             )
+            return updated
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:

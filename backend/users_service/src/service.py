@@ -73,7 +73,7 @@ class UsersService:
         return user_in_db
 
     async def get_user_ids_given_username_part(
-        self, partial_username: str, max_items: int, continuation_token: str
+        self, partial_username: str, max_items: int, continuation_token: str | None = None
     ):
         return await self.db.get_user_ids_given_username_part(
             partial_username, max_items, continuation_token

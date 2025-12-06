@@ -19,7 +19,7 @@ export type NewTask = {
   description: string;
   category: string;
   repeatLabel: string;
-  dueDate: string;
+  first_relevant_date: string; // MM/DD/YYYY
 };
 
 export type Theme = {
@@ -281,7 +281,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             )}
           </View>
 
-          {/* Due Date */}
+          {/* First Relevant Date (acts as Due Date in UI) */}
           <View style={styles.inputContainer}>
             <Text style={[styles.inputLabel, { color: theme.background }]}>
               Due Date (MM/DD/YYYY)
@@ -294,9 +294,9 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   borderColor: dateError ? "#ff4d4f" : theme.background,
                 },
               ]}
-              value={newTask.dueDate}
+              value={newTask.first_relevant_date}
               onChangeText={(text) =>
-                setNewTask((prev) => ({ ...prev, dueDate: text }))
+                setNewTask((prev) => ({ ...prev, first_relevant_date: text }))
               }
               placeholder="MM/DD/YYYY"
               placeholderTextColor={theme.background + "80"}

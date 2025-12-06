@@ -19,7 +19,7 @@ from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_users_service
-from src.models import UserCreate, UserUpdate
+from src.models import UserCreate, UsernameOnly, UserUpdate
 from src.service import UsersService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
@@ -113,7 +113,7 @@ async def get_user(
 async def get_user_ids_given_username_part(
     partial_username: str,
     max_items: int,
-    continuation_token: str,
+    continuation_token: str | None = None,
     users_service: UsersService = Depends(get_users_service),
     current_user=Depends(get_current_user),
 ):
@@ -142,6 +142,30 @@ async def get_user_ids_given_username_part(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
+
+@users_router.get(
+    "/public/id/{user_id}",
+    response_model=UsernameOnly,
+    tags=["users"],
+)
+async def get_public_user_by_id(
+    user_id: str,
+    users_service: UsersService = Depends(get_users_service),
+    _current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Client-facing: return only id + username for a given user_id.
+    """
+    try:
+        user = await users_service.get_user_by_id(user_id)
+        return UsernameOnly(username=user.username)
+    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    except GeneralQueryError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal query error",
         )
 
 

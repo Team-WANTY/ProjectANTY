@@ -124,7 +124,9 @@ class TaskInDB(BaseModel):
             return d.replace(year=d.year + years, day=28)
 
     def calculate_last_relevant_date(self):
+         # One-off task (no repeat_rule) -> last = first
         if self.repeat_rule is None:
+            self.last_relevant_date = self.first_relevant_date
             return
 
         freq = self.repeat_rule.frequency
@@ -183,7 +185,10 @@ class TaskInDB(BaseModel):
                 return
 
     def generate_occurrences_in_range(self, start: date, end: date) -> list[date]:
+        # Handle one-off tasks (no repeat_rule)
         if self.repeat_rule is None:
+            if start <= self.first_relevant_date <= end:
+                return [self.first_relevant_date]
             return []
 
         freq = self.repeat_rule.frequency

@@ -19,15 +19,13 @@ import { useFriendsStore, type DisplayFriend, type FriendUserInfo } from "@/serv
 const { width: screenWidth } = Dimensions.get("window");
 
 
-// For /friends/me we assume owner_id === "me" and friend_id === "other user"
-async function resolveUserInfoForFriendship(friendship: Friendship): Promise<FriendUserInfo> {
-    const userId = friendship.friend_id;
-
+// Helpers for resolving user info from a user id
+async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo> {
     let username = "Unknown user";
     let avatarUrl: string | null = null;
 
     // Get username
-    const userRes = await usersApi.getById(userId);
+    const userRes = await usersApi.getPublicById(userId);
     if (userRes.ok && userRes.data) {
         username = userRes.data.username;
     }
@@ -47,9 +45,19 @@ async function resolveUserInfoForFriendship(friendship: Friendship): Promise<Fri
     return { id: userId, username, avatarUrl };
 }
 
-async function enrichFriendship(friendship: Friendship): Promise<DisplayFriend> {
-    const user = await resolveUserInfoForFriendship(friendship);
-    return { ...friendship, user };
+// Build a DisplayFriend from a friend user id
+async function enrichFriend(friendUserId: string): Promise<DisplayFriend> {
+    const user = await resolveUserInfoForUserId(friendUserId);
+    const base = {
+        id: friendUserId,
+        owner_id: "",
+        friend_id: friendUserId,
+        created_at: Date.now(),
+    };
+    return {
+        ...(base as any),
+        user,
+    } as DisplayFriend;
 }
 
 function FriendItemWrapper({ children }: { children: React.ReactNode }) {
@@ -148,26 +156,26 @@ export default function FriendsScreen() {
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
 
     // Load friends in the background
+    // mapped in friendsApi.listFriends -> IdPage { ids, continuationToken }
     const loadFriends = React.useCallback(async () => {
         setErrorText(null);
         setLoading(true);
         try {
             const res = await friendsApi.listFriends(50);
             if (res.ok && res.data) {
+                // res.data.ids are treated as *friend user IDs*
                 const enriched: DisplayFriend[] = await Promise.all(
-                    res.data.friends.map((f) => enrichFriendship(f))
+                    res.data.ids.map((friendUserId) => enrichFriend(friendUserId))
                 );
                 setFriends(enriched);
-                console.log("Loading friends");
-            }
-            else {
+                console.log("Loaded friends:", enriched.length);
+            } else {
                 setErrorText(res.message || "Failed to load friends");
             }
-        }
-        catch (error) {
+        } catch (error) {
+            console.log("[loadFriends] error:", error);
             setErrorText("Failed to load friends");
-        }
-        finally {
+        } finally {
             setLoading(false);
         }
     }, [setFriends]);
@@ -217,9 +225,11 @@ export default function FriendsScreen() {
     };
 
     const handleViewProfile = (userId: string) => {
-        // Navigate to friend's profile - implement when backend is ready
         console.log("View profile:", userId);
-        // router.push(`/profile/${friendId}`); ?
+        router.push({
+            pathname: "/profile/[userId]",
+            params: {userId},
+        });
     };
 
     const handleViewFriendRequests = () => {
@@ -228,7 +238,7 @@ export default function FriendsScreen() {
     };
 
     const openAddFriendModal = () => {
-        setAddFriendModalVisible(true);
+        setAddFriendModalVisible(true); 
         RNAnimated.timing(fadeAnim, {
             toValue: 1,
             duration: 200,
@@ -271,7 +281,7 @@ export default function FriendsScreen() {
             console.log("[handleAddFriend] Sending friend request to:", friendUsername);
 
             // Send friend request
-            const friendRes = await friendsApi.create({ to_user_id: friend_id });
+            const friendRes = await friendsApi.create(friend_id);
 
             if (!friendRes.ok) {
                 const status = friendRes.status;
@@ -293,8 +303,6 @@ export default function FriendsScreen() {
                 return;
             }
 
-            console.log("[handleAddFriend] Status:", friendRes.message);
-            console.log("Friend Request ID:", friendRes.data.id);
             setAddFriendError(null);
             setFriendUsername("");
             closeAddFriendModal();

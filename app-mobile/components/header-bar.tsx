@@ -9,13 +9,18 @@ const { width } = Dimensions.get('window');
 
 interface HeaderBarProps {
     /** The title to display in the center of the header (e.g., 'Dashboard', 'My Tasks') */
-    title: string;
+    title?: string; // made optional so you don't have to pass it for back-only headers
     /** Optional handler for the Notification Bell icon */
     onNotificationPress?: () => void;
     /** Optional handler for the Settings Cog icon */
     onSettingsPress?: () => void;
     /** Boolean to control if the title should be displayed. (e.g., set to false for the Dashboard screen) */
     showTitle?: boolean;
+
+    /** Show a back arrow instead of the notification + settings icons */
+    showBack?: boolean;
+    /** Handler for the back arrow press */
+    onBackPress?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -23,15 +28,31 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
     onNotificationPress,
     onSettingsPress,
     showTitle = true,
+    showBack = false,
+    onBackPress,
 }) => {
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
     const { showNotifications } = useNotificationModal();
 
-    // The header uses the light background color from the blue or dark theme
     const barColor = theme.border;
-    // The icons and text use the main dark color for contrast
     const contentColor = theme.background;
+
+    const handleLeftPress = () => {
+        if (showBack) {
+            if (onBackPress) {
+                onBackPress();
+            }
+            return;
+        }
+
+        // default: notifications behavior
+        if (onNotificationPress) {
+            onNotificationPress();
+        } else {
+            showNotifications();
+        }
+    };
 
     return (
         <View
@@ -40,35 +61,44 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 {
                     backgroundColor: barColor,
                     paddingTop: insets.top + 5,
-                }
+                },
             ]}
         >
+            {/* LEFT: back arrow OR notification bell */}
             <TouchableOpacity
                 style={styles.iconButton}
-                onPress={onNotificationPress || showNotifications}
+                onPress={handleLeftPress}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-                <Ionicons name="notifications-outline" size={28} color={contentColor} />
+                {showBack ? (
+                    <Ionicons name="arrow-back" size={28} color={contentColor} />
+                ) : (
+                    <Ionicons name="notifications-outline" size={28} color={contentColor} />
+                )}
             </TouchableOpacity>
 
-            {showTitle && (
+            {/* CENTER TITLE */}
+            {showTitle && !!title && (
                 <Text style={[styles.screenTitle, { color: contentColor }]}>
                     {title}
                 </Text>
             )}
 
-            <TouchableOpacity
-                style={styles.iconButton}
-                onPress={onSettingsPress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-                <Ionicons name="settings-outline" size={28} color={contentColor} />
-            </TouchableOpacity>
+            {/* RIGHT: settings icon OR spacer (to keep layout symmetric in back mode) */}
+            {showBack ? (
+                <View style={styles.iconButton} />
+            ) : (
+                <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={onSettingsPress}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="settings-outline" size={28} color={contentColor} />
+                </TouchableOpacity>
+            )}
         </View>
     );
 };
-
-// --- STYLES ---
 
 const styles = StyleSheet.create({
     headerBar: {
@@ -81,17 +111,15 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 15,
         width: '100%',
         zIndex: 10,
-        // The height is dynamic due to paddingBottom/Top and insets
     },
     screenTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        // Ensures the title doesn't push the icons too far apart
         position: 'absolute',
         left: 0,
         right: 0,
         textAlign: 'center',
-        bottom: 15, // Align with the bottom padding
+        bottom: 15,
     },
     iconButton: {
         padding: 5,

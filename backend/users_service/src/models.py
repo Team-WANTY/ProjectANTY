@@ -28,3 +28,6 @@ class UserCreate(BaseModel):
             is_active=True,  # assume the user is being created this shouldn't be inactive
             is_superuser=False,  # assume user being created is not a superuser
         )
+
+class UsernameOnly(BaseModel):
+    username: str

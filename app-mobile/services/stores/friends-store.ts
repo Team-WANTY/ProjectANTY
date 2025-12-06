@@ -4,11 +4,13 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { storage } from "../storage/async-storage";
 import type { Friendship } from "../api/friends-api";
 
+
 export type FriendUserInfo = {
   id: string;
   username: string;
   avatarUrl: string | null;
 };
+
 
 export type DisplayFriend = Friendship & {
   user: FriendUserInfo;
@@ -19,13 +21,13 @@ export type FriendsState = {
   friendCount: number;
   lastFriendSaveAt: number | null;
 
-  // bulk replace (GET /friends/me)
+  // Bulk replace (after fetching & enriching from /friends → ids)
   setFriends: (friends: DisplayFriend[]) => void;
 
-  // optimistic insert (accept request)
+  // Optimistic insert (e.g. after accepting a request)
   addFriend: (friend: DisplayFriend) => void;
 
-  // remove by friend user id (friend_id)
+  // Remove by friend user id (friend_id or user.id)
   removeFriend: (friendUserId: string) => void;
 
   clear: () => void;
@@ -48,7 +50,9 @@ export const useFriendsStore = create<FriendsState>()(
       addFriend: (friend) =>
         set((state) => {
           const exists = state.friends.some(
-            (f) => f.friend_id === friend.friend_id
+            (f) =>
+              f.friend_id === friend.friend_id ||
+              f.user.id === friend.user.id
           );
           if (exists) return state;
 

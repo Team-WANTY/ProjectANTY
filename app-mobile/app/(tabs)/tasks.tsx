@@ -24,6 +24,7 @@ import { CategoryEditModal } from "@/components/category-edit-modal";
 
 const { width } = Dimensions.get("window");
 
+// Date Helpers
 
 // MM/DD/YYYY -> valid?
 const isValidDateFormat = (dateStr: string) => {
@@ -39,25 +40,43 @@ const isValidDateFormat = (dateStr: string) => {
     );
 };
 
-// MM/DD/YYYY -> Unix timestamp (seconds)
-const dateStringToUnix = (dateStr: string): number => {
+// MM/DD/YYYY -> Date | null
+const parseInputDate = (dateStr: string): Date | null => {
+    if (!isValidDateFormat(dateStr)) return null;
     const [month, day, year] = dateStr.split("/").map(Number);
-    const d = new Date(year, month - 1, day, 0, 0, 0, 0);
-    return Math.floor(d.getTime() / 1000);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
 };
 
-// Unix timestamp (seconds) -> nice label
-const unixToDisplayDate = (ts?: number | null): string => {
-    if (!ts) return "No due date";
-    const d = new Date(ts * 1000);
+// Backend first_relevant_date (YYYY-MM-DD string or Date) -> Date | null
+const normalizeFirstRelevantDate = (
+    value?: string | Date | null
+): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === "string") {
+        const parts = value.split("-");
+        if (parts.length === 3) {
+            const [y, m, d] = parts.map(Number);
+            if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+                return new Date(y, m - 1, d);
+            }
+        }
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+        return d;
+    }
+    return null;
+};
+
+// "M/D/YYYY" or "No date"
+const firstRelevantToDisplay = (
+    value?: string | Date | null
+): string => {
+    const d = normalizeFirstRelevantDate(value);
+    if (!d) return "No date";
     return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 };
 
-// Helper to compare selected date to tasks' due_date
-const unixToDate = (ts?: number | null): Date | null => {
-    if (!ts) return null;
-    return new Date(ts * 1000);
-};
 
 // Turn repeat rule from front end to match backend
 const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
@@ -156,7 +175,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
         );
     };
 
-    const dueLabel = unixToDisplayDate(task.due_date);
+    const dueLabel = firstRelevantToDisplay(task.first_relevant_date);
     const repeatLabel = formatRepeatRule(task.repeat_rule);
 
     return (
@@ -250,14 +269,12 @@ export default function TasksScreen() {
 
     // Filter Tasks for selected Date
     const filtered = tasks.filter((t) => {
-        const taskDate = unixToDate(t.due_date);
+        const taskDate = normalizeFirstRelevantDate(t.first_relevant_date);
         const matchDate = !taskDate
             ? true
-            : (
-                taskDate.getFullYear() === date.getFullYear() &&
-                taskDate.getMonth() === date.getMonth() &&
-                taskDate.getDate() === date.getDate()
-            );
+            : taskDate.getFullYear() === date.getFullYear() &&
+              taskDate.getMonth() === date.getMonth() &&
+              taskDate.getDate() === date.getDate();
 
         const matchCategory = !selectedCategory || t.cat === selectedCategory;
 
@@ -275,8 +292,8 @@ export default function TasksScreen() {
         }
 
         // Within each group, has due date first, no due date last
-        const aNoDate = !a.due_date || a.due_date === 0;
-        const bNoDate = !b.due_date || b.due_date === 0;
+        const aNoDate = !a.first_relevant_date;
+        const bNoDate = !b.first_relevant_date;
 
         if (aNoDate && !bNoDate) return 1;
         if (!aNoDate && bNoDate) return -1;
@@ -326,13 +343,13 @@ export default function TasksScreen() {
         description: string;
         category: string;
         repeatLabel: string; // "None" | "Daily" | "Weekly" | ...
-        dueDate: string; // MM/DD/YYYY
+        first_relevant_date: string; // MM/DD/YYYY
     }>({
         title: "",
         description: "",
         category: "",
         repeatLabel: "",
-        dueDate: "",
+        first_relevant_date: "",
     });
 
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
@@ -510,7 +527,7 @@ export default function TasksScreen() {
             description: taskToEdit.desc,
             category: taskToEdit.cat,
             repeatLabel: formatRepeatRule(taskToEdit.repeat_rule) || "",
-            dueDate: unixToDisplayDate(taskToEdit.due_date),
+            dueDate: firstRelevantToDisplay(taskToEdit.first_relevant_date),
         });
 
         setIsEditTaskModalVisible(true);
@@ -553,21 +570,14 @@ export default function TasksScreen() {
     // Create tasks
     const createTask = async () => {
         const title = newTask.title.trim();
-        const dueDateRaw = newTask.dueDate.trim();
+        
         const repeatRule = buildRepeatRuleFromLabel(newTask.repeatLabel);
 
         if (!title) {
             setTaskNameError("Task name is required");
             return;
         }
-        if (!dueDateRaw) {
-            setDateError("Due date is required");
-            return;
-        }
-        if (!isValidDateFormat(dueDateRaw)) {
-            setDateError("Invalid date format. Use MM/DD/YYYY");
-            return;
-        }
+
 
         if (!userId) {
             console.log("NO user id");
@@ -577,15 +587,34 @@ export default function TasksScreen() {
 
         setLoading(true);
         setDateError("");
-        const dueTimestamp = dateStringToUnix(dueDateRaw);
 
         try {
+            // Determine first relevant date:
+            // - If user typed a date, validate & parse MM/DD/YYYY
+            // - Otherwise, fall back to the currently selected day
+            let firstRelevant: Date | null = null;
+
+            if (newTask.first_relevant_date) {
+                const parsed = parseInputDate(newTask.first_relevant_date);
+                if (!parsed) {
+                    setDateError("Invalid date. Use MM/DD/YYYY.");
+                    return;
+                }
+                firstRelevant = parsed;
+            } else {
+                firstRelevant = new Date(
+                    date.getFullYear(),
+                    date.getMonth(),
+                    date.getDate()
+                );
+            }
+
             const payload = {
                 user_id: userId,
                 name: title,
                 desc: newTask.description?.trim() || "",
                 cat: newTask.category || null,
-                due_date: dueTimestamp,
+                first_relevant_date: firstRelevant,
                 repeat_rule: repeatRule,
             };
 
@@ -600,11 +629,11 @@ export default function TasksScreen() {
                 return;
             }
 
-            const created = res.data; // { id, user_id, name, desc, cat, repeat, due_date, ... }
+            const created = res.data; // { id, user_id, name, desc, cat, repeat, first_relevant_date, ... }
 
             console.log(
                 `Task Created: Task ID: ${created.id}, Task name: ${created.name}, description: ${created.desc}, category: ${created.cat}, 
-                    repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, due_date: ${unixToDisplayDate(created.due_date)}`
+                    repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, first_relevant_date: ${firstRelevantToDisplay(created.first_relevant_date)}`
             );
 
             if (created.id) {
@@ -621,7 +650,7 @@ export default function TasksScreen() {
                 description: "",
                 category: "",
                 repeatLabel: "",
-                dueDate: "",
+                first_relevant_date: "",
             });
             fadeOut(() => setIsNewTaskModalVisible(false));
         } finally {
@@ -634,7 +663,23 @@ export default function TasksScreen() {
         if (!editingTask || !editingTask.title.trim() || !editingTask.dueDate.trim()) return;
         setLoading(true);
         try {
-            const dueTimestamp = dateStringToUnix(editingTask.dueDate);
+            let firstRelevant: Date | null | undefined;
+            if (
+                !editingTask.dueDate ||
+                editingTask.dueDate === "No date" ||
+                editingTask.dueDate === "No due date"
+            ) {
+                // Explicitly clear date
+                firstRelevant = null;
+            } else {
+                const parsed = parseInputDate(editingTask.dueDate);
+                if (!parsed) {
+                    setDateError("Invalid date. Use MM/DD/YYYY.");
+                    return;
+                }
+                firstRelevant = parsed;
+            }
+
             const repeatRule = buildRepeatRuleFromLabel(editingTask.repeatLabel);
 
             const res = await tasksApi.update({
@@ -642,7 +687,7 @@ export default function TasksScreen() {
                 name: editingTask.title,
                 desc: editingTask.description,
                 cat: editingTask.category,
-                due_date: dueTimestamp,
+                first_relevant_date: firstRelevant,
                 repeat_rule: repeatRule,
             });
             if (res.ok && res.data) {

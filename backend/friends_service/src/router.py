@@ -16,6 +16,8 @@ from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
 from src.service import FriendsService
+from src.models import Friendship
+
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 friends_router = APIRouter()
@@ -56,7 +58,7 @@ async def request_friendship(
 
 
 @friends_router.get(
-    "/incoming", tags=["friend_requests"], response_model=tuple[list[str], str]
+    "/incoming", tags=["friend_requests"], response_model=tuple[list[str], str | None]
 )
 async def list_incoming(
     limit: int = Query(default=10, ge=1, le=200),
@@ -87,7 +89,7 @@ async def list_incoming(
 
 
 @friends_router.get(
-    "/outgoing", tags=["friend_requests"], response_model=tuple[list[str], str]
+    "/outgoing", tags=["friend_requests"], response_model=tuple[list[str], str | None]
 )
 async def list_outgoing(
     limit: int = Query(default=10, ge=1, le=200),
@@ -117,7 +119,7 @@ async def list_outgoing(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@friends_router.get("/", tags=["friendships"], response_model=tuple[list[str], str])
+@friends_router.get("/", tags=["friendships"], response_model=tuple[list[str], str | None])
 async def list_friendships(
     limit: int = Query(default=10, ge=1, le=200),
     continuation: str | None = None,
@@ -178,7 +180,8 @@ async def list_all_friends(
 
 @friends_router.post(
     "/request/{request_id}/accept",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
+    response_model=Friendship,
     tags=["friend_requests"],
 )
 async def accept_request(
@@ -188,7 +191,8 @@ async def accept_request(
 ):
     try:
         logger.debug(f"Trying to accept friend request with ID '{request_id}'")
-        await service.accept(me, request_id)
+        friendship = await service.accept(me, request_id)
+        return friendship
     except AuthError:
         logger.warning(
             f"Error trying to accept friend request with ID '{request_id}': not authorized"
