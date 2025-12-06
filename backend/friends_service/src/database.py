@@ -94,8 +94,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
-        # List friends for a given user_id with pagination.
+    ) -> tuple[list[str], str | None]:
         query = (
             "SELECT c.id FROM c "
             "WHERE (c.from_user_id = @user OR c.to_user_id = @user) AND c.status = @accepted "
@@ -113,17 +112,21 @@ class FriendshipsDB:
                 max_item_count=max_items,
             )
 
-            items = None
+            friendship_ids: list[str] | None = None
+
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
-                break
+                friendship_ids = [id async for id in page]
+                break  # first page only
 
-            # Continuation token for the next page (or None if no more)
             new_cont: str | None = pager.continuation_token
-            if items is None:
+
+            if friendship_ids is None:
+                # No pages at all: just "no friends yet"
                 raise RecordNotFoundError()
-            return items, new_cont
+
+            return friendship_ids, new_cont
+
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:
@@ -191,7 +194,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -217,7 +220,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT c.id FROM c "
@@ -239,7 +242,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -284,6 +287,7 @@ class FriendshipsDB:
             logger.debug(
                 f"Updated friendship with ID '{friendship_id}': {updated.model_dump()}",
             )
+            return updated
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:

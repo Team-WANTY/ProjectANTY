@@ -19,7 +19,7 @@ export type EditingTask = {
   description: string;
   category: string | null;
   repeatLabel: string;
-  dueDate: string;
+  first_relevant_date: string; // MM/DD/YYYY
 };
 
 export type Theme = {
@@ -241,9 +241,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   borderColor: dateError ? theme.error : theme.background,
                 },
               ]}
-              value={editingTask.dueDate}
+              value={editingTask.first_relevant_date}
               onChangeText={(text) => {
-                setEditingTask((prev) => (prev ? { ...prev, dueDate: text } : prev));
+                setEditingTask((prev) => (prev ? { ...prev, first_relevant_date: text } : prev));
                 setDateError("");
               }}
               placeholder="MM/DD/YYYY"

@@ -244,7 +244,8 @@ async def list_all_friends(
 
 @friends_router.post(
     "/request/{request_id}/accept",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
+    response_model=Friendship,
     tags=["friend_requests"],
 )
 async def accept_request(
@@ -254,7 +255,8 @@ async def accept_request(
 ):
     try:
         logger.debug(f"Trying to accept friend request with ID '{request_id}'")
-        await service.accept(me, request_id)
+        friendship = await service.accept(me, request_id)
+        return friendship
     except AuthError:
         logger.warning(
             f"Error trying to accept friend request with ID '{request_id}': not authorized"

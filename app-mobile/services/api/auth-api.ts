@@ -7,7 +7,7 @@ import { secureStoreToken, maskToken } from "../storage/access-token";
 // Endpoints for authentication
 const paths = {
   login: "/auth/login",
-  register: "/auth/register",
+  register: "/users",
   request_password_reset: "/auth/request-password-reset",
   reset_password: "/auth/reset-password",
   refresh: "/auth/refresh",

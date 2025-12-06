@@ -3,12 +3,16 @@ import type { ApiResult } from "../../../common/http/types";
 import { toMessage } from "../../../common/http/types";
 
 const paths = {
-  request: "/friends/requests",
-  root: "/friends/requests/{request_id}",
-  incoming: "/friends/requests/incoming",
-  outgoing: "/friends/requests/outgoing",
-  me: "/friends/me",
-  status: "/friends/status",
+  // Send / accept friend requests
+  request: "/friends/request",
+  requestRoot: "/friends/request/{request_id}",
+
+  // Paginated lists
+  incoming: "/friends/incoming",
+  outgoing: "/friends/outgoing",
+  list: "/friends",
+
+  // Unfriend (by other user's ID)
   delete: "/friends/{friend_id}",
 };
 
@@ -51,21 +55,22 @@ export type RelationshipStatus = {
   outgoing_request: FriendRequest | null;
 };
 
-export type FriendListResponse = {
-  friends: Friendship[];
-  continuationToken?: string | null;
+export type IdPage = {
+  ids: string[];
+  continuationToken: string | null;
 };
 
 export const friendsApi = {
   // friend_request
-  async create(body: Partial<FriendRequestCreate>): Promise<ApiResult<FriendRequest>> {
+  async create(toUserId: string): Promise<ApiResult<null>> {
     try {
-      const res = await api.post<FriendRequest>(paths.request, body);
+      const url = `${paths.request}/${encodeURIComponent(toUserId)}`;
+      const res = await api.post<void>(url);
       return {
         ok: true, 
         status: res.status, 
         message: res.statusText || "Request successful", 
-        data: res.data 
+        data: null,
       }
     }
     catch (error: any) {
@@ -80,74 +85,29 @@ export const friendsApi = {
     }
   },
 
-  // GET /friends/requests/incoming
-  async listIncoming(status: FriendRequestStatus | null = "pending"): Promise<ApiResult<FriendRequest[]>> {
+  // GET /friends/incoming?limit=&continuation=
+  async listIncoming(
+    limit = 10,
+    continuation?: string | null
+  ): Promise<ApiResult<IdPage>> {
     try {
-      const res = await api.get<FriendRequest[]>(paths.incoming, {
+      const res = await api.get<[string[], string | null]>(paths.incoming, {
         params: {
-          status_param: status ?? undefined,
+          limit,
+          continuation: continuation ?? undefined,
         },
-      })
+      });
 
-      return {
-        ok: true, 
-        status: res.status, 
-        message: res.statusText || "Request successful", 
-        data: res.data 
-      }
-    }
-    catch (error: any) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-      const msg = 
-        status === 401 ? "Not authenticated"
-        : status === 403 ? "No incoming Requests found"
-        : status && status >= 500 ? "Server error"
-        : toMessage(data, "Failed to fetch incoming requests");
-      return {ok: false, status, message: msg, detail: data};
-    }
-  },
-
-  // GET /friends/requests/outgoing
-  async listOutgoing(status: FriendRequestStatus | null = "pending"): Promise<ApiResult<FriendRequest[]>> {
-    try {
-      const res = await api.get<FriendRequest[]>(paths.outgoing, {
-        params: {
-          status_param: status ?? undefined,
-        },
-      })
-
-      return {
-        ok: true, 
-        status: res.status, 
-        message: res.statusText || "Request successful", 
-        data: res.data 
-      }
-    }
-    catch (error: any) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-      const msg = 
-        status === 401 ? "Not authenticated"
-        : status === 403 ? "No incoming Requests found"
-        : status && status >= 500 ? "Server error"
-        : toMessage(data, "Failed to fetch incoming requests");
-      return {ok: false, status, message: msg, detail: data};
-    }
-  },
-
-  // POST /friends/requests/{request_id}/accept
-  async accept(requestId: string): Promise<ApiResult<Friendship>> {
-    try {
-      const url = fillRequestId(`${paths.root}/accept`, requestId);
-      const res = await api.post<Friendship>(url);
+      const raw = res.data ?? [[], null];
+      const ids = raw[0] ?? [];
+      const token = raw[1] ?? null;
 
       return {
         ok: true,
         status: res.status,
-        message: "Friend request accepted",
-        data: res.data,
-      }
+        message: res.statusText || "Loaded incoming friend requests",
+        data: { ids, continuationToken: token },
+      };
     } catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
@@ -156,7 +116,76 @@ export const friendsApi = {
         status === 401
           ? "Not authenticated"
           : status === 404
-          ? "Friend request not found"
+          ? "No incoming requests found"
+          : status && status >= 500
+          ? "Server error"
+          : toMessage(data, "Failed to load incoming friend requests");
+
+      return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+  // GET /friends/requests/outgoing
+  async listOutgoing(
+    limit = 10,
+    continuation?: string | null
+  ): Promise<ApiResult<IdPage>> {
+    try {
+      const res = await api.get<[string[], string | null]>(paths.outgoing, {
+        params: {
+          limit,
+          continuation: continuation ?? undefined,
+        },
+      });
+
+      const raw = res.data ?? [[], null];
+      const ids = raw[0] ?? [];
+      const token = raw[1] ?? null;
+
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Loaded outgoing friend requests",
+        data: { ids, continuationToken: token },
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      const msg =
+        status === 401
+          ? "Not authenticated"
+          : status === 404
+          ? "No outgoing requests found"
+          : status && status >= 500
+          ? "Server error"
+          : toMessage(data, "Failed to load outgoing friend requests");
+
+      return { ok: false, status, message: msg, detail: data };
+    }
+  },
+
+  // POST /friends/request/{request_id}/accept
+  async accept(requestId: string): Promise<ApiResult<null>> {
+    try {
+      const url = fillRequestId(`${paths.requestRoot}/accept`, requestId);
+      const res = await api.post<void>(url);
+
+      return {
+        ok: true,
+        status: res.status,
+        message: "Friend request accepted",
+        data: null,
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      const msg =
+        status === 401
+          ? "Not authenticated"
+          : status === 404
+          ? "Friendship not found"
           : status && status >= 500
           ? "Server error"
           : toMessage(data, "Failed to accept friend request");
@@ -168,7 +197,7 @@ export const friendsApi = {
   // POST /friends/requests/{request_id}/decline
   async decline(requestId: string): Promise<ApiResult<null>> {
     try {
-      const url = fillRequestId(`${paths.root}/decline`, requestId);
+      const url = fillRequestId(`${paths.requestRoot}/decline`, requestId);
       const res = await api.post<void>(url);
 
       return {
@@ -197,7 +226,7 @@ export const friendsApi = {
   // POST /friends/requests/{request_id}/cancel
   async cancel(requestId: string): Promise<ApiResult<null>> {
     try {
-      const url = fillRequestId(`${paths.root}/cancel`, requestId);
+      const url = fillRequestId(`${paths.requestRoot}/cancel`, requestId);
       const res = await api.post<void>(url);
       return {
         ok: true,
@@ -223,20 +252,27 @@ export const friendsApi = {
   },
 
   // GET /friends/me?limit=&continuation=
-  async listFriends(limit = 10, continuation?: string | null): Promise<ApiResult<FriendListResponse>> {
+  async listFriends(
+    limit = 10,
+    continuation?: string | null
+  ): Promise<ApiResult<IdPage>> {
     try {
-      const res = await api.get<FriendListResponse>(paths.me, {
+      const res = await api.get<[string[], string | null]>(paths.list, {
         params: {
           limit,
           continuation: continuation ?? undefined,
         },
       });
 
+      const raw = res.data ?? [[], null];
+      const ids = raw[0] ?? [];
+      const token = raw[1] ?? null;
+
       return {
         ok: true,
         status: res.status,
-        message: res.statusText || "Loaded friends",
-        data: res.data,
+        message: res.statusText || "Loaded friendships",
+        data: { ids, continuationToken: token },
       };
     } catch (error: any) {
       const status = error?.response?.status;
@@ -245,9 +281,11 @@ export const friendsApi = {
       const msg =
         status === 401
           ? "Not authenticated"
+          : status === 404
+          ? "No friendships found"
           : status && status >= 500
           ? "Server error"
-          : toMessage(data, "Failed to load friends");
+          : toMessage(data, "Failed to load friendships");
 
       return { ok: false, status, message: msg, detail: data };
     }
@@ -256,15 +294,14 @@ export const friendsApi = {
   // DELETE /{friend_id}
   async unfriend(friendId: string): Promise<ApiResult<null>> {
     try {
-      const res = await api.delete<void>(fillFriendId(paths.delete,friendId));
+      const res = await api.delete<void>(fillFriendId(paths.delete, friendId));
       return {
         ok: true,
         status: res.status,
         message: "Friend removed",
         data: null,
       };
-    }
-    catch (error: any) {
+    } catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
 
@@ -277,38 +314,8 @@ export const friendsApi = {
           ? "Server error"
           : toMessage(data, "Failed to remove friend");
 
-      return { ok: false, status, message: msg, detail: data};
-    }
-  },
-
-  // GET /friends/status?user_id=
-  async getStatus(userId: string): Promise<ApiResult<RelationshipStatus>> {
-    try {
-      const res = await api.get<RelationshipStatus>(paths.status, {
-        params: { user_id: userId },
-      });
-
-      return {
-        ok: true,
-        status: res.status,
-        message: res.statusText || "Loaded relationship status",
-        data: res.data,
-      };
-    }
-    catch (error: any) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-
-      const msg =
-        status === 401
-          ? "Not authenticated"
-          : status === 404
-          ? "User or relationship not found"
-          : status && status >= 500
-          ? "Server error"
-          : toMessage(data, "Failed to load relationship status");
-
       return { ok: false, status, message: msg, detail: data };
     }
   },
+
 }

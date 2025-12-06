@@ -5,7 +5,8 @@ import { toMessage } from "../../../common/http/types";
 
 
 const paths = {
-  byId: "/profiles/{user_id}", // GET, PATCH, DELETE
+  byId: "/profiles/{user_id}", // GET, , DELETE
+  root: "/profiles" // PATCH
 } as const;
 
 // helper to fill {user_id}
@@ -51,7 +52,7 @@ export const profileApi = {
   async update(userId: string, body: ProfileUpdateBody): Promise<ApiResult<ProfileUpdateBody>> {
     try {
       const payload = { user_id: userId, ...body };
-      const res = await api.patch<ProfileUpdateBody>(fillId(paths.byId, userId), payload);
+      const res = await api.patch<ProfileUpdateBody>(fillId(paths.root, userId), payload);
       return { 
         ok: true, 
         status: res.status, 
