@@ -25,10 +25,10 @@ import { useProfileStore } from "@/services/stores/profiles-store";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
-import { EditProfileModal} from "@/components/profile-edit-modal"
+import { EditProfileModal } from "@/components/profile-edit-modal"
 import { changeAvatar } from "@/services/actions/avatar-update";
 import { EditPhotoModal } from "@/components/profile-edit-photo-modal";
-import { useFriendsStore} from "@/services/stores/friends-store"
+import { useFriendsStore } from "@/services/stores/friends-store"
 import { useNotificationModal } from "@/app/_layout";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -64,7 +64,7 @@ export default function ProfileScreen() {
 
     // Pull user and profile from Zustand
     const username = useUserStore((s) => s.username);
-    const userId   = useUserStore(s => s.userId);
+    const userId = useUserStore(s => s.userId);
     const bio = useProfileStore((s) => s.bio);
     const avatarUrl = useProfileStore((s) => s.avatarUrl);
     const isAvatarUploading = useProfileStore((s) => s.isAvatarUploading);
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
     const fadeAnim = useState(new Animated.Value(0))[0];
     const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
+
 
 
     function openEditModal() {
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
         // Determine what changed
         const usernameChanged = newUsername !== (username ?? "");
         const bioChanged = newBio !== (bio ?? "");
-        
+
         // Optimistically update Zustand store FIRST 
         if (usernameChanged) {
             useUserStore.getState().setUser({ username: newUsername });
@@ -108,12 +108,12 @@ export default function ProfileScreen() {
         if (bioChanged) {
             useProfileStore.getState().setProfile({ bio: newBio });
         }
-        
+
         // Close modal 
-        closeEditModal();  
+        closeEditModal();
 
         (async () => {
-                try {
+            try {
                 // API calls sequentially
                 if (usernameChanged) {
                     const res = await usersApi.update({ id: userId!, username: newUsername });
@@ -124,7 +124,7 @@ export default function ProfileScreen() {
                     const res = await profileApi.update(userId!, { bio: newBio });
                     if (!res.ok) console.log("Failed to update bio on backend");
                 }
-            } 
+            }
             catch (err) {
                 console.log("Network error while updating profile");
             }
@@ -141,16 +141,16 @@ export default function ProfileScreen() {
         * background queue systems when backend is working again
         */
     };
-    
+
     const handleRemoveAvatar = () => {
         if (!userId) return;
-        
+
         const {
             avatarImageId: currentAvatarId,
             setProfile,
             setAvatarUploading,
         } = useProfileStore.getState();
-        
+
         // If there is no avatar, return
         if (!currentAvatarId) {
             console.log("No avatar to delete");
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
         (async () => {
             try {
                 setAvatarUploading(true);
-                
+
                 console.log("Calling DELETE /images");
                 // DELETE /images/
                 const deleteRes = await imagesApi.remove(currentAvatarId);
@@ -285,7 +285,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                
+
             </View>
 
             {/* 2. SCROLLABLE CONTENT AREA */}
@@ -315,26 +315,26 @@ export default function ProfileScreen() {
                         ]}
                     >
                         <View style={styles.analyticItem}>
-                            <Text style={[styles.analyticValue, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
                                 {analyticsData.tasksCompleted}
                             </Text>
-                            <Text style={[styles.analyticLabel, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
                                 Tasks completed
                             </Text>
                         </View>
                         <View style={styles.analyticItem}>
-                            <Text style={[styles.analyticValue, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
                                 {analyticsData.longestStreak}
                             </Text>
-                            <Text style={[styles.analyticLabel, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
                                 Longest task streak
                             </Text>
                         </View>
                         <View style={styles.analyticItem}>
-                            <Text style={[styles.analyticValue, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
                                 {analyticsData.badgesEarned}
                             </Text>
-                            <Text style={[styles.analyticLabel, { color: textLightOnDark }]}>
+                            <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
                                 Badges earned
                             </Text>
                         </View>
@@ -360,7 +360,7 @@ export default function ProfileScreen() {
                     </ScrollView>
                 </View>
             </ScrollView>
-            
+
             {/* ---------- EDIT PROFILE MODAL ---------- */}
             <EditProfileModal
                 visible={isEditModalVisible}
@@ -380,17 +380,17 @@ export default function ProfileScreen() {
                 onChooseFromLibrary={() => {
                     if (!userId) return;
                     changeAvatar(
-                    userId,
-                    () => setIsPhotoSheetVisible(false),
-                    "library"
+                        userId,
+                        () => setIsPhotoSheetVisible(false),
+                        "library"
                     );
                 }}
                 onTakePhoto={() => {
                     if (!userId) return;
                     changeAvatar(
-                    userId,
-                    () => setIsPhotoSheetVisible(false),
-                    "camera"
+                        userId,
+                        () => setIsPhotoSheetVisible(false),
+                        "camera"
                     );
                 }}
                 onRemoveAvatar={handleRemoveAvatar}
