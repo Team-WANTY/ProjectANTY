@@ -15,6 +15,7 @@ from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_friends_service
+from src.models import Friendship
 from src.service import FriendsService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
@@ -142,6 +143,71 @@ async def list_friendships(
             f"Error getting all friendships for user with ID '{me.id}', unexpected: {e}"
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@friends_router.get(
+    "/id/{friendship_id}", tags=["friendships"], response_model=Friendship
+)
+async def get_by_id(
+    friendship_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        return await service.get_by_id(friendship_id, current_user)
+    except AuthError:
+        logger.warning(
+            f"Error getting friendship with ID '{friendship_id}': not authorized"
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    except RecordNotFoundError:
+        logger.error(f"Error getting friendship with ID '{friendship_id}': not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except GeneralQueryError:
+        logger.error(
+            f"Error getting friendship with ID '{friendship_id}': general query error"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Query error"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error getting friendship with ID '{friendship_id}', unexpected: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
+
+
+@friends_router.get(
+    "/search/{friend_id}", tags=["friendships"], response_model=Friendship
+)
+async def find_friendship(
+    friend_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        return await service.find_friendship(friend_id, current_user)
+    except RecordNotFoundError:
+        logger.error(
+            f"Error finding friendship between '{current_user.id}' and '{friend_id}': not found"
+        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except GeneralQueryError:
+        logger.error(
+            f"Error finding friendship between '{current_user.id}' and '{friend_id}': general query error"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Query error"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error finding friendship between '{current_user.id}' and '{friend_id}', unexpected: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
+        )
 
 
 @friends_router.get("/{user_id}", tags=["interservice"], response_model=list[str])

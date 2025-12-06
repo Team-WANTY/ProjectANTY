@@ -101,7 +101,10 @@ class FriendshipsDB:
             "WHERE (c.from_user_id = @user OR c.to_user_id = @user) AND c.status = @accepted "
             "ORDER BY c.created_at DESC"
         )
-        params = [{"name": "@user", "value": user_id}, {"name": "@accepted", "value": FriendshipStatus.ACCEPTED}]
+        params = [
+            {"name": "@user", "value": user_id},
+            {"name": "@accepted", "value": FriendshipStatus.ACCEPTED},
+        ]
 
         try:
             result_iterable = self.container.query_items(

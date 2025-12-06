@@ -1,4 +1,5 @@
 from shared.auth import authorize_operation
+from shared.exceptions.auth import AuthError
 from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
 from shared.models.users import UserInDB
 
@@ -20,29 +21,21 @@ class FriendsService:
             pass
         await self.db.request_friendship(me.id, requestee_id)
 
-    async def get_by_id(self, friendship_id: str, getter:UserInDB):
-        friendship = self.db.get_by_id(friendship_id)
-        authorized = False
-        try:
-            await authorize_operation(getter, friendship.from_user_id)
-            authorized = True
-        except AuthError:
-            pass
-        try:
-            await authorize_operation(getter, friendship.to_user_id)
-            authorized = True
-        except AuthError:
-            pass
+    async def get_by_id(self, friendship_id: str, getter: UserInDB):
+        friendship = await self.db.get_by_id(friendship_id)
 
-        if authorized:
-            return friendship
-        else:
+        is_authorized = await authorize_operation(
+            getter, friendship.from_user_id
+        ) or await authorize_operation(getter, friendship.to_user_id)
+
+        if not is_authorized:
             raise AuthError()
 
-    async find_friendship(self, user_id: str, friend_id:str, finder:UserInDB):
-        await authorize_operation(finder, user_id)
-        return await find_friendship(self, user_id: str, friend_id: str)
-    
+        return friendship
+
+    async def find_friendship(self, friend_id: str, finder: UserInDB):
+        return await self.db.find_friendship(finder.id, friend_id)
+
     async def list_outgoing(
         self, me: UserInDB, limit: int, continuation: str | None
     ) -> tuple[list[str], str | None]:
