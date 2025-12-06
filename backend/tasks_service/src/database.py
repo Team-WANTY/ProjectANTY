@@ -2,7 +2,6 @@ from datetime import date
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
-from pydantic import ValidationError
 from shared.db import generate_id, now_timestamp
 from shared.exceptions.db import (
     EmptyRecordUpdateError,
@@ -87,7 +86,9 @@ class TaskDB:
             logger.debug(
                 f"Trying to get all tasks of user with ID '{user_id}' from dates '{reference_start}' to '{reference_end}'"
             )
-            async for item in self.container.query_items(query=query, parameters=parameters):
+            async for item in self.container.query_items(
+                query=query, parameters=parameters
+            ):
                 yield TaskInDB.model_validate(item, extra="ignore")
         except Exception as e:
             logger.error(
@@ -169,7 +170,10 @@ class TaskDB:
                 )
                 raise EmptyRecordUpdateError()
 
-            if task_update.repeat_rule is not None or task_update.first_relevant_date is not None:
+            if (
+                task_update.repeat_rule is not None
+                or task_update.first_relevant_date is not None
+            ):
                 old_task = await self.get_task_by_id(task_update.id)
                 if task_update.repeat_rule is not None:
                     old_task.repeat_rule = task_update.repeat_rule

@@ -124,7 +124,7 @@ class TaskInDB(BaseModel):
             return d.replace(year=d.year + years, day=28)
 
     def calculate_last_relevant_date(self):
-         # One-off task (no repeat_rule) -> last = first
+        # One-off task (no repeat_rule) -> last = first
         if self.repeat_rule is None:
             self.last_relevant_date = self.first_relevant_date
             return

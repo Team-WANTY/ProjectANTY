@@ -70,11 +70,13 @@ async def create_user(
         )
 
 
-@users_router.get("/id/{user_id}", response_model=UserInDB|UserBase, tags=["interservice"])
+@users_router.get(
+    "/id/{user_id}", response_model=UserInDB | UserBase, tags=["interservice"]
+)
 async def get_user(
     user_id: str,
     users_service: UsersService = Depends(get_users_service),
-    x_interservice_key:str|None=Depends(interservice_scheme),
+    x_interservice_key: str | None = Depends(interservice_scheme),
 ) -> UserInDB | UserBase:
     try:
         user_in_db = await users_service.get_user_by_id(user_id)
@@ -105,6 +107,7 @@ async def get_user(
     else:
         return user_in_db
 
+
 @users_router.get(
     "/search/{partial_username}",
     response_model=tuple[list[str], str | None],
@@ -116,7 +119,7 @@ async def get_user_ids_given_username_part(
     continuation_token: str | None = None,
     users_service: UsersService = Depends(get_users_service),
     current_user=Depends(get_current_user),
-)-> tuple[list[str], str | None]:
+) -> tuple[list[str], str | None]:
     try:
         logger.debug(
             f"User {current_user.id} is looking for usernames like: {partial_username}"
@@ -143,6 +146,7 @@ async def get_user_ids_given_username_part(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+
 
 @users_router.get(
     "/username/{username}", response_model=UserInDB, tags=["interservice"]

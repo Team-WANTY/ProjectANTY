@@ -79,7 +79,7 @@ async def get_users_post_ids(
     max_items: int,
     continuation_token: str | None = None,
     posts_service: PostsService = Depends(get_posts_service),
-)->tuple[list[str], str | None]:
+) -> tuple[list[str], str | None]:
     try:
         return await posts_service.get_users_post_ids(
             user_id, max_items, continuation_token
@@ -105,7 +105,7 @@ async def get_users_relevant_post_ids(
     continuation_token: str | None = None,
     posts_service: PostsService = Depends(get_posts_service),
     current_user: UserInDB = Depends(get_current_user),
-)->tuple[list[str], str | None]:
+) -> tuple[list[str], str | None]:
     try:
         if timestamp is None:
             return await posts_service.get_relevant_posts(

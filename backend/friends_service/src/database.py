@@ -194,7 +194,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page]
+                items = [item async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -242,7 +242,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page]
+                items = [item async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)

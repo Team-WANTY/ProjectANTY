@@ -280,9 +280,14 @@ async def accept_request(
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@friends_router.post("/request/{request_id}/decline", status_code=status.HTTP_204_NO_CONTENT, tags=["friends"])
+
+@friends_router.post(
+    "/request/{request_id}/decline",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["friends"],
+)
 async def decline_request(
-    request_id:str,
+    request_id: str,
     me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
@@ -302,9 +307,7 @@ async def decline_request(
             status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
         )
     except RecordDeletionError:
-        logger.error(
-            f"Errot decline friendship with ID '{request_id}': deletion error"
-        )
+        logger.error(f"Errot decline friendship with ID '{request_id}': deletion error")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         logger.error(
@@ -312,9 +315,14 @@ async def decline_request(
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@friends_router.post("/request/{request_id}/cancel", status_code=status.HTTP_204_NO_CONTENT, tags=["friends"])
+
+@friends_router.post(
+    "/request/{request_id}/cancel",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["friends"],
+)
 async def cancel_request(
-    request_id:str,
+    request_id: str,
     me: UserInDB = Depends(get_current_user),
     service: FriendsService = Depends(get_friends_service),
 ):
@@ -334,17 +342,12 @@ async def cancel_request(
             status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
         )
     except RecordDeletionError:
-        logger.error(
-            f"Errot cancel friendship with ID '{request_id}': deletion error"
-        )
+        logger.error(f"Errot cancel friendship with ID '{request_id}': deletion error")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
-        logger.error(
-            f"Errot cancel friendship with ID '{request_id}', unexpected: {e}"
-        )
+        logger.error(f"Errot cancel friendship with ID '{request_id}', unexpected: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
 
 @friends_router.delete(
     "/{friend_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["friendships"]
