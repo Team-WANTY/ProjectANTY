@@ -22,10 +22,7 @@ from src.dependencies import get_users_service
 from src.models import UserCreate, UserUpdate
 from src.service import UsersService
 
-interservice_scheme = APIKeyHeader(
-    name="X-Interservice-Key",
-    auto_error=False
-)
+interservice_scheme = APIKeyHeader(name="X-Interservice-Key", auto_error=False)
 
 users_router = APIRouter()
 

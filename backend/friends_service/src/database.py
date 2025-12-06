@@ -61,7 +61,7 @@ class FriendshipsDB:
             async for item in self.container.query_items(
                 query=query, parameters=params
             ):
-                return item["id"] 
+                return item["id"]
 
             raise RecordNotFoundError()
 
@@ -117,7 +117,7 @@ class FriendshipsDB:
 
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                friendship_ids = [friendship_ids["id"] async for friendship_ids in page] 
+                friendship_ids = [friendship_ids["id"] async for friendship_ids in page]
                 break  # first page only
 
             new_cont: str | None = pager.continuation_token
@@ -195,7 +195,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page]                
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -243,7 +243,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page] 
+                items = [item["id"] async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
