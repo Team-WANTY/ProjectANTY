@@ -24,12 +24,23 @@ class FriendsService:
     async def get_by_id(self, friendship_id: str, getter: UserInDB):
         friendship = await self.db.get_by_id(friendship_id)
 
-        is_authorized = await authorize_operation(
-            getter, friendship.from_user_id
-        ) or await authorize_operation(getter, friendship.to_user_id)
+        is_authorized = False
+
+        try:
+            await authorize_operation(getter, friendship.from_user_id):
+            is_authorized = True
+        except AuthError:
+            pass  # ignore, try the other one
+
+        try:
+            await authorize_operation(getter, friendship.to_user_id):
+            is_authorized = True
+        except AuthError:
+            pass
 
         if not is_authorized:
             raise AuthError()
+
 
         return friendship
 
