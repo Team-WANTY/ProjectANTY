@@ -280,6 +280,71 @@ async def accept_request(
         )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@friends_router.post("/request/{request_id}/decline", status_code=status.HTTP_204_NO_CONTENT, tags=["friends"])
+async def decline_request(
+    request_id:str,
+    me: UserInDB = Depends(get_current_user),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        logger.debug(f"Trying to decline friend request with ID '{request_id}'")
+        await service.decline(me, request_id)
+    except AuthError:
+        logger.warning(
+            f"Error decline friendship with ID '{request_id}': not authorized"
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    except RecordNotFoundError:
+        logger.error(
+            f"Error decline friendship with ID '{request_id}': friendship not found"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
+        )
+    except RecordDeletionError:
+        logger.error(
+            f"Errot decline friendship with ID '{request_id}': deletion error"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Errot decline friendship with ID '{request_id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@friends_router.post("/request/{request_id}/cancel", status_code=status.HTTP_204_NO_CONTENT, tags=["friends"])
+async def cancel_request(
+    request_id:str,
+    me: UserInDB = Depends(get_current_user),
+    service: FriendsService = Depends(get_friends_service),
+):
+    try:
+        logger.debug(f"Trying to cancel friend request with ID '{request_id}'")
+        await service.cancel(me, request_id)
+    except AuthError:
+        logger.warning(
+            f"Error cancel friendship with ID '{request_id}': not authorized"
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    except RecordNotFoundError:
+        logger.error(
+            f"Error cancel friendship with ID '{request_id}': friendship not found"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friendship not found"
+        )
+    except RecordDeletionError:
+        logger.error(
+            f"Errot cancel friendship with ID '{request_id}': deletion error"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(
+            f"Errot cancel friendship with ID '{request_id}', unexpected: {e}"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 
 @friends_router.delete(
     "/{friend_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["friendships"]

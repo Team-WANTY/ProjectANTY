@@ -73,6 +73,16 @@ class FriendsService:
                 friendship_id, FriendshipStatus.ACCEPTED
             )
 
+    async def decline(self, me: UserInDB, friendship_id:str):
+        friendship = await self.db.get_by_id(friendship_id)
+        await authorize_operation(me,friendship.to_user_id)
+        await self.db.delete_friendship(friendship_id)
+
+    async def cancel(self, me: UserInDB, friendship_id:str):
+        friendship = await self.db.get_by_id(friendship_id)
+        await authorize_operation(me,friendship.from_user_id)
+        await self.db.delete_friendship(friendship_id)
+
     async def unfriend(self, me: UserInDB, friend_id: str):
         friendship_id = await self.db.find_friendship(me.id, friend_id)
         await self.db.delete_friendship(friendship_id)
