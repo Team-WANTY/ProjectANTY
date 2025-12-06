@@ -181,9 +181,7 @@ async def get_by_id(
         )
 
 
-@friends_router.get(
-    "/search/{friend_id}", tags=["friendships"], response_model=str
-)
+@friends_router.get("/search/{friend_id}", tags=["friendships"], response_model=str)
 async def find_friendship(
     friend_id: str,
     current_user: UserInDB = Depends(get_current_user),

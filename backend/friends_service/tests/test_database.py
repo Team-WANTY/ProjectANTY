@@ -39,7 +39,9 @@ class TestDBFindFriendshipBetweenXAndY:
         self, mock_container, mock_friends_db, sample_friendship
     ):
         mock_container.query_items = Mock()
-        mock_container.query_items.return_value = AsyncIteratorMock([sample_friendship])
+        mock_container.query_items.return_value = AsyncIteratorMock(
+            [{"id": sample_friendship.id}]
+        )
         await mock_friends_db.find_friendship("user123", "user321")
 
     @pytest.mark.asyncio
@@ -108,11 +110,11 @@ class TestDBListFriendshipsOfUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.id,
-                        sample_friendship.id,
+                        {"id": sample_friendship.id},
+                        {"id": sample_friendship.id},
                     ]
                 ),
-                [sample_friendship.id],
+                [{"id": sample_friendship.id}],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
@@ -171,11 +173,11 @@ class TestDBListIncomingRequestsToUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.id,
-                        sample_friendship.id,
+                        {"id": sample_friendship.id},
+                        {"id": sample_friendship.id},
                     ]
                 ),
-                [sample_friendship.id],
+                [{"id": sample_friendship.id}],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
@@ -233,11 +235,11 @@ class TestDBListOutgoingRequestsFromUser:
             [
                 AsyncIteratorMock(
                     [
-                        sample_friendship.id,
-                        sample_friendship.id,
+                        {"id": sample_friendship.id},
+                        {"id": sample_friendship.id},
                     ]
                 ),
-                [sample_friendship.id],
+                [{"id": sample_friendship.id}],
             ]
         )
         mock_pager.continuation_token = "cont_token"  # ty: ignore
