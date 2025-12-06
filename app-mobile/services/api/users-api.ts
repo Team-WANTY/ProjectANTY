@@ -5,8 +5,8 @@ import { api } from "../http/client";
 
 const paths = {
 	me: "/users/me",
-  byUsername: "/users/username/{username}", // GET IDs from partial username
-  publicById: "/users/public/id/{user_id}", // GET username from ID
+  byUsername: "/users/search/{partial_username}", // GET IDs from partial username
+  byID: "users/id/{user_id}", // GET username from ID
 	update: "/users", // POST PATCH
   delete: "/users/{user_id}" // DELETE
 };
@@ -43,9 +43,9 @@ export const usersApi = {
   },
 
   // GET username from ID
-  async getPublicById(userId: string): Promise<ApiResult<SimpleUser>> {
+  async getById(userId: string): Promise<ApiResult<SimpleUser>> {
     try {
-      const res = await api.get(fillId(paths.publicById, userId));
+      const res = await api.get(fillId(paths.byID, userId));
       return {
         ok: true,
         status: res.status,
@@ -61,14 +61,14 @@ export const usersApi = {
     }
   },
   // GET /users/username/{username} implemented by assuming client will always do exact match username
-  async getByUsername(username: string): Promise<ApiResult<SimpleUser>> {
+  async getByUsername(username: string): Promise<ApiResult<string>> {
     try {
       const searchUrl = `/users/search/${encodeURIComponent(username)}`;
-      const res = await api.get(searchUrl, {
+      const res = await api.get<[string[], string]>(searchUrl, {
         params: {
-          max_items: 1,
-          continuation_token: ""   // always blank for first call
-        }
+          max_items: 5,
+          continuation_token: "", // first page only
+        },
       });
 
       // Response format: [ ["userId"], continuationToken ]
@@ -83,11 +83,24 @@ export const usersApi = {
 
       const userId = ids[0];
 
+      if (!userId || typeof userId !== "string") {
+        console.error(
+          "[usersApi.getByUsername] Invalid id returned:",
+          userId,
+          res.data
+        );
+        return {
+          ok: false,
+          status: 500,
+          message: "Invalid user id returned from server.",
+        };
+      }
+
       return { 
         ok: true, 
         status: res.status, 
         message: res.statusText || "Request successful", 
-        data: res.data 
+        data: userId 
       };
     }
     catch (error: any) {
@@ -134,6 +147,7 @@ export const usersApi = {
         message: res.statusText || "Request successful", 
         data: res.data 
       };
+      
     } 
     catch (error: any) {
       const status = error?.response?.status;

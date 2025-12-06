@@ -7,6 +7,12 @@ import { tasksApi } from "../api/tasks-api";
 import { useTasksStore } from "../stores/tasks-store";
 import { imagesApi } from "../api/image-api";
 import type { Task } from "../api/tasks-api";
+import { friendsApi } from "../api/friends-api";
+import {
+  useFriendsStore,
+  type DisplayFriend,
+  type FriendUserInfo,
+} from "../stores/friends-store";
 
 export async function loadUser() {
   const result = await usersApi.me();
@@ -115,18 +121,91 @@ export async function loadTasks(userId?: string){
   return tasks;
 }
 
+// Load Friends
+async function resolveFriendInfo(userId: string): Promise<FriendUserInfo> {
+  let username = "Unknown user";
+  let avatarUrl: string | null = null;
+
+  const userRes = await usersApi.getById(userId);
+  if (userRes.ok && userRes.data) {
+    username = userRes.data.username;
+  }
+
+  const profileRes = await profileApi.getById(userId);
+  if (profileRes.ok && profileRes.data && (profileRes.data as any).avatar_image_id) {
+    const avatarImageId = (profileRes.data as any).avatar_image_id as string;
+    const imgRes = await imagesApi.getUrl(avatarImageId);
+    if (imgRes.ok && imgRes.data) {
+      avatarUrl = imgRes.data;
+    }
+  }
+
+  return { id: userId, username, avatarUrl };
+}
+
+export async function loadFriends(userId?: string) {
+  const meId = userId ?? useUserStore.getState().userId;
+  if (!meId) return [];
+
+  const result = await friendsApi.listFriends(50);
+  if (!result.ok) {
+    if (result.status === 404) {
+      useFriendsStore.getState().setFriends([]);
+      return [];
+    }
+    throw new Error(result.message ?? "Failed to load friends");
+  }
+
+  const friendshipIds = result.data?.ids ?? [];
+  if (friendshipIds.length === 0) {
+    useFriendsStore.getState().setFriends([]);
+    return [];
+  }
+
+  const friendshipResults = await Promise.all(
+    friendshipIds.map((fid) => friendsApi.getById(fid))
+  );
+
+  const displayFriends: DisplayFriend[] = [];
+
+  for (const res of friendshipResults) {
+    if (!res.ok || !res.data) continue;
+    const friendship = res.data;
+
+    const friendUserId =
+      friendship.from_user_id === meId
+        ? friendship.to_user_id
+        : friendship.to_user_id === meId
+        ? friendship.from_user_id
+        : friendship.to_user_id;
+
+    const user = await resolveFriendInfo(friendUserId);
+
+    displayFriends.push({
+      ...friendship,
+      friendUserId,
+      user,
+    });
+  }
+
+  useFriendsStore.getState().setFriends(displayFriends);
+  return displayFriends;
+}
+
 export async function safeBootstrap() {
   try {
     const me = await loadUser();
     await Promise.all([
       loadProfile(me.id),
       loadTasks(me.id),
+      loadFriends(me.id),
     ]);
   } 
   catch (err: any) {
     useUserStore.getState().clear();
     useProfileStore.getState().clear();
     useTasksStore.getState().clear();
+    useFriendsStore.getState().clear();
     if (err?.response?.status !== 401) throw err;
   }
 }

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Animated as RNAnimated,
   Dimensions,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -21,27 +20,81 @@ import Animated, {
   FadeOut,
 } from "react-native-reanimated";
 
-import { friendsApi } from "@/services/api/friends-api";
+import { friendsApi, type Friendship } from "@/services/api/friends-api";
+import { usersApi } from "@/services/api/users-api";
+import { profileApi } from "@/services/api/profiles-api";
+import { imagesApi } from "@/services/api/image-api";
+import {
+  useFriendsStore,
+  type FriendUserInfo,
+  type DisplayFriend,
+} from "@/services/stores/friends-store";
+import { useUserStore } from "@/services/stores/users-store";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-/**
- * For now, a request is represented only by its ID (friendship/request id).
- * The backend `/friends/incoming` and `/friends/outgoing` endpoints return
- * `[string[], string | null]` => we wrap those ids into this shape.
- */
+
 type DisplayRequest = {
   id: string;
+  user: FriendUserInfo; 
 };
 
-type FriendRequestItemProps = {
-  request: DisplayRequest;
-  mode: "incoming" | "outgoing";
-  theme: any;
-  onAccept?: (req: DisplayRequest) => void;
-  onDecline?: (req: DisplayRequest) => void;
-  onCancel?: (req: DisplayRequest) => void;
-};
+// Resolve FriendUserInfo from a user id
+async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo> {
+  let username = "Unknown user";
+  let avatarUrl: string | null = null;
+
+  const userRes = await usersApi.getById(userId);
+  if (userRes.ok && userRes.data) {
+    username = userRes.data.username;
+  }
+
+  const profileRes = await profileApi.getById(userId);
+  if (
+    profileRes.ok &&
+    profileRes.data &&
+    (profileRes.data as any).avatar_image_id
+  ) {
+    const avatarImageId = (profileRes.data as any).avatar_image_id as string;
+    const imgRes = await imagesApi.getUrl(avatarImageId);
+    if (imgRes.ok && imgRes.data) {
+      avatarUrl = imgRes.data;
+    }
+  }
+
+  return { id: userId, username, avatarUrl };
+}
+
+// Build a DisplayRequest from a friendship id
+async function enrichRequest(friendshipId: string): Promise<DisplayRequest | null> {
+  const friendshipRes = await friendsApi.getById(friendshipId);
+  if (!friendshipRes.ok || !friendshipRes.data) {
+    console.log("[enrichRequest] failed for", friendshipId, friendshipRes.message);
+    return null;
+  }
+
+  const friendship: Friendship = friendshipRes.data;
+  const meId = useUserStore.getState().userId;
+  if (!meId) {
+    console.warn("[enrichRequest] missing current user id");
+    return null;
+  }
+
+  const friendUserId =
+    friendship.from_user_id === meId
+      ? friendship.to_user_id
+      : friendship.to_user_id === meId
+      ? friendship.from_user_id
+      : friendship.to_user_id;
+
+  const user = await resolveUserInfoForUserId(friendUserId);
+
+  return {
+    id: friendshipId,
+    user,
+  };
+}
+
 
 function FriendRequestItemWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -56,6 +109,16 @@ function FriendRequestItemWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+type FriendRequestItemProps = {
+  request: DisplayRequest;
+  mode: "incoming" | "outgoing";
+  theme: any;
+  onAccept?: (req: DisplayRequest) => void;
+  onDecline?: (req: DisplayRequest) => void;
+  onCancel?: (req: DisplayRequest) => void;
+  onViewProfile: (userId: string) => void;
+};
+
 const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
   request,
   mode,
@@ -63,11 +126,10 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
   onAccept,
   onDecline,
   onCancel,
+  onViewProfile,
 }) => {
-  // We no longer have username/avatar from backend; use placeholders.
-  const label =
-    mode === "incoming" ? "Incoming friend request" : "Outgoing friend request";
-  const initial = request.id[0]?.toUpperCase() ?? "?";
+  const displayName = request.user.username || "Unknown user";
+  const initial = displayName[0]?.toUpperCase() ?? "?";
 
   const anim = useRef(new RNAnimated.Value(1)).current;
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
@@ -99,17 +161,10 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
     }).start(() => cb && cb());
   };
 
-  const handleAccept = () => {
-    runCloseAnimation(() => onAccept?.(request));
-  };
+  const handleAccept = () => runCloseAnimation(() => onAccept?.(request));
+  const handleDecline = () => runCloseAnimation(() => onDecline?.(request));
+  const handleCancel = () => runCloseAnimation(() => onCancel?.(request));
 
-  const handleDecline = () => {
-    runCloseAnimation(() => onDecline?.(request));
-  };
-
-  const handleCancel = () => {
-    runCloseAnimation(() => onCancel?.(request));
-  };
 
   return (
     <RNAnimated.View
@@ -129,27 +184,39 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
         ]}
       >
         <View style={styles.friendBanner}>
-          {/* Avatar (placeholder for now) */}
+          {/* Avatar */}
           <View style={styles.friendAvatarWrapper}>
-            <View
-              style={[
-                styles.friendImage,
-                {
-                  backgroundColor: theme.primary,
-                  justifyContent: "center",
-                  alignItems: "center",
-                },
-              ]}
-            >
-              <Text style={styles.friendInitial}>{initial}</Text>
-            </View>
+            {request.user.avatarUrl ? (
+              <View style={styles.friendImage}>
+                <Animated.Image
+                  source={{ uri: request.user.avatarUrl }}
+                  style={styles.friendImage}
+                />
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.friendImage,
+                  {
+                    backgroundColor: theme.primary,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  },
+                ]}
+              >
+                <Text style={styles.friendInitial}>{initial}</Text>
+              </View>
+            )}
           </View>
 
-          {/* Label */}
+          {/* Username */}
           <View style={styles.friendInfo}>
-            <Text style={[styles.friendName, { color: theme.text }]}>
-              {label}
-            </Text>
+            <TouchableOpacity
+              onPress={() => onViewProfile(request.user.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.friendName, { color: theme.text }]}> {displayName} </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -210,6 +277,8 @@ const FriendRequestsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
+  const addFriend = useFriendsStore((s) => s.addFriend);
+
   const SWOOSH_COMPONENT_HEIGHT = screenWidth * 0.495;
   const headerTextColor = theme.background;
 
@@ -221,38 +290,35 @@ const FriendRequestsScreen: React.FC = () => {
       setErrorText(null);
 
       try {
-        // New API: both return IdPage { ids: string[], continuationToken }
         const [incomingRes, outgoingRes] = await Promise.all([
           friendsApi.listIncoming(20),
           friendsApi.listOutgoing(20),
         ]);
 
         if (!incomingRes.ok && !outgoingRes.ok) {
-          setErrorText(
-            incomingRes.message ||
-              outgoingRes.message ||
-              "Failed to load friend requests"
-          );
+          if (!cancelled) {
+            setErrorText(incomingRes.message || outgoingRes.message || "Failed to load friend requests");
+          }
           return;
         }
 
-        const incomingIds =
-          incomingRes.ok && incomingRes.data ? incomingRes.data.ids : [];
-        const outgoingIds =
-          outgoingRes.ok && outgoingRes.data ? outgoingRes.data.ids : [];
+        const incomingIds = incomingRes.ok && incomingRes.data ? incomingRes.data.ids : [];
+        const outgoingIds = outgoingRes.ok && outgoingRes.data ? outgoingRes.data.ids : [];
+
+        const [incomingEnriched, outgoingEnriched] = await Promise.all([
+          Promise.all(incomingIds.map((id) => enrichRequest(id))),
+          Promise.all(outgoingIds.map((id) => enrichRequest(id))),
+        ]);
 
         if (!cancelled) {
-          setIncoming(incomingIds.map((id) => ({ id })));
-          setOutgoing(outgoingIds.map((id) => ({ id })));
+          setIncoming(incomingEnriched.filter((r): r is DisplayRequest => r !== null));
+          setOutgoing(outgoingEnriched.filter((r): r is DisplayRequest => r !== null));
         }
       } catch (e) {
-        if (!cancelled) {
-          setErrorText("Failed to load friend requests");
-        }
+        console.log("[FriendRequests] load error", e);
+        if (!cancelled) setErrorText("Failed to load friend requests");
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -262,8 +328,41 @@ const FriendRequestsScreen: React.FC = () => {
     };
   }, []);
 
+  const promoteToFriend = async (req: DisplayRequest) => {
+    // After accept, hydrate the friendship and push into Friends store
+    const res = await friendsApi.getById(req.id);
+    if (!res.ok || !res.data) return;
+
+    const friendship = res.data;
+    const meId = useUserStore.getState().userId;
+    if (!meId) return;
+
+    const friendUserId =
+      friendship.from_user_id === meId
+        ? friendship.to_user_id
+        : friendship.to_user_id === meId
+        ? friendship.from_user_id
+        : friendship.to_user_id;
+
+    const displayFriend: DisplayFriend = {
+      ...friendship,
+      friendUserId,
+      user: req.user,
+    };
+
+    addFriend(displayFriend);
+  };
+
+  const handleViewProfile = (userId: string) => {
+        console.log("View profile:", userId);
+        router.push({
+            pathname: "/profile/[userId]",
+            params: {userId},
+        });
+    };
+
   const handleAccept = async (req: DisplayRequest) => {
-    console.log("[FriendRequests] Accept:", req.id);
+
     const res = await friendsApi.accept(req.id);
 
     if (!res.ok) {
@@ -271,13 +370,12 @@ const FriendRequestsScreen: React.FC = () => {
       setErrorText(res.message || "Failed to accept friend request");
       return;
     }
-
-    // Just remove from incoming; friends list will be refreshed elsewhere.
+    console.log("[FriendRequests] Accepted:", req.id);
     setIncoming((prev) => prev.filter((r) => r.id !== req.id));
+    await promoteToFriend(req);
   };
 
   const handleDecline = async (req: DisplayRequest) => {
-    console.log("[FriendRequests] Decline:", req.id);
     const res = await friendsApi.decline(req.id);
 
     if (!res.ok) {
@@ -285,12 +383,11 @@ const FriendRequestsScreen: React.FC = () => {
       setErrorText(res.message || "Failed to decline friend request");
       return;
     }
-
+    console.log("[FriendRequests] Declined:", req.id);
     setIncoming((prev) => prev.filter((r) => r.id !== req.id));
   };
 
   const handleCancel = async (req: DisplayRequest) => {
-    console.log("[FriendRequests] Cancel:", req.id);
     const res = await friendsApi.cancel(req.id);
 
     if (!res.ok) {
@@ -298,7 +395,7 @@ const FriendRequestsScreen: React.FC = () => {
       setErrorText(res.message || "Failed to cancel friend request");
       return;
     }
-
+    console.log("[FriendRequests] Canceled:", req.id);
     setOutgoing((prev) => prev.filter((r) => r.id !== req.id));
   };
 
@@ -382,6 +479,7 @@ const FriendRequestsScreen: React.FC = () => {
                   theme={theme}
                   onAccept={handleAccept}
                   onDecline={handleDecline}
+                  onViewProfile={handleViewProfile}
                 />
               </FriendRequestItemWrapper>
             ))
@@ -417,6 +515,7 @@ const FriendRequestsScreen: React.FC = () => {
                   mode="outgoing"
                   theme={theme}
                   onCancel={handleCancel}
+                  onViewProfile={handleViewProfile}
                 />
               </FriendRequestItemWrapper>
             ))

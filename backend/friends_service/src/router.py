@@ -182,7 +182,7 @@ async def get_by_id(
 
 
 @friends_router.get(
-    "/search/{friend_id}", tags=["friendships"], response_model=Friendship
+    "/search/{friend_id}", tags=["friendships"], response_model=str
 )
 async def find_friendship(
     friend_id: str,
@@ -284,7 +284,7 @@ async def accept_request(
 @friends_router.post(
     "/request/{request_id}/decline",
     status_code=status.HTTP_204_NO_CONTENT,
-    tags=["friends"],
+    tags=["friend_requests"],
 )
 async def decline_request(
     request_id: str,
@@ -319,7 +319,7 @@ async def decline_request(
 @friends_router.post(
     "/request/{request_id}/cancel",
     status_code=status.HTTP_204_NO_CONTENT,
-    tags=["friends"],
+    tags=["friend_requests"],
 )
 async def cancel_request(
     request_id: str,

@@ -13,6 +13,7 @@ export type FriendUserInfo = {
 
 
 export type DisplayFriend = Friendship & {
+  friendUserId: string;
   user: FriendUserInfo;
 };
 
@@ -51,7 +52,7 @@ export const useFriendsStore = create<FriendsState>()(
         set((state) => {
           const exists = state.friends.some(
             (f) =>
-              f.friend_id === friend.friend_id ||
+              f.friendUserId === friend.friendUserId ||
               f.user.id === friend.user.id
           );
           if (exists) return state;
@@ -67,7 +68,7 @@ export const useFriendsStore = create<FriendsState>()(
       removeFriend: (friendUserId) =>
         set((state) => {
           const next = state.friends.filter(
-            (f) => f.friend_id !== friendUserId && f.user.id !== friendUserId
+            (f) => f.friendUserId !== friendUserId && f.user.id !== friendUserId
           );
           return {
             friends: next,
