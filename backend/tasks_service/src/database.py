@@ -87,23 +87,15 @@ class TaskDB:
             logger.debug(
                 f"Trying to get all tasks of user with ID '{user_id}' from dates '{reference_start}' to '{reference_end}'"
             )
-            async for item in self.container.query_items(
-                query=query, parameters=parameters
-            ):
-                try:
-                    yield TaskInDB.model_validate(item, extra="ignore")
-                except ValidationError:
-                    logger.error(
-                        f"Got invalid data when querying tasks for user with ID '{user_id}': {item}"
-                    )
-                    continue
+            async for item in self.container.query_items(query=query, parameters=parameters):
+                yield TaskInDB.model_validate(item, extra="ignore")
         except Exception as e:
             logger.error(
                 f"Error getting all tasks of user with ID '{user_id}' from dates '{reference_start}' to '{reference_end}', unexpected: {e}"
             )
             raise GeneralQueryError()
 
-    async def update_task(self, task_update: TaskUpdate) -> TaskInDB:
+    async def update_task(self, task_update: TaskUpdate):
         patch_operations = []
         task_update_json = task_update.model_dump(mode="json")
         try:
@@ -177,6 +169,25 @@ class TaskDB:
                 )
                 raise EmptyRecordUpdateError()
 
+            if task_update.repeat_rule is not None or task_update.first_relevant_date is not None:
+                old_task = await self.get_task_by_id(task_update.id)
+                if task_update.repeat_rule is not None:
+                    old_task.repeat_rule = task_update.repeat_rule
+                if task_update.first_relevant_date is not None:
+                    old_task.first_relevant_date = task_update.first_relevant_date
+                old_task.calculate_last_relevant_date()
+                if old_task.last_relevant_date is not None:
+                    logger.debug(
+                        f"Updating last relevant date for task with ID '{task_update.id}'"
+                    )
+                    patch_operations.append(
+                        {
+                            "op": "replace",
+                            "path": "/last_relevant_date",
+                            "value": old_task.last_relevant_date.isoformat(),
+                        }
+                    )
+
             logger.debug(
                 f"Updating 'updated_at' timestamp for task with ID '{task_update.id}'"
             )
@@ -194,14 +205,7 @@ class TaskDB:
                 partition_key=task_update.id,
                 patch_operations=patch_operations,
             )
-            logger.debug("Successfully updated on DB, returning validated result")
-            new_task = TaskInDB.model_validate(item, extra="ignore")
-            if (
-                task_update.first_relevant_date is not None
-                or task_update.repeat_rule is not None
-            ):
-                new_task.calculate_last_relevant_date()
-            return new_task
+            logger.debug(f"Successfully updated task on DB: {item}")
         except exceptions.CosmosResourceNotFoundError:
             logger.error(
                 f"Error trying to update task with ID '{task_update.id}': not found"

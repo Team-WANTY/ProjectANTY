@@ -52,7 +52,7 @@ class PostsService:
         getter: UserInDB,
         max_items: int,
         continuation_token: str | None,
-    ):
+    )->tuple[list[str], str | None]:
         """Returns list of post ids: newest -> oldest.
         Used for populating posts initially.
         Requires current user due to friend list being basically exposed"""
@@ -74,7 +74,7 @@ class PostsService:
         getter: UserInDB,
         max_items: int,
         continuation_token: str | None,
-    ):
+    )-> tuple[list[str], str | None]:
         """Returns list of post ids: oldest(at or after timestamp)-> newest.
         Used for updates, query this endpoint with the timestamp of the newest post and get back posts made after it.
         Requires current user due to friend list being basically exposed"""

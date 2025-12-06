@@ -173,7 +173,7 @@ class FriendshipsDB:
         user_id: str,
         max_items: int,
         continuation_token: str | None = None,
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         # List friends for a given user_id with pagination.
         query = (
             "SELECT c.id FROM c "
@@ -287,7 +287,6 @@ class FriendshipsDB:
             logger.debug(
                 f"Updated friendship with ID '{friendship_id}': {updated.model_dump()}",
             )
-            return updated
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:

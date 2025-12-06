@@ -45,7 +45,7 @@ class FriendsService:
 
     async def list_incoming(
         self, me: UserInDB, limit: int, continuation: str | None
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         return await self.db.list_incoming(
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
@@ -69,10 +69,9 @@ class FriendsService:
         ):
             await authorize_operation(me, friendship.to_user_id)
             # update friendship to accepted
-            friendship = await self.db.update_status(
+            await self.db.update_status(
                 friendship_id, FriendshipStatus.ACCEPTED
             )
-            return friendship
 
     async def unfriend(self, me: UserInDB, friend_id: str):
         friendship_id = await self.db.find_friendship(me.id, friend_id)

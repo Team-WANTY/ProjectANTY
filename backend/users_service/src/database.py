@@ -65,9 +65,9 @@ class UsersDB:
             raise GeneralQueryError()
 
     async def get_user_ids_given_username_part(
-        self, partial_username: str, max_items: int, continuation_token: str
-    ) -> tuple[list[str], str]:
-        query = "SELECT c.id FROM c WHERE CONTAINS(c.username, @partial)"
+        self, partial_username: str, max_items: int, continuation_token: str | None = None
+    ) -> tuple[list[str], str | None]:
+        query = "SELECT VALUE c.id FROM c WHERE CONTAINS(c.username, @partial)"
         parameters: list[dict[str, object]] = [
             {"name": "@partial", "value": partial_username}
         ]

@@ -64,7 +64,7 @@ class PostsDB:
 
     async def get_users_post_ids(
         self, user_id: str, max_items: int, continuation_token: str | None
-    ):
+    )->tuple[list[str], str | None]:
         # get all post ids from user, sorted in descending order of creation
         query = """
             SELECT c.id FROM c
@@ -108,7 +108,7 @@ class PostsDB:
         relevant_user_ids: list[str],
         max_items: int,
         continuation_token: str | None,
-    ):
+    )-> tuple[list[str], str | None]:
         # get all post ids from user and friends, sorted in descending order of creation
         query = """
             SELECT c.id FROM c
@@ -154,7 +154,7 @@ class PostsDB:
         timestamp: datetime,
         max_items: int,
         continuation_token: str | None,
-    ):
+    )-> tuple[list[str], str | None]:
         query = """
             SELECT c.id FROM c
             WHERE ARRAY_CONTAINS(@user_ids, c.creator_id) AND c.created_at >= @timestamp

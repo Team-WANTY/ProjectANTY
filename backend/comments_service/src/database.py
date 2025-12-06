@@ -66,7 +66,7 @@ class CommentsDB:
 
     async def get_comments_under_content_with_id(
         self, parent_content_id: str, max_items: int, continuation_token: str | None
-    ):
+    ) -> tuple[list[str], str | None]:
         # get all post ids from user, sorted in descending order of creation
         query = """
             SELECT c.id FROM c

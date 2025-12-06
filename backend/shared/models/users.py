@@ -7,12 +7,12 @@ class UserBase(BaseModel):
     """Info passed usually out of program, "base" due to containing minimum info and no sensitive data"""
 
     id: str
+    username: str
 
 
 class UserInDB(UserBase):
     """internal use only data model not to be sent out"""
 
-    username: str
     email: EmailStr
     created_at: datetime
     updated_at: datetime

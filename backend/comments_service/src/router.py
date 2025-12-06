@@ -77,7 +77,7 @@ async def get_comment_by_id(
 
 @comments_router.get(
     "/content/{content_id}",
-    response_model=tuple[list[str], str],
+    response_model=tuple[list[str], str | None],
     tags=["comments"],
 )
 async def get_comments_under_content_with_id(
@@ -85,7 +85,7 @@ async def get_comments_under_content_with_id(
     max_items: int,
     continuation_token: str | None = None,
     comments_service: CommentsService = Depends(get_comments_service),
-):
+) -> tuple[list[str], str | None]:
     try:
         return await comments_service.get_comments_under_content_with_id(
             content_id, max_items, continuation_token
