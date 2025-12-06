@@ -22,7 +22,10 @@ from src.dependencies import get_users_service
 from src.models import UserCreate, UserUpdate
 from src.service import UsersService
 
-interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
+interservice_scheme = APIKeyHeader(
+    name="X-Interservice-Key",
+    auto_error=False
+)
 
 users_router = APIRouter()
 
@@ -156,6 +159,8 @@ async def get_user_by_username(
     users_service: UsersService = Depends(get_users_service),
     x_interservice_key=Depends(interservice_scheme),
 ) -> UserInDB:
+    if x_interservice_key is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     if x_interservice_key != shared_settings.INTERSERVICE_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     try:
@@ -187,6 +192,8 @@ async def get_user_by_email(
     users_service: UsersService = Depends(get_users_service),
     x_interservice_key=Depends(interservice_scheme),
 ) -> UserInDB:
+    if x_interservice_key is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     if x_interservice_key != shared_settings.INTERSERVICE_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     try:
