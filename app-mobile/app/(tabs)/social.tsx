@@ -18,6 +18,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import FriendActivityItem from "@/components/friend-activity";
 import { useNotificationModal } from "@/app/_layout";
+import { useRouter } from "expo-router";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -89,6 +90,7 @@ export default function SocialPage() {
     const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [commentText, setCommentText] = useState("");
+    const router = useRouter();
 
     const { showNotifications } = useNotificationModal();
 
@@ -161,7 +163,7 @@ export default function SocialPage() {
                 title="Social"
                 showTitle={true}
                 onNotificationPress={showNotifications}
-                onSettingsPress={() => { /* navigate to settings */ }}
+                onSettingsPress={() => { router.push("../settings") }}
             />
 
             {/* Add Post Button */}
@@ -209,7 +211,7 @@ export default function SocialPage() {
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={styles.commentsModalOverlay}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.commentsModalBackdrop}
                         activeOpacity={1}
                         onPress={closeCommentsModal}
@@ -274,12 +276,12 @@ export default function SocialPage() {
 
                                 {/* Add Comment Input */}
                                 {selectedPost.commentsEnabled ? (
-                                    <View style={[styles.addCommentContainer, { 
+                                    <View style={[styles.addCommentContainer, {
                                         borderTopColor: theme.border,
                                         backgroundColor: theme.cardBackground,
                                     }]}>
                                         <TextInput
-                                            style={[styles.commentInput, { 
+                                            style={[styles.commentInput, {
                                                 backgroundColor: theme.background,
                                                 color: theme.primary,
                                                 borderColor: theme.border,
@@ -291,8 +293,8 @@ export default function SocialPage() {
                                             multiline
                                         />
                                         <TouchableOpacity
-                                            style={[styles.submitCommentButton, { 
-                                                backgroundColor: commentText.trim() ? theme.primary : theme.border 
+                                            style={[styles.submitCommentButton, {
+                                                backgroundColor: commentText.trim() ? theme.primary : theme.border
                                             }]}
                                             onPress={() => {
                                                 handleAddComment(selectedPost.id);
@@ -303,7 +305,7 @@ export default function SocialPage() {
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
-                                    <View style={[styles.commentsDisabledContainer, { 
+                                    <View style={[styles.commentsDisabledContainer, {
                                         borderTopColor: theme.border,
                                         backgroundColor: theme.background,
                                     }]}>
@@ -340,7 +342,7 @@ export default function SocialPage() {
 
                         <ScrollView style={styles.modalBody}>
                             <TextInput
-                                style={[styles.postInput, { 
+                                style={[styles.postInput, {
                                     backgroundColor: theme.background,
                                     color: theme.primary,
                                     borderColor: theme.border,
@@ -375,8 +377,8 @@ export default function SocialPage() {
                         </ScrollView>
 
                         <TouchableOpacity
-                            style={[styles.submitButton, { 
-                                backgroundColor: newPostText.trim() ? theme.primary : theme.border 
+                            style={[styles.submitButton, {
+                                backgroundColor: newPostText.trim() ? theme.primary : theme.border
                             }]}
                             onPress={handleAddPost}
                             disabled={!newPostText.trim()}

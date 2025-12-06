@@ -63,8 +63,8 @@ const DashboardCard = ({ item, theme }: DashboardCardProps) => {
 };
 
 export default function Home() {
-        // TODO: Replace with real friend activity data from your backend or store
-        const friendActivities: any[] = [];
+    // TODO: Replace with real friend activity data from your backend or store
+    const friendActivities: any[] = [];
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
     const containerBackgroundColor = theme.background;
@@ -87,7 +87,7 @@ export default function Home() {
     const percent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
     return (
-        <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}> 
+        <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
             {/* Header Bar */}
             <HeaderBar
                 title="Home"
@@ -130,8 +130,8 @@ export default function Home() {
                                 activity={activity}
                                 theme={theme}
                                 isLiked={false}
-                                onToggleLike={() => {}}
-                                onCommentPress={() => {}}
+                                onToggleLike={() => { }}
+                                onCommentPress={() => { }}
                                 commentsCount={activity.commentsCount || 0}
                             />
                         ))

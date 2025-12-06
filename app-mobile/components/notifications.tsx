@@ -84,7 +84,7 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
 
     return (
       isVisible && (
-        <Animated.View style={[{ width: "100%" }, { opacity: anim }]}> 
+        <Animated.View style={[{ width: "100%" }, { opacity: anim }]}>
           <ReanimatedSwipeable
             renderRightActions={renderRightActions}
             overshootRight={false}
@@ -93,7 +93,7 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
           >
             <View style={styles.notificationItem}>
               <Image source={item.avatar} style={styles.avatar} />
-              <Text style={[styles.notificationText, { color: theme.primary, textAlign: 'left' }]}> 
+              <Text style={[styles.notificationText, { color: theme.text, textAlign: 'left' }]}>
                 <Text style={{ fontWeight: 'bold' }}>{item.username}</Text> {item.text}
               </Text>
             </View>
@@ -142,25 +142,25 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
   );
 }
 const styles = StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.25)',
-      justifyContent: 'flex-end',
-    },
-    sheet: {
-      width: '100%',
-      borderTopLeftRadius: 18,
-      borderTopRightRadius: 18,
-      paddingHorizontal: 18,
-      paddingTop: 16,
-      paddingBottom: 8,
-      minHeight: 220,
-      shadowColor: '#000',
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: -2 },
-      elevation: 8,
-    },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    width: '100%',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 8,
+    minHeight: 220,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 8,
+  },
   archiveBtnSwipe: {
     backgroundColor: "#4F8EF7",
     justifyContent: "center",
