@@ -49,7 +49,8 @@ class FriendshipsDB:
     async def find_friendship(self, user_id: str, friend_id: str) -> str:
         query = (
             "SELECT c.id FROM c "
-            "WHERE (c.from_user_id = @user AND c.to_user_id = @friend) OR (c.to_user_id = @user AND c.from_user_id = @friend)"
+            "WHERE (c.from_user_id = @user AND c.to_user_id = @friend) "
+            "OR (c.to_user_id = @user AND c.from_user_id = @friend)"
             "ORDER BY c.created_at DESC"
         )
         params = [
@@ -60,7 +61,7 @@ class FriendshipsDB:
             async for item in self.container.query_items(
                 query=query, parameters=params
             ):
-                return item
+                return item["id"] 
 
             raise RecordNotFoundError()
 
@@ -116,7 +117,7 @@ class FriendshipsDB:
 
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                friendship_ids = [id async for id in page]
+                friendship_ids = [friendship_ids["id"] async for friendship_ids in page] 
                 break  # first page only
 
             new_cont: str | None = pager.continuation_token
@@ -194,7 +195,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item async for item in page]
+                items = [item["id"] async for item in page]                
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -242,7 +243,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item async for item in page]
+                items = [item["id"] async for item in page] 
                 break
 
             # Continuation token for the next page (or None if no more)
