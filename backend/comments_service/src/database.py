@@ -90,7 +90,7 @@ class CommentsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items: list[str] = [id async for id in page]
+                items: list[str] = [id["id"] async for id in page]
                 break
 
             # Continuation token for the next page (or None if no more)
