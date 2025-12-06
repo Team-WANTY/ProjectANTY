@@ -14,7 +14,7 @@ from shared.exceptions.db import (
     RecordNotFoundError,
     RecordUpdateError,
 )
-from shared.models.users import UserInDB
+from shared.models.users import UserBase, UserInDB
 from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
@@ -70,16 +70,14 @@ async def create_user(
         )
 
 
-@users_router.get("/id/{user_id}", response_model=UserInDB, tags=["interservice"])
+@users_router.get("/id/{user_id}", response_model=UserInDB|UserBase, tags=["interservice"])
 async def get_user(
     user_id: str,
     users_service: UsersService = Depends(get_users_service),
-    x_interservice_key=Depends(interservice_scheme),
-) -> UserInDB:
-    if x_interservice_key != shared_settings.INTERSERVICE_KEY:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    x_interservice_key:str|None=Depends(interservice_scheme),
+):
     try:
-        return await users_service.get_user_by_id(user_id)
+        user_in_db = await users_service.get_user_by_id(user_id)
     except AuthError:
         logger.warning(
             f"Error trying to get user with ID '{user_id}': authorization error"
@@ -99,7 +97,13 @@ async def get_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
-
+    if x_interservice_key is None:
+        return UserBase(**user_in_db.model_dump())
+        # convert output from get_user_by_id to UserBase which UserInDB inherits from
+    elif x_interservice_key != shared_settings.INTERSERVICE_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    else:
+        return user_in_db
 
 @users_router.get(
     "/search/{partial_username}",

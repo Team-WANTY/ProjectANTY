@@ -355,23 +355,37 @@ export default function TasksScreen() {
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
     const [taskNameError, setTaskNameError] = useState("");
-    const fadeAnim = useRef(new RNAnimated.Value(0)).current;
+    const fadeAnimNewCategory = useRef(new RNAnimated.Value(0)).current;
+    const fadeAnimEditCategory = useRef(new RNAnimated.Value(0)).current;
     const [loading, setLoading] = useState(false);
 
     // Animation helpers
-    const fadeIn = () => {
-        RNAnimated.timing(fadeAnim, {
+    const fadeInNewCategory = () => {
+        RNAnimated.timing(fadeAnimNewCategory, {
             toValue: 1,
             duration: 200,
-            useNativeDriver: true,
+            useNativeDriver: false,
         }).start();
     };
-
-    const fadeOut = (onComplete: () => void) => {
-        RNAnimated.timing(fadeAnim, {
+    const fadeOutNewCategory = (onComplete: () => void) => {
+        RNAnimated.timing(fadeAnimNewCategory, {
             toValue: 0,
             duration: 200,
-            useNativeDriver: true,
+            useNativeDriver: false,
+        }).start(onComplete);
+    };
+    const fadeInEditCategory = () => {
+        RNAnimated.timing(fadeAnimEditCategory, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: false,
+        }).start();
+    };
+    const fadeOutEditCategory = (onComplete: () => void) => {
+        RNAnimated.timing(fadeAnimEditCategory, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
         }).start(onComplete);
     };
 
@@ -432,17 +446,17 @@ export default function TasksScreen() {
         setSelectedCategoryForMenu(category);
         setEditCategoryName(category);
         setIsEditCategoryModalVisible(true);
-        fadeIn();
+        fadeInEditCategory();
     };
 
     const handleEditCategory = () => {
         if (selectedCategoryForMenu) {
             setEditCategoryName(selectedCategoryForMenu);
-            fadeOut(() => {
+            fadeOutEditCategory(() => {
                 setCategoryMenuVisible(false);
                 setTimeout(() => {
                     setIsEditCategoryModalVisible(true);
-                    fadeIn();
+                    fadeInEditCategory();
                 }, 100);
             });
         }
@@ -454,7 +468,7 @@ export default function TasksScreen() {
 
         setCategoriesList((prev) => [...prev, trimmed,]);
         setNewCategoryName("");
-        fadeOut(() => setIsNewCategoryModalVisible(false));
+        fadeOutNewCategory(() => setIsNewCategoryModalVisible(false));
     };
    
     const handleDeleteCategory = () => {
@@ -474,7 +488,7 @@ export default function TasksScreen() {
             console.log("Failed to delete category", error);
         });
 
-        fadeOut(() => setIsEditCategoryModalVisible(false));
+        fadeOutEditCategory(() => setIsEditCategoryModalVisible(false));
     };
 
     const handleSaveEditCategory = () => {
@@ -497,7 +511,7 @@ export default function TasksScreen() {
             console.log("Failed to update category", error);
         });
 
-        fadeOut(() => setIsEditCategoryModalVisible(false));
+        fadeOutEditCategory(() => setIsEditCategoryModalVisible(false));
     };
 
     
@@ -754,7 +768,7 @@ export default function TasksScreen() {
                     <TouchableOpacity
                         onPress={() => {
                             setIsNewCategoryModalVisible(true);
-                            fadeIn();
+                            fadeInNewCategory();
                         }}
                     >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
@@ -780,69 +794,16 @@ export default function TasksScreen() {
                 </ScrollView>
 
                 {/* Edit Category Modal */}
-                <Modal
-                    transparent={true}
+                <CategoryEditModal
                     visible={isEditCategoryModalVisible}
-                    onRequestClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                    animationType="none"
-                >
-                    <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-                        <Pressable
-                            style={StyleSheet.absoluteFill}
-                            onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.modalContent,
-                                {
-                                    backgroundColor: theme.border,
-                                    transform: [{
-                                        scale: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.95, 1]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        >
-                            <Pressable
-                                accessible={true}
-                                accessibilityLabel="Close edit category"
-                                onPress={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
-                                style={styles.modalCloseButton}
-                            >
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </Pressable>
-                            <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
-                            
-                            <View style={[styles.inputContainer, { marginBottom: 16 }]}>
-                                <TextInput
-                                    style={[styles.input, { color: theme.background, borderColor: theme.background }]}
-                                    value={editCategoryName}
-                                    onChangeText={setEditCategoryName}
-                                    placeholder="Enter category name"
-                                    placeholderTextColor={theme.background + '80'}
-                                />
-                            </View>
-
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={[styles.saveButton, { backgroundColor: theme.primary, flex: 1 }]}
-                                    onPress={handleSaveEditCategory}
-                                >
-                                    <Text style={[styles.saveButtonText, { color: '#fff' }]}>Save Changes</Text>
-                                </TouchableOpacity>
-                                
-                                <TouchableOpacity
-                                    style={[styles.deleteButton, { backgroundColor: '#ff4d4f' }]}
-                                    onPress={handleDeleteCategory}
-                                >
-                                    <Ionicons name="trash" size={20} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
-                        </Animated.View>
-                    </Animated.View>
-                </Modal>
+                    fadeAnim={fadeAnimEditCategory}
+                    theme={theme}
+                    value={editCategoryName}
+                    onChangeValue={setEditCategoryName}
+                    onClose={() => fadeOutEditCategory(() => setIsEditCategoryModalVisible(false))}
+                    onSubmit={handleSaveEditCategory}
+                    onDelete={handleDeleteCategory}
+                />
 
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
@@ -851,7 +812,6 @@ export default function TasksScreen() {
                         setIsNewTaskModalVisible(true);
                         setDateError("");
                         setTaskNameError("");
-                        fadeIn();
                     }}
                     >
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
@@ -860,37 +820,45 @@ export default function TasksScreen() {
 
                 {/* 5. To-Do List Items */}
                 <View style={styles.taskListContainer}>
-                    {sorted.map((task) => (
-                        <TaskItemWrapper key={task.id}>
-                            <TaskItem
-                                task={task}
-                                theme={theme}
-                                onPress={handleEditTask}
-                                onToggle={handleToggleTask}
-                                onDelete={handleDeleteTask}
-                            />
-                        </TaskItemWrapper>
-                    ))}
+                    {sorted.length === 0 ? (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
+                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
+                                You currently have no tasks.
+                            </Text>
+                        </View>
+                    ) : (
+                        sorted.map((task) => (
+                            <TaskItemWrapper key={task.id}>
+                                <TaskItem
+                                    task={task}
+                                    theme={theme}
+                                    onPress={handleEditTask}
+                                    onToggle={handleToggleTask}
+                                    onDelete={handleDeleteTask}
+                                />
+                            </TaskItemWrapper>
+                        ))
+                    )}
                 </View>
             </ScrollView>
 
             <CategoryCreateModal
                 visible={isNewCategoryModalVisible}
-                fadeAnim={fadeAnim}
+                fadeAnim={fadeAnimNewCategory}
                 theme={theme}
                 value={newCategoryName}
                 onChangeValue={setNewCategoryName}
-                onClose={() => fadeOut(() => setIsNewCategoryModalVisible(false))}
+                onClose={() => fadeOutNewCategory(() => setIsNewCategoryModalVisible(false))}
                 onSubmit={handleSaveNewCategory}
             />
             
             <CategoryEditModal
                 visible={isEditCategoryModalVisible}
-                fadeAnim={fadeAnim}
+                fadeAnim={fadeAnimEditCategory}
                 theme={theme}
                 value={editCategoryName}
                 onChangeValue={setEditCategoryName}
-                onClose={() => fadeOut(() => setIsEditCategoryModalVisible(false))}
+                onClose={() => fadeOutEditCategory(() => setIsEditCategoryModalVisible(false))}
                 onSubmit={handleSaveEditCategory}
                 onDelete={handleDeleteCategory}
             />

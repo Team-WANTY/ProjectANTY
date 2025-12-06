@@ -1,4 +1,3 @@
-// app/register.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, TextInput, Dimensions, TouchableOpacity, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authApi } from "@/services/api/auth-api";
 import DecorativeSwoosh from "@/components/decorative-swoosh";
 
-export default function Register() {
+const Register: React.FC = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [email, setEmail] = useState("");
@@ -53,7 +52,7 @@ export default function Register() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: theme?.background ?? '#fff' }]}> 
             {/* Top swoosh banner */}
             <View
                 style={{
@@ -64,12 +63,10 @@ export default function Register() {
                     height: screenWidth * 0.495,
                 }}
             >
-                <DecorativeSwoosh color={theme.primary} width={screenWidth} height={screenWidth * 0.495} />
+                <DecorativeSwoosh color={theme?.primary ?? '#999999'} width={screenWidth} height={screenWidth * 0.495} />
                 {/* Back Arrow */}
-                <TouchableOpacity style={[styles.backButton, { top: insets.top + 15 }]}
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={24} color={theme.background}
+                <TouchableOpacity style={[styles.backButton, { top: insets.top + 15 }]} onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={theme?.background ?? '#fff'}
                         style={[
                             styles.backButton,
                             {
@@ -82,55 +79,55 @@ export default function Register() {
                 </TouchableOpacity>
             </View>
 
-            <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
+            <Text style={[styles.title, { color: theme?.text ?? '#11181C' }]}>Create Account</Text>
 
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Email</Text>
+            <Text style={[styles.inputLabel, { color: theme?.text ?? '#11181C' }]}>Email</Text>
             <TextInput
                 style={[
                     styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.email ? 'red' : theme.border, color: theme.text },
+                    { backgroundColor: theme?.inputBackground ?? '#F0F0F0', borderColor: fieldErrors.email ? 'red' : theme?.border ?? '#999999', color: theme?.text ?? '#11181C' },
                 ]}
                 placeholder="Email Address"
-                placeholderTextColor={theme.primary}
+                placeholderTextColor={theme?.primary ?? '#999999'}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
                 onChangeText={(text) => { setEmail(text); if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: false })); }}
             />
 
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Username</Text>
+            <Text style={[styles.inputLabel, { color: theme?.text ?? '#11181C' }]}>Username</Text>
             <TextInput
                 style={[
                     styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.username ? 'red' : theme.border, color: theme.text },
+                    { backgroundColor: theme?.inputBackground ?? '#F0F0F0', borderColor: fieldErrors.username ? 'red' : theme?.border ?? '#999999', color: theme?.text ?? '#11181C' },
                 ]}
                 placeholder="Username"
-                placeholderTextColor={theme.primary}
+                placeholderTextColor={theme?.primary ?? '#999999'}
                 value={username}
                 onChangeText={(text) => { setUsername(text); if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: false })); }}
             />
 
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Password</Text>
+            <Text style={[styles.inputLabel, { color: theme?.text ?? '#11181C' }]}>Password</Text>
             <TextInput
                 style={[
                     styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.password ? 'red' : theme.border, color: theme.text },
+                    { backgroundColor: theme?.inputBackground ?? '#F0F0F0', borderColor: fieldErrors.password ? 'red' : theme?.border ?? '#999999', color: theme?.text ?? '#11181C' },
                 ]}
                 placeholder="Password"
-                placeholderTextColor={theme.primary}
+                placeholderTextColor={theme?.primary ?? '#999999'}
                 secureTextEntry
                 value={password}
                 onChangeText={(text) => { setPassword(text); if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: false })); }}
             />
 
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Confirm Password</Text>
+            <Text style={[styles.inputLabel, { color: theme?.text ?? '#11181C' }]}>Confirm Password</Text>
             <TextInput
                 style={[
                     styles.input,
-                    { backgroundColor: theme.inputBackground, borderColor: fieldErrors.passwordConfirm ? 'red' : theme.border, color: theme.text },
+                    { backgroundColor: theme?.inputBackground ?? '#F0F0F0', borderColor: fieldErrors.passwordConfirm ? 'red' : theme?.border ?? '#999999', color: theme?.text ?? '#11181C' },
                 ]}
                 placeholder="Confirm Password"
-                placeholderTextColor={theme.primary}
+                placeholderTextColor={theme?.primary ?? '#999999'}
                 secureTextEntry
                 value={passwordConfirm}
                 onChangeText={(text) => { setPasswordConfirm(text); if (fieldErrors.passwordConfirm) setFieldErrors(prev => ({ ...prev, passwordConfirm: false })); }}
@@ -139,7 +136,7 @@ export default function Register() {
             {message ? (<Text style={[styles.message, isError ? styles.errorText : styles.successText]}>{message}</Text>) : null}
             
             <Pressable
-                style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme.primary }]}
+                style={[styles.button, loading && { opacity: 0.6 }, { backgroundColor: theme?.primary ?? '#999999' }]}
                 disabled={loading}
                 onPress={() => {
                     // Quick pre-submit validation (mirrors handleRegister checks for instant feedback)
@@ -175,11 +172,13 @@ export default function Register() {
                     handleRegister();
                 }}
             >
-                {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme.text }]}>Register</Text>}
+                {loading ? <ActivityIndicator /> : <Text style={[styles.buttonText, { color: theme?.onPrimary ?? '#fff' }]}>Register</Text>}
             </Pressable>
         </View>
     );
-}
+};
+
+
 
 const styles = StyleSheet.create({
     container: {
@@ -233,9 +232,11 @@ const styles = StyleSheet.create({
         minHeight: 20,
     },
     errorText: {
-        color: "red",
+        color: '#ff4d4f',
     },
     successText: {
-        color: "green",
+        color: '#999999',
     },
 });
+
+export default Register;
