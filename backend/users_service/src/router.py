@@ -19,7 +19,7 @@ from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.dependencies import get_users_service
-from src.models import UserCreate, UsernameOnly, UserUpdate
+from src.models import UserCreate, UserUpdate
 from src.service import UsersService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
@@ -70,12 +70,14 @@ async def create_user(
         )
 
 
-@users_router.get("/id/{user_id}", response_model=UserInDB|UserBase, tags=["interservice"])
+@users_router.get(
+    "/id/{user_id}", response_model=UserInDB | UserBase, tags=["interservice"]
+)
 async def get_user(
     user_id: str,
     users_service: UsersService = Depends(get_users_service),
-    x_interservice_key:str|None=Depends(interservice_scheme),
-):
+    x_interservice_key: str | None = Depends(interservice_scheme),
+) -> UserInDB | UserBase:
     try:
         user_in_db = await users_service.get_user_by_id(user_id)
     except AuthError:
@@ -105,6 +107,7 @@ async def get_user(
     else:
         return user_in_db
 
+
 @users_router.get(
     "/search/{partial_username}",
     response_model=tuple[list[str], str | None],
@@ -116,7 +119,7 @@ async def get_user_ids_given_username_part(
     continuation_token: str | None = None,
     users_service: UsersService = Depends(get_users_service),
     current_user=Depends(get_current_user),
-):
+) -> tuple[list[str], str | None]:
     try:
         logger.debug(
             f"User {current_user.id} is looking for usernames like: {partial_username}"
@@ -142,30 +145,6 @@ async def get_user_ids_given_username_part(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
-        )
-
-@users_router.get(
-    "/public/id/{user_id}",
-    response_model=UsernameOnly,
-    tags=["users"],
-)
-async def get_public_user_by_id(
-    user_id: str,
-    users_service: UsersService = Depends(get_users_service),
-    _current_user: UserInDB = Depends(get_current_user),
-):
-    """
-    Client-facing: return only id + username for a given user_id.
-    """
-    try:
-        user = await users_service.get_user_by_id(user_id)
-        return UsernameOnly(username=user.username)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    except GeneralQueryError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal query error",
         )
 
 

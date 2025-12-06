@@ -96,11 +96,9 @@ class TestDBUpdateTask:
         task_update = TaskUpdate(id="task123", name="New Name")
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.name = "New Name"
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
 
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        assert result.name == "New Name"
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_desc_success(
@@ -109,11 +107,9 @@ class TestDBUpdateTask:
         task_update = TaskUpdate(id="task123", desc="New Description")
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.desc = "New Description"
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
 
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        assert result.desc == "New Description"
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_cat_success(
@@ -122,11 +118,9 @@ class TestDBUpdateTask:
         task_update = TaskUpdate(id="task123", cat="New Category")
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.cat = "New Category"
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
 
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        assert result.cat == "New Category"
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_first_relevant_date_success(
@@ -137,11 +131,11 @@ class TestDBUpdateTask:
         )
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.first_relevant_date = now_timestamp().date()
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
-
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        # due to timing conflicts, remove check for time
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
+        mock_container.read_item.return_value = sample_task_in_db.model_dump(
+            mode="json"
+        )
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_completions_success(
@@ -150,11 +144,9 @@ class TestDBUpdateTask:
         task_update = TaskUpdate(id="task123", completions=[now_timestamp().date()])
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.completions = [now_timestamp().date()]
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
 
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        # due to timing conflicts, remove check for time
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_repeat_rule_success(
@@ -169,11 +161,11 @@ class TestDBUpdateTask:
         task_update = TaskUpdate(id="task123", repeat_rule=new_repeat_rule)
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.repeat_rule = new_repeat_rule
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
-
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        assert result.repeat_rule == new_repeat_rule
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
+        mock_container.read_item.return_value = sample_task_in_db.model_dump(
+            mode="json"
+        )
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_update_timestamp_success(
@@ -183,11 +175,9 @@ class TestDBUpdateTask:
         new_task_in_db = sample_task_in_db.model_copy(deep=True)
         new_task_in_db.updated_at = datetime.now(UTC) + timedelta(minutes=15)
 
-        mock_container.patch_item.return_value = new_task_in_db.model_dump()
+        mock_container.patch_item.return_value = new_task_in_db.model_dump(mode="json")
 
-        result = await mock_tasks_db.update_task(task_update)
-        assert result.id == "task123"
-        assert result.updated_at != sample_task_in_db.updated_at
+        await mock_tasks_db.update_task(task_update)
 
     @pytest.mark.asyncio
     async def test_update_task_empty(

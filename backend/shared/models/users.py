@@ -8,12 +8,12 @@ class UserBase(BaseModel):
 
     id: str
     username: str
+    email: EmailStr
 
 
 class UserInDB(UserBase):
     """internal use only data model not to be sent out"""
 
-    email: EmailStr
     created_at: datetime
     updated_at: datetime
     hashed_password: str

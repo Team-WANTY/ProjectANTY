@@ -1,4 +1,5 @@
 from shared.auth import authorize_operation
+from shared.exceptions.auth import AuthError
 from shared.exceptions.db import RecordAlreadyExistsError, RecordNotFoundError
 from shared.models.users import UserInDB
 
@@ -20,6 +21,21 @@ class FriendsService:
             pass
         await self.db.request_friendship(me.id, requestee_id)
 
+    async def get_by_id(self, friendship_id: str, getter: UserInDB):
+        friendship = await self.db.get_by_id(friendship_id)
+
+        is_authorized = await authorize_operation(
+            getter, friendship.from_user_id
+        ) or await authorize_operation(getter, friendship.to_user_id)
+
+        if not is_authorized:
+            raise AuthError()
+
+        return friendship
+
+    async def find_friendship(self, friend_id: str, finder: UserInDB):
+        return await self.db.find_friendship(finder.id, friend_id)
+
     async def list_outgoing(
         self, me: UserInDB, limit: int, continuation: str | None
     ) -> tuple[list[str], str | None]:
@@ -29,7 +45,7 @@ class FriendsService:
 
     async def list_incoming(
         self, me: UserInDB, limit: int, continuation: str | None
-    ) -> tuple[list[str], str]:
+    ) -> tuple[list[str], str | None]:
         return await self.db.list_incoming(
             user_id=me.id, max_items=limit, continuation_token=continuation
         )
@@ -53,11 +69,17 @@ class FriendsService:
         ):
             await authorize_operation(me, friendship.to_user_id)
             # update friendship to accepted
-            friendship = await self.db.update_status(
-                friendship_id, FriendshipStatus.ACCEPTED
-            )
-            return friendship
-        
+            await self.db.update_status(friendship_id, FriendshipStatus.ACCEPTED)
+
+    async def decline(self, me: UserInDB, friendship_id: str):
+        friendship = await self.db.get_by_id(friendship_id)
+        await authorize_operation(me, friendship.to_user_id)
+        await self.db.delete_friendship(friendship_id)
+
+    async def cancel(self, me: UserInDB, friendship_id: str):
+        friendship = await self.db.get_by_id(friendship_id)
+        await authorize_operation(me, friendship.from_user_id)
+        await self.db.delete_friendship(friendship_id)
 
     async def unfriend(self, me: UserInDB, friend_id: str):
         friendship_id = await self.db.find_friendship(me.id, friend_id)

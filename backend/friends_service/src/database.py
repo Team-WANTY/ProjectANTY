@@ -1,4 +1,3 @@
-from typing import List, Optional
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
 from shared.db import generate_id, now_timestamp
@@ -97,15 +96,13 @@ class FriendshipsDB:
         continuation_token: str | None = None,
     ) -> tuple[list[str], str | None]:
         query = (
-            "SELECT c.from_user_id, c.to_user_id, c.status, c.created_at "
-            "FROM c "
-            "WHERE (c.from_user_id = @user OR c.to_user_id = @user) "
-            "  AND c.status = @status "
+            "SELECT c.id FROM c "
+            "WHERE (c.from_user_id = @user OR c.to_user_id = @user) AND c.status = @accepted "
             "ORDER BY c.created_at DESC"
         )
         params = [
             {"name": "@user", "value": user_id},
-            {"name": "@status", "value": FriendshipStatus.ACCEPTED.value},
+            {"name": "@accepted", "value": FriendshipStatus.ACCEPTED},
         ]
 
         try:
@@ -115,30 +112,20 @@ class FriendshipsDB:
                 max_item_count=max_items,
             )
 
-            friend_user_ids: list[str] | None = None
+            friendship_ids: list[str] | None = None
 
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                friend_user_ids = []
-                async for item in page:
-                    owner_id = item["from_user_id"]
-                    friend_id = item["to_user_id"]
-
-                    other_id = friend_id if owner_id == user_id else owner_id
-
-                    if other_id not in friend_user_ids:
-                        friend_user_ids.append(other_id)
+                friendship_ids = [id async for id in page]
                 break  # first page only
 
             new_cont: str | None = pager.continuation_token
 
-            if friend_user_ids is None:
+            if friendship_ids is None:
                 # No pages at all: just "no friends yet"
-                return [], None
+                raise RecordNotFoundError()
 
-            return friend_user_ids, new_cont
-
-
+            return friendship_ids, new_cont
 
         except RecordNotFoundError:
             raise
@@ -207,7 +194,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page]
+                items = [item async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -255,7 +242,7 @@ class FriendshipsDB:
             items = None
             pager = result_iterable.by_page(continuation_token=continuation_token)
             async for page in pager:
-                items = [item["id"] async for item in page]
+                items = [item async for item in page]
                 break
 
             # Continuation token for the next page (or None if no more)
@@ -300,7 +287,6 @@ class FriendshipsDB:
             logger.debug(
                 f"Updated friendship with ID '{friendship_id}': {updated.model_dump()}",
             )
-            return updated
         except RecordNotFoundError:
             raise
         except exceptions.CosmosResourceNotFoundError:

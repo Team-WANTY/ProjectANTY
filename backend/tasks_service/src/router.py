@@ -59,7 +59,7 @@ async def get_task_by_id(
     task_id: str,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserInDB = Depends(get_current_user),
-):
+) -> TaskInDB:
     try:
         return await tasks_service.get_task_by_id(
             task_id, current_user
@@ -93,7 +93,7 @@ async def get_users_task_ids_in_range(
     end_date: date,
     tasks_service: TasksService = Depends(get_tasks_service),
     current_user: UserInDB = Depends(get_current_user),
-):
+) -> OccurrencesByDate:
     try:
         return await tasks_service.get_users_task_ids_in_range(
             user_id, start_date, end_date, current_user

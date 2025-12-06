@@ -48,7 +48,7 @@ class CommentsService:
 
     async def get_comments_under_content_with_id(
         self, parent_content_id: str, max_items: int, continuation_token: str | None
-    ):
+    ) -> tuple[list[str], str | None]:
         return await self.comments_db.get_comments_under_content_with_id(
             parent_content_id, max_items, continuation_token
         )
