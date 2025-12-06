@@ -95,8 +95,8 @@ class UsersDB:
             if items is None:
                 raise RecordNotFoundError()
             return items, new_cont
-        except RecordNotFoundError as e:
-            raise e
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             logger.error(
                 f"Error trying to get user IDs with partial username '{partial_username}': not found"
@@ -123,11 +123,11 @@ class UsersDB:
                 )
                 return user_in_db  # Return first match immediately
             raise RecordNotFoundError()
-        except RecordNotFoundError as e:
+        except RecordNotFoundError:
             logger.error(
                 f"Error trying to get user with username '{username}': not found"
             )
-            raise e
+            raise
         except exceptions.CosmosResourceNotFoundError:
             logger.error(
                 f"Error trying to get user with username '{username}': not found"
@@ -154,9 +154,9 @@ class UsersDB:
                 )
                 return user_in_db  # Return first match immediately
             raise RecordNotFoundError
-        except RecordNotFoundError as e:
+        except RecordNotFoundError:
             logger.error(f"Error trying to get user with email '{email}': not found")
-            raise e
+            raise
         except exceptions.CosmosResourceNotFoundError:
             logger.error(f"Error trying to get user with email '{email}': not found")
             raise RecordNotFoundError()
