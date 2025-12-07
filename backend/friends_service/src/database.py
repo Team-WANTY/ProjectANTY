@@ -40,6 +40,7 @@ class FriendshipsDB:
             logger.debug(
                 f"Created friendship from owner '{created_friendship.from_user_id}' -> friend '{created_friendship.to_user_id}'",
             )
+            return created_friendship.id
         except Exception as e:
             logger.error(
                 f"Error creating friendship between '{user_id}' and '{friend_id}': {e}"

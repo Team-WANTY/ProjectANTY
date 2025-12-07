@@ -32,6 +32,7 @@ class CommentsDB:
             logger.debug(
                 f"Successfully created comment: {created_comment.model_dump()}"
             )
+            return created_comment.id
         except exceptions.CosmosResourceExistsError:
             logger.warning(
                 f"Error while creating comment: {comment.model_dump()}, already exists"

@@ -36,6 +36,7 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_user)) -> U
 @users_router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
+    response_model=str,
     tags=["users"],
 )
 async def create_user(
@@ -44,7 +45,7 @@ async def create_user(
 ):
     try:
         logger.debug("Trying to register/create user")
-        await users_service.create_user(user_create)
+        return await users_service.create_user(user_create)
     except RecordAlreadyExistsError:
         logger.error(
             f"Error creating user ({user_create.model_dump()}): user already exists"
