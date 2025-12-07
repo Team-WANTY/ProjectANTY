@@ -23,6 +23,7 @@ import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import { useNotificationModal } from "@/app/_layout";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
@@ -90,6 +91,7 @@ export default function SocialScreen() {
     const { theme } = useTheme();
     const router = useRouter();
     const { showNotifications } = useNotificationModal();
+    const insets = useSafeAreaInsets();
 
     // Global stores
     const userId = useUserStore((s) => s.userId);
@@ -404,7 +406,7 @@ export default function SocialScreen() {
             <FlatList
                 data={feed}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.feedList}
+                contentContainerStyle={[styles.feedList, {paddingBottom: insets.bottom + hp(10)}]}
                 refreshing={refreshing}
                 onRefresh={async () => {
                     setRefreshing(true);
@@ -563,6 +565,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     feedList: {
+        flex: 1,
         paddingHorizontal: wp(4),
         paddingBottom: hp(4),
     },
