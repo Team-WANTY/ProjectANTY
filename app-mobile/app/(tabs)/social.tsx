@@ -2,6 +2,7 @@ import React, {
     useState,
     useEffect,
     useCallback,
+    useRef,
 } from "react";
 import {
     View,
@@ -29,6 +30,7 @@ import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
 import { usePostsStore } from "@/services/stores/posts-store";
 import { useCommentsStore } from "@/services/stores/comments-store";
+import { useCreatorsStore } from "@/services/stores/creators-store";
 
 import { postsApi, type Post } from "@/services/api/posts-api";
 import { commentsApi, type Comment } from "@/services/api/comments-api";
@@ -91,53 +93,6 @@ function formatRelativeTime(iso: string): string {
     return date.toLocaleDateString();
 }
 
-// Resolve username + avatarUrl for a given user
-async function resolveCreatorInfo(
-    targetUserId: string,
-    currentUserId: string | null,
-    currentUsername: string | null,
-    currentAvatarUrl: string | null
-    ): Promise<CreatorInfo> {
-    // If it's me, use store values directly (no extra network hit)
-    if (currentUserId && targetUserId === currentUserId) {
-        return {
-        id: targetUserId,
-        username: currentUsername ?? "You",
-        avatarUrl: currentAvatarUrl ?? null,
-        };
-    }
-
-    let username = "Unknown user";
-    let avatarUrl: string | null = null;
-
-    try {
-        const userRes = await usersApi.getById(targetUserId);
-        if (userRes.ok && userRes.data) {
-        username = userRes.data.username;
-        }
-    } catch (err) {
-        console.warn("[SocialScreen] failed to resolve username", err);
-    }
-
-    try {
-        const profileRes = await profileApi.getById(targetUserId);
-        if (
-        profileRes.ok &&
-        profileRes.data &&
-        (profileRes.data as any).avatar_image_id
-        ) {
-        const avatarImageId = (profileRes.data as any).avatar_image_id as string;
-        const imgRes = await imagesApi.getUrl(avatarImageId);
-        if (imgRes.ok && imgRes.data) {
-            avatarUrl = imgRes.data;
-        }
-        }
-    } catch (err) {
-        console.warn("[SocialScreen] failed to resolve avatar", err);
-    }
-
-    return { id: targetUserId, username, avatarUrl };
-}
 
 // ---------- Component ----------
 
@@ -152,6 +107,7 @@ export default function SocialScreen() {
     const avatarUrlSelf = useProfileStore((s) => s.avatarUrl);
     const posts = usePostsStore((s) => s.posts);
     const commentsByParent = useCommentsStore((s) => s.commentsByParent);
+    const creatorsById = useCreatorsStore((s) => s.byId);
 
     // Local UI state
     const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -173,38 +129,39 @@ export default function SocialScreen() {
     const [loadingComments, setLoadingComments] = useState(false);
 
     const selectedPost = feed.find((p) => p.id === selectedPostId) ?? null;
+    const lastRefreshAtRef = useRef<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Map Post (from store) -> FeedItem
     const mapPostToFeedItem = useCallback(
-        async (post: Post, commentsForPost?: Comment[]): Promise<FeedItem> => {
-            const creator = await resolveCreatorInfo(
-                post.creator_id,
-                userId,
-                username,
-                avatarUrlSelf
-            );
-            
-            let comments: CommentUI[] = [];
-
-            if (commentsForPost && commentsForPost.length > 0) {
-                const ui = await Promise.all(
-                    commentsForPost.map(async (c) => {
-                    const cCreator = await resolveCreatorInfo(
-                        c.creator_id,
-                        userId,
-                        username,
-                        avatarUrlSelf
-                    );
+        (post: Post, commentsForPost?: Comment[]): FeedItem => {
+            const meId = userId;
+            const fallbackCreator = (id: string): CreatorInfo => {
+                if (meId && id === meId) {
                     return {
-                        id: c.id,
-                        creator: cCreator,
-                        text: c.text,
-                        createdAt: formatRelativeTime(c.created_at),
+                    id,
+                    username: username ?? "You",
+                    avatarUrl: avatarUrlSelf ?? null,
                     };
-                    })
-                );
-                comments = ui;
-            }
+                }
+                return {
+                    id,
+                    username: "Unknown user",
+                    avatarUrl: null,
+                };
+            };
+            const creator = creatorsById[post.creator_id] ?? fallbackCreator(post.creator_id);
+
+            const comments: CommentUI[] = (commentsForPost ?? []).map((c) => {
+                const cCreator = creatorsById[c.creator_id] ?? fallbackCreator(c.creator_id);
+
+                return {
+                    id: c.id,
+                    creator: cCreator,
+                    text: c.text,
+                    createdAt: formatRelativeTime(c.created_at),
+                };
+            });
 
             return {
                 id: post.id,
@@ -215,61 +172,73 @@ export default function SocialScreen() {
                 comments,
             };
         },
-        [userId, username, avatarUrlSelf]
+        [creatorsById, userId, username, avatarUrlSelf]
     );
 
     // Refresh posts in the store from backend
-    const refreshPosts = useCallback(async () => {
-        if (!userId) return;
-        setLoadingFeed(true);
-        try {
-            await loadPosts(userId);
-            await loadCommentsForPosts();
-            console.log("[Social] Refresh Posts & Comments Success");
-        } catch (err) {
-            console.warn("[Social] Refresh Posts & Comments Failed:", err);
-        } finally {
-            setLoadingFeed(false);
-        }
-    }, [userId]);
+    const refreshPosts = useCallback(
+        async (options?: { force?: boolean }) => {
+            if (!userId) return;
 
-    // On screen focus, refresh posts store
-    useFocusEffect(
-        useCallback(() => {
-        refreshPosts();
-        }, [refreshPosts])
-    );
-
-    // Whenever posts in the store change, re-derive the feed + likedItems
-    useEffect(() => {
-        let cancelled = false;
-
-        const hydrate = async () => {
-            if (!userId) {
-                setFeed([]);
-                setLikedItems([]);
+            const now = Date.now();
+            const last = lastRefreshAtRef.current;
+            // Throttle if not forced and last refresh was < 30s ago
+            if (!options?.force && last && now - last < 30_000) {
+                console.log("[Social] Skip refresh (throttled within 30s)");
                 return;
             }
 
+            setLoadingFeed(true);
             try {
-                const items = await Promise.all(posts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? [])));
-                if (!cancelled) {
-                    setFeed(items);
+                // Always use *current* posts from the store, not the closure
+                const currentPosts = usePostsStore.getState().posts;
 
-                    const liked = posts
-                        .filter((p) => p.liker_ids.includes(userId))
-                        .map((p) => p.id);
-                    setLikedItems(liked);
-                }
+                const newestPostCreatedAt =
+                    currentPosts.length > 0
+                        ? currentPosts.reduce(
+                            (max, p) => (p.created_at > max ? p.created_at : max),
+                            currentPosts[0].created_at
+                        )
+                        : null;
+
+                await loadPosts(userId, { since: newestPostCreatedAt });
+                await loadCommentsForPosts();
+
+                lastRefreshAtRef.current = now;
+                console.log("[Social] Refresh Posts & Comments Success");
             } catch (err) {
-                console.warn("[Social] hydrate feed from store failed:", err);
+                console.warn("[Social] Refresh Posts & Comments Failed:", err);
+            } finally {
+                setLoadingFeed(false);
             }
-        };
+        }, [userId]
+    );
 
-        hydrate();
-        return () => {
-            cancelled = true;
-        };
+
+    useEffect(() => {
+        refreshPosts({ force: true });
+    }, [refreshPosts]);
+
+    useEffect(() => {
+        if (!userId) {
+            setFeed([]);
+            setLikedItems([]);
+            return;
+        }
+
+        try {
+            const items = posts.map((p) =>
+                mapPostToFeedItem(p, commentsByParent[p.id] ?? [])
+            );
+            setFeed(items);
+
+            const liked = posts
+                .filter((p) => p.liker_ids.includes(userId))
+                .map((p) => p.id);
+            setLikedItems(liked);
+        } catch (err) {
+            console.warn("[Social] hydrate feed from store failed:", err);
+        }
     }, [posts, commentsByParent, userId, mapPostToFeedItem]);
 
     // ---------- Likes ----------
@@ -320,7 +289,7 @@ export default function SocialScreen() {
         if (res.ok) {
             // Refresh store + derived UI
             console.log("[AddPost] Success");
-            await refreshPosts();
+            await refreshPosts({ force: true });
 
             setNewPostText("");
             setCommentsEnabled(true);
@@ -359,7 +328,7 @@ export default function SocialScreen() {
 
         if (res.ok) {
             console.log("[EditPost] Success");
-            await refreshPosts();
+            await refreshPosts({ force: true});
             closeEditPostModal();
         } else {
             console.log("[EditPost] Failed:", res.message);
@@ -372,7 +341,7 @@ export default function SocialScreen() {
         const res = await postsApi.remove(editingPostId);
         if (res.ok) {
             console.log("[DeletePost] Success");
-            await refreshPosts();
+            await refreshPosts({ force: true});
             closeEditPostModal();
         } else {
             console.log("[DeletePost] Failed:", res.message);
@@ -500,15 +469,24 @@ export default function SocialScreen() {
             data={feed}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.feedList}
+            refreshing={refreshing}
+            onRefresh={async () => {
+                setRefreshing(true);
+                try {
+                    await refreshPosts({ force: true });
+                } finally {
+                    setRefreshing(false);
+                }
+            }}
+
             ListEmptyComponent={
-            !loadingFeed ? (
-                <View style={styles.emptyContainer}>
-                <Text style={{ color: theme.secondaryText }}>
-                    No posts yet
-                </Text>
-                </View>
-            ) : null
+                !loadingFeed ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={{ color: theme.secondaryText }}> No posts yet </Text>
+                    </View>
+                ) : null
             }
+
             renderItem={({ item }) => {
             const canEdit = item.creator.id === userId;
 
@@ -537,7 +515,7 @@ export default function SocialScreen() {
             return (
                 <TouchableOpacity
                 activeOpacity={0.95}
-                onLongPress={() => openEditPostModal(item.id)}
+                onPress={() => openEditPostModal(item.id)}
                 >
                 {card}
                 </TouchableOpacity>
