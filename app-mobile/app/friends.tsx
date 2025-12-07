@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
     View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Animated as RNAnimated,
-    Dimensions, Modal, TextInput, Pressable, ActivityIndicator,
+    Dimensions, Modal, TextInput, Pressable, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -165,6 +165,7 @@ export default function FriendsScreen() {
     const [friendUsername, setFriendUsername] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Load friends in the background
     // friendsApi.listFriends returns friendship IDs
@@ -200,6 +201,14 @@ export default function FriendsScreen() {
         }, [loadFriends])
     );
 
+    const handleRefresh = React.useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await loadFriends();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [loadFriends]);
 
     const handleUnfriend = (friendUserId: string) => {
         // Find the friend to re-add to the store incase the API fail
@@ -388,6 +397,13 @@ export default function FriendsScreen() {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={theme.primary}
+                    />
+                }
             >
                 {friends.length === 0 ? (
                     <View style={styles.emptyState}>

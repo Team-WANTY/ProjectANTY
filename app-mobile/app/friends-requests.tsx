@@ -8,6 +8,7 @@ import {
   Animated as RNAnimated,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -255,6 +256,7 @@ const FriendRequestsScreen: React.FC = () => {
   const [outgoing, setOutgoing] = useState<DisplayRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const addFriend = useFriendsStore((s) => s.addFriend);
 
@@ -306,6 +308,50 @@ const FriendRequestsScreen: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setErrorText(null);
+
+    try {
+      const [incomingRes, outgoingRes] = await Promise.all([
+        friendsApi.listIncoming(20),
+        friendsApi.listOutgoing(20),
+      ]);
+
+      if (!incomingRes.ok && !outgoingRes.ok) {
+        setErrorText(
+          incomingRes.message ||
+            outgoingRes.message ||
+            "Failed to load friend requests"
+        );
+        return;
+      }
+
+      const incomingIds =
+        incomingRes.ok && incomingRes.data ? incomingRes.data.ids : [];
+      const outgoingIds =
+        outgoingRes.ok && outgoingRes.data ? outgoingRes.data.ids : [];
+
+      const [incomingEnriched, outgoingEnriched] = await Promise.all([
+        Promise.all(incomingIds.map((id) => enrichRequest(id))),
+        Promise.all(outgoingIds.map((id) => enrichRequest(id))),
+      ]);
+
+      setIncoming(
+        incomingEnriched.filter((r): r is DisplayRequest => r !== null)
+      );
+      setOutgoing(
+        outgoingEnriched.filter((r): r is DisplayRequest => r !== null)
+      );
+    } catch (e) {
+      console.log("[FriendRequests] refresh error", e);
+      setErrorText("Failed to load friend requests");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
 
   const promoteToFriend = async (req: DisplayRequest) => {
     // After accept, hydrate the friendship and push into Friends store
@@ -422,6 +468,13 @@ const FriendRequestsScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.primary}
+            />
+          }
         >
           {errorText ? (
             <Text

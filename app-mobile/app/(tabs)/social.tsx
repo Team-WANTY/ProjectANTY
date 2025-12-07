@@ -37,7 +37,8 @@ import { loadPosts, loadCommentsForPosts, loadCommentsForPost } from "@/services
 import FriendActivityItem from "@/components/friend-activity";
 import { PostCreateModal } from "@/components/post-create-modal";
 import { PostEditModal } from "@/components/post-edit-modal";
-import { AvatarBubble } from "@/components/avatar-bubble";
+import { CommentsModal } from "@/components/comments-modal";
+import { formatRelativeTime } from "@/hooks/time";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => (screenWidth * pct) / 100;
@@ -62,7 +63,7 @@ type FeedItem = {
     id: string; // post id
     creator: CreatorInfo;
     message: string;
-    time: string;
+    createdAt: string;   
     commentsEnabled: boolean;
     comments: CommentUI[];
 };
@@ -72,24 +73,6 @@ type InternalFeedItem = FeedItem & {
     _rawPost?: Post;
     _rawComments?: Comment[];
 };
-
-// ---------- Helper functions ----------
-
-function formatRelativeTime(iso: string): string {
-    const date = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHr / 24);
-
-    if (diffSec < 60) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay < 7) return `${diffDay}d ago`;
-    return date.toLocaleDateString();
-}
 
 
 // ---------- Component ----------
@@ -169,7 +152,7 @@ export default function SocialScreen() {
                 id: post.id,
                 creator,
                 message: post.text,
-                time: formatRelativeTime(post.created_at),
+                createdAt: post.created_at,
                 commentsEnabled: post.allow_comments,
                 comments,
             };
@@ -493,14 +476,14 @@ export default function SocialScreen() {
         ({ item }: { item: InternalFeedItem }) => {
             const canEdit = item.creator.id === userId;
             const commentsCount = commentsByParent[item.id]?.length ?? 0;
-
+            
             const card = (
                 <FriendActivityItem
                     activity={{
                         id: item.id,
                         name: item.creator.username,
                         message: item.message,
-                        time: item.time,
+                        createdAt: item.createdAt,
                         avatarUrl: item.creator.avatarUrl,
                     }}
                     theme={theme}
@@ -572,95 +555,21 @@ export default function SocialScreen() {
                 renderItem={renderFeedItem}
             />
 
-            {/* Comments Modal */}
-            <Modal visible={isCommentsModalVisible} transparent animationType="slide" onRequestClose={closeCommentsModal}>
-                <KeyboardAvoidingView style={styles.commentsModalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                    <TouchableOpacity style={styles.commentsModalBackdrop} activeOpacity={1} onPress={closeCommentsModal}/>
-                    <View style={[ styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}>
-                        {/* Header */}
-                        <View style={[ styles.commentsModalHeader, { borderBottomColor: theme.border }]}>
-                            <Text style={[ styles.commentsModalTitle, { color: theme.text }, ]}> Comments </Text>
-                            <TouchableOpacity onPress={closeCommentsModal}>
-                                <Ionicons name="close" size={26} color={theme.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Comments list */}
-                        <FlatList 
-                            style={styles.commentsList}
-                            data={commentsForSelectedPost}
-                            keyExtractor={(item) => item.id}
-                            ListEmptyComponent={
-                                loadingComments ? (
-                                    <View style={styles.emptyComments}>
-                                        <Text style={{ color: theme.secondaryText }}> Loading comments... </Text>
-                                    </View>
-                                ) : (
-                                    <View style={styles.emptyComments}>
-                                        <Text style={{ color: theme.secondaryText }}> No comments yet </Text>
-                                    </View>
-                                )
-                            }
-                            renderItem={({ item: c }) => {
-                                const creator =
-                                    creatorsById[c.creator_id] ?? {
-                                        id: c.creator_id,
-                                        username: "Unknown user",
-                                        avatarUrl: null,
-                                    };
-                                const isMine = c.creator_id === userId;
-                                return (
-                                    <View key={c.id} style={[ styles.commentItem, { borderBottomColor: theme.border }]}>
-                                        <AvatarBubble
-                                            size={36}
-                                            avatarUrl={creator.avatarUrl}
-                                            name={creator.username}
-                                            bgColor={theme.primary}
-                                            initialColor={theme.onPrimary}
-                                            style={styles.commentAvatar}
-                                        />
-                                        <View style={styles.commentBody}>
-                                            <View style={styles.commentHeaderRow}>
-                                                <View style={{ flexDirection: "row", alignItems: "flex-end"  }}>
-                                                    <Text style={[ styles.commentAuthor, { color: theme.text }]}> {creator.username} </Text>
-                                                    <Text style={[ styles.commentTime, { color: theme.secondaryText }]}> {"  · "}{formatRelativeTime(c.created_at)}</Text>
-                                                </View>
-                                                {isMine && (
-                                                    <View style={styles.commentActionsRow}>
-                                                        <TouchableOpacity onPress={() => startEditComment(c) } style={{ marginRight: 8}}>
-                                                            <Ionicons name="create-outline" size={18} color= {theme.primary}/>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity  onPress={() => handleDeleteComment(c.id)}>
-                                                            <Ionicons name="trash-outline" size={18} color= "#ff002bff"/>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                )}
-                                            </View>
-                                            <Text style={[ styles.commentText, { color: theme.text }]}> {c.text}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            }}
-                        />
-
-                        {/* Add / Edit comment */}
-                        <View
-                            style={[ styles.commentInputRow, { borderTopColor: theme.border }]}>
-                            <TextInput
-                                style={[ styles.commentInput, { borderColor: theme.border,color: theme.text }]}
-                                placeholder={editingCommentId ? "Edit your comment..." : "Add a comment..." }
-                                placeholderTextColor={theme.secondaryText}
-                                value={commentText}
-                                onChangeText={setCommentText}
-                                multiline
-                            />
-                            <TouchableOpacity style={styles.commentSendButton} onPress={handleSubmitComment} disabled={!commentText.trim()}>
-                                <Ionicons name={editingCommentId ? "checkmark" : "send"} size={22} color={ commentText.trim() ? theme.primary: theme.border }/>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
+            <CommentsModal
+                visible={isCommentsModalVisible}
+                theme={theme}
+                comments={commentsForSelectedPost}
+                creatorsById={creatorsById}
+                userId={userId}
+                loadingComments={loadingComments}
+                commentText={commentText}
+                editingCommentId={editingCommentId}
+                onChangeCommentText={setCommentText}
+                onClose={closeCommentsModal}
+                onStartEditComment={startEditComment}
+                onDeleteComment={handleDeleteComment}
+                onSubmitComment={handleSubmitComment}
+            />
 
             {/* Create Post Modal */}
             <PostCreateModal

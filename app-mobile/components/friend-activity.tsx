@@ -2,6 +2,8 @@ import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AvatarBubble } from "@/components/avatar-bubble";
+import { formatRelativeTime } from "@/hooks/time";
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => screenWidth * (pct / 100);
@@ -81,7 +83,7 @@ const FriendActivityItem = ({
                 <Text
                     style={[styles.friendTime, { color: theme.background }]}
                 >
-                    {activity.time}
+                    {formatRelativeTime(activity.createdAt)}
                 </Text>
             </View>
         </View>
@@ -146,4 +148,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default FriendActivityItem;
+export default React.memo(FriendActivityItem);
