@@ -17,9 +17,10 @@ from src.models import ProfileUpdate
 
 class TestRouterCreateProfile:
     @pytest.mark.asyncio
-    async def test_create_profile_success(self, client):
+    async def test_create_profile_success(self, client, mock_service):
         with patch("src.router.shared_settings") as mock_settings:
             mock_settings.INTERSERVICE_KEY = "valid_key"
+            mock_service.create_profile.return_value = "user123"
             response = client.post(
                 "/user123", headers={"X-Interservice-Key": "valid_key"}
             )

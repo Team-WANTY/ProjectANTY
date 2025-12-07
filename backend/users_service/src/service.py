@@ -50,6 +50,7 @@ class UsersService:
                 raise RecordCreationError()
 
         logger.debug(f"Successfully registered new user with ID: {new_user_id}")
+        return new_user_id
 
     async def get_user_by_id(self, user_id: str) -> UserInDB:
         """Get user by ID"""

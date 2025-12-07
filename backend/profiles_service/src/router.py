@@ -26,20 +26,21 @@ interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 @profiles_router.post(
     "/{user_id}",
     status_code=status.HTTP_201_CREATED,
+    response_model=str,
     tags=["interservice"],
 )
 async def create_profile(
     user_id: str,
     profile_service: ProfileService = Depends(get_profiles_service),
     x_interservice_key: str = Depends(interservice_scheme),
-):
+) -> str:
     try:
         logger.debug("Starting profile creation, verifying interservice key")
         if x_interservice_key != shared_settings.INTERSERVICE_KEY:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid key"
             )
-        await profile_service.create_profile(user_id)
+        return await profile_service.create_profile(user_id)
     except HTTPException as e:
         raise e
     except RecordAlreadyExistsError:
