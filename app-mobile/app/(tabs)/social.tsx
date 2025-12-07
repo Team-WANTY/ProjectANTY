@@ -20,8 +20,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import { useNotificationModal } from "@/app/_layout";
@@ -34,15 +32,7 @@ import { useCreatorsStore } from "@/services/stores/creators-store";
 
 import { postsApi, type Post } from "@/services/api/posts-api";
 import { commentsApi, type Comment } from "@/services/api/comments-api";
-import { usersApi } from "@/services/api/users-api";
-import { profileApi } from "@/services/api/profiles-api";
-import { imagesApi } from "@/services/api/image-api";
-import {
-  loadPosts,
-  loadCommentsForPosts,
-  loadCommentsForPost,
-} from "@/services/bootstrap/bootstrap";
-
+import { loadPosts, loadCommentsForPosts, loadCommentsForPost } from "@/services/bootstrap/bootstrap";
 import FriendActivityItem from "@/components/friend-activity";
 import { PostCreateModal } from "@/components/post-create-modal";
 import { PostEditModal } from "@/components/post-edit-modal";
@@ -139,16 +129,12 @@ export default function SocialScreen() {
             const fallbackCreator = (id: string): CreatorInfo => {
                 if (meId && id === meId) {
                     return {
-                    id,
-                    username: username ?? "You",
-                    avatarUrl: avatarUrlSelf ?? null,
+                        id,
+                        username: username ?? "You",
+                        avatarUrl: avatarUrlSelf ?? null,
                     };
                 }
-                return {
-                    id,
-                    username: "Unknown user",
-                    avatarUrl: null,
-                };
+                return { id, username: "Unknown user", avatarUrl: null };
             };
             const creator = creatorsById[post.creator_id] ?? fallbackCreator(post.creator_id);
 
@@ -192,13 +178,9 @@ export default function SocialScreen() {
             try {
                 // Always use *current* posts from the store, not the closure
                 const currentPosts = usePostsStore.getState().posts;
-
                 const newestPostCreatedAt =
                     currentPosts.length > 0
-                        ? currentPosts.reduce(
-                            (max, p) => (p.created_at > max ? p.created_at : max),
-                            currentPosts[0].created_at
-                        )
+                        ? currentPosts.reduce((max, p) => (p.created_at > max ? p.created_at : max), currentPosts[0].created_at)
                         : null;
 
                 await loadPosts(userId, { since: newestPostCreatedAt });
@@ -211,7 +193,8 @@ export default function SocialScreen() {
             } finally {
                 setLoadingFeed(false);
             }
-        }, [userId]
+        }, 
+        [userId]
     );
 
 
@@ -227,14 +210,10 @@ export default function SocialScreen() {
         }
 
         try {
-            const items = posts.map((p) =>
-                mapPostToFeedItem(p, commentsByParent[p.id] ?? [])
-            );
+            const items = posts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? []));
             setFeed(items);
 
-            const liked = posts
-                .filter((p) => p.liker_ids.includes(userId))
-                .map((p) => p.id);
+            const liked = posts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id);
             setLikedItems(liked);
         } catch (err) {
             console.warn("[Social] hydrate feed from store failed:", err);
@@ -256,17 +235,13 @@ export default function SocialScreen() {
         };
 
         // Optimistic update in local UI only
-        setLikedItems((prev) =>
-            isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]
-        );
+        setLikedItems((prev) => isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]);
 
         const res = await postsApi.update(body);
         console.log("[PostLike] Success");
         if (!res.ok) {
             // revert if failed
-            setLikedItems((prev) =>
-                !isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]
-            );
+            setLikedItems((prev) => !isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]);
             console.log("[PostLike] Failed");
         }
     };
@@ -321,10 +296,7 @@ export default function SocialScreen() {
         const trimmed = editPostText.trim();
         if (!trimmed) return;
 
-        const res = await postsApi.update({
-            id: editingPostId,
-            text: trimmed,
-        });
+        const res = await postsApi.update({ id: editingPostId, text: trimmed });
 
         if (res.ok) {
             console.log("[EditPost] Success");
@@ -403,309 +375,175 @@ export default function SocialScreen() {
     };
 
     // ---------- Render helpers ----------
-
     const renderCommentAvatar = (avatarUrl: string | null, uname: string) => {
         const initial = uname?.[0]?.toUpperCase() ?? "?";
-
         if (avatarUrl) {
-        return (
-            <Image source={{ uri: avatarUrl }} style={styles.commentAvatar} />
-        );
+            return <Image source={{ uri: avatarUrl }} style={styles.commentAvatar} />;
         }
 
         return (
-        <View
-            style={[
-            styles.commentAvatar,
-            {
-                backgroundColor: theme.primary,
-                alignItems: "center",
-                justifyContent: "center",
-            },
-            ]}
-        >
-            <Text
-            style={{
-                color: theme.onPrimary,
-                fontWeight: "700",
-            }}
-            >
-            {initial}
-            </Text>
-        </View>
+            <View style={[ styles.commentAvatar, { backgroundColor: theme.primary, alignItems: "center", justifyContent: "center"}]}>
+                <Text style={{ color: theme.onPrimary, fontWeight: "700"}}> {initial} </Text>
+            </View>
         );
     };
 
     // ---------- Render ----------
-
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <HeaderBar
-            title="Social"
-            showTitle
-            onNotificationPress={showNotifications}
-            onSettingsPress={() => router.push("../settings")}
-        />
+            {/* Header */}
+            <HeaderBar title="Social" showTitle onNotificationPress={showNotifications} onSettingsPress={() => router.push("../settings")} />
 
-        {/* Create Post Button */}
-        <TouchableOpacity
-            style={[styles.addPostButton, { backgroundColor: theme.primary }]}
-            onPress={() => setIsAddPostModalVisible(true)}
-        >
-            <Ionicons name="add" size={22} color={theme.background} />
-            <Text
-            style={[
-                styles.addPostButtonText,
-                { color: theme.background },
-            ]}
-            >
-            Create Post
-            </Text>
-        </TouchableOpacity>
+            {/* Create Post Button */}
+            <TouchableOpacity style={[styles.addPostButton, { backgroundColor: theme.primary }]} onPress={() => setIsAddPostModalVisible(true)}>
+                <Ionicons name="add" size={22} color={theme.background} />
+                <Text style={[ styles.addPostButtonText, { color: theme.background }]} > Create Post </Text>
+            </TouchableOpacity>
 
-        {/* Feed */}
-        <FlatList
-            data={feed}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.feedList}
-            refreshing={refreshing}
-            onRefresh={async () => {
-                setRefreshing(true);
-                try {
-                    await refreshPosts({ force: true });
-                } finally {
-                    setRefreshing(false);
-                }
-            }}
-
-            ListEmptyComponent={
-                !loadingFeed ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={{ color: theme.secondaryText }}> No posts yet </Text>
-                    </View>
-                ) : null
-            }
-
-            renderItem={({ item }) => {
-            const canEdit = item.creator.id === userId;
-
-            const card = (
-                <FriendActivityItem
-                activity={{
-                    id: item.id,
-                    name: item.creator.username,
-                    message: item.message,
-                    time: item.time,
-                    img: item.creator.avatarUrl
-                    ? { uri: item.creator.avatarUrl }
-                    : undefined,
-                }}
-                theme={theme}
-                isLiked={likedItems.includes(item.id)}
-                onToggleLike={handleToggleLike}
-                onCommentPress={openCommentsModal}
-                commentsCount={item.comments.length}
-                />
-            );
-
-            if (!canEdit) return card;
-
-            // Allow editing via long press for the author's own posts
-            return (
-                <TouchableOpacity
-                activeOpacity={0.95}
-                onPress={() => openEditPostModal(item.id)}
-                >
-                {card}
-                </TouchableOpacity>
-            );
-            }}
-        />
-
-        {/* Comments Modal */}
-        <Modal
-            visible={isCommentsModalVisible}
-            transparent
-            animationType="slide"
-            onRequestClose={closeCommentsModal}
-        >
-            <KeyboardAvoidingView
-            style={styles.commentsModalOverlay}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            >
-            <TouchableOpacity
-                style={styles.commentsModalBackdrop}
-                activeOpacity={1}
-                onPress={closeCommentsModal}
-            />
-            <View
-                style={[
-                styles.commentsModalContent,
-                { backgroundColor: theme.cardBackground },
-                ]}
-            >
-                {/* Header */}
-                <View
-                style={[
-                    styles.commentsModalHeader,
-                    { borderBottomColor: theme.border },
-                ]}
-                >
-                <Text
-                    style={[
-                    styles.commentsModalTitle,
-                    { color: theme.text },
-                    ]}
-                >
-                    Comments
-                </Text>
-                <TouchableOpacity onPress={closeCommentsModal}>
-                    <Ionicons
-                    name="close"
-                    size={26}
-                    color={theme.primary}
-                    />
-                </TouchableOpacity>
-                </View>
-
-                {/* Comments list */}
-                <ScrollView style={styles.commentsList}>
-                {selectedPost &&
-                    selectedPost.comments.map((c) => (
-                    <View
-                        key={c.id}
-                        style={[
-                        styles.commentItem,
-                        { borderBottomColor: theme.border },
-                        ]}
-                    >
-                        {renderCommentAvatar(
-                        c.creator.avatarUrl,
-                        c.creator.username
-                        )}
-                        <View style={styles.commentBody}>
-                        <View style={styles.commentHeaderRow}>
-                            <Text
-                            style={[
-                                styles.commentAuthor,
-                                { color: theme.text },
-                            ]}
-                            >
-                            {c.creator.username}
-                            </Text>
-                            <Text
-                            style={[
-                                styles.commentTime,
-                                { color: theme.secondaryText },
-                            ]}
-                            >
-                            {c.createdAt}
-                            </Text>
-                        </View>
-                        <Text
-                            style={[
-                            styles.commentText,
-                            { color: theme.text },
-                            ]}
-                        >
-                            {c.text}
-                        </Text>
-                        </View>
-                    </View>
-                    ))}
-
-                {selectedPost &&
-                    selectedPost.comments.length === 0 &&
-                    !loadingComments && (
-                    <View style={styles.emptyComments}>
-                        <Text style={{ color: theme.secondaryText }}>
-                        No comments yet
-                        </Text>
-                    </View>
-                    )}
-
-                {loadingComments && (
-                    <View style={styles.emptyComments}>
-                    <Text style={{ color: theme.secondaryText }}>
-                        Loading comments...
-                    </Text>
-                    </View>
-                )}
-                </ScrollView>
-
-                {/* Add comment */}
-                <View
-                style={[
-                    styles.commentInputRow,
-                    { borderTopColor: theme.border },
-                ]}
-                >
-                <TextInput
-                    style={[
-                    styles.commentInput,
-                    {
-                        borderColor: theme.border,
-                        color: theme.text,
-                    },
-                    ]}
-                    placeholder="Add a comment..."
-                    placeholderTextColor={theme.secondaryText}
-                    value={commentText}
-                    onChangeText={setCommentText}
-                    multiline
-                />
-                <TouchableOpacity
-                    style={styles.commentSendButton}
-                    onPress={handleAddComment}
-                    disabled={!commentText.trim()}
-                >
-                    <Ionicons
-                    name="send"
-                    size={22}
-                    color={
-                        commentText.trim()
-                        ? theme.primary
-                        : theme.border
+            {/* Feed */}
+            <FlatList
+                data={feed}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.feedList}
+                refreshing={refreshing}
+                onRefresh={async () => {
+                    setRefreshing(true);
+                    try {
+                        await refreshPosts({ force: true });
+                    } finally {
+                        setRefreshing(false);
                     }
-                    />
-                </TouchableOpacity>
-                </View>
-            </View>
-            </KeyboardAvoidingView>
-        </Modal>
+                }}
 
-        {/* Create Post Modal */}
-        <PostCreateModal
-            visible={isAddPostModalVisible}
-            theme={theme}
-            text={newPostText}
-            commentsEnabled={commentsEnabled}
-            onChangeText={setNewPostText}
-            onToggleComments={() =>
-            setCommentsEnabled((prev) => !prev)
-            }
-            onClose={() => setIsAddPostModalVisible(false)}
-            onSubmit={handleAddPost}
-        />
+                ListEmptyComponent={
+                    !loadingFeed ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={{ color: theme.secondaryText }}> No posts yet </Text>
+                        </View>
+                    ) : null
+                }
 
-        {/* Edit Post Modal */}
-        <PostEditModal
-            visible={isEditPostModalVisible}
-            theme={theme}
-            text={editPostText}
-            onChangeText={setEditPostText}
-            onClose={closeEditPostModal}
-            onSave={handleSavePostEdits}
-            onDelete={handleDeletePost}
-        />
+                renderItem={({ item }) => {
+                    const canEdit = item.creator.id === userId;
+                    const card = (
+                        <FriendActivityItem
+                            activity={{
+                                id: item.id,
+                                name: item.creator.username,
+                                message: item.message,
+                                time: item.time,
+                                img: item.creator.avatarUrl
+                                ? { uri: item.creator.avatarUrl }
+                                : undefined,
+                            }}
+                            theme={theme}
+                            isLiked={likedItems.includes(item.id)}
+                            onToggleLike={handleToggleLike}
+                            onCommentPress={openCommentsModal}
+                            commentsCount={item.comments.length}
+                        />
+                    );
+
+                    if (!canEdit) return card;
+
+                    // Allow editing via press for the author's own posts
+                    return (
+                        <TouchableOpacity activeOpacity={0.95} onPress={() => openEditPostModal(item.id)} >
+                            {card}
+                        </TouchableOpacity>
+                    );
+                }}
+            />
+
+            {/* Comments Modal */}
+            <Modal visible={isCommentsModalVisible} transparent animationType="slide" onRequestClose={closeCommentsModal}>
+                <KeyboardAvoidingView style={styles.commentsModalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+                    <TouchableOpacity style={styles.commentsModalBackdrop} activeOpacity={1} onPress={closeCommentsModal}/>
+                    <View style={[ styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}>
+                        {/* Header */}
+                        <View style={[ styles.commentsModalHeader, { borderBottomColor: theme.border }]}>
+                            <Text style={[ styles.commentsModalTitle, { color: theme.text }, ]}> Comments </Text>
+                            <TouchableOpacity onPress={closeCommentsModal}>
+                                <Ionicons name="close" size={26} color={theme.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Comments list */}
+                        <ScrollView style={styles.commentsList}>
+                            {selectedPost && selectedPost.comments.map((c) => (
+                                <View key={c.id} style={[ styles.commentItem, { borderBottomColor: theme.border }]}>
+                                    {renderCommentAvatar(c.creator.avatarUrl, c.creator.username)}
+                                    <View style={styles.commentBody}>
+                                        <View style={styles.commentHeaderRow}>
+                                            <Text style={[ styles.commentAuthor, { color: theme.text }]}> {c.creator.username} </Text>
+                                            <Text style={[ styles.commentTime, { color: theme.secondaryText }]}> {c.createdAt}</Text>
+                                        </View>
+                                        <Text style={[ styles.commentText, { color: theme.text }]}> {c.text}</Text>
+                                    </View>
+                                </View>
+                            ))}
+
+                            {selectedPost && selectedPost.comments.length === 0 &&!loadingComments && (
+                                <View style={styles.emptyComments}>
+                                    <Text style={{ color: theme.secondaryText }}> No comments yet </Text>
+                                </View>
+                            )}
+
+                            {loadingComments && (
+                                <View style={styles.emptyComments}>
+                                    <Text style={{ color: theme.secondaryText }}> Loading comments...</Text>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        {/* Add comment */}
+                        <View
+                            style={[ styles.commentInputRow, { borderTopColor: theme.border }]}>
+                            <TextInput
+                                style={[ styles.commentInput, { borderColor: theme.border,color: theme.text }]}
+                                placeholder="Add a comment..."
+                                placeholderTextColor={theme.secondaryText}
+                                value={commentText}
+                                onChangeText={setCommentText}
+                                multiline
+                            />
+                            <TouchableOpacity style={styles.commentSendButton} onPress={handleAddComment} disabled={!commentText.trim()}>
+                                <Ionicons name="send"size={22}color={ commentText.trim() ? theme.primary: theme.border }/>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Create Post Modal */}
+            <PostCreateModal
+                visible={isAddPostModalVisible}
+                theme={theme}
+                text={newPostText}
+                commentsEnabled={commentsEnabled}
+                onChangeText={setNewPostText}
+                onToggleComments={() => setCommentsEnabled((prev) => !prev)}
+                onClose={() => setIsAddPostModalVisible(false)}
+                onSubmit={handleAddPost}
+            />
+
+            {/* Edit Post Modal */}
+            <PostEditModal
+                visible={isEditPostModalVisible}
+                theme={theme}
+                text={editPostText}
+                onChangeText={setEditPostText}
+                onClose={closeEditPostModal}
+                onSave={handleSavePostEdits}
+                onDelete={handleDeletePost}
+            />
         </View>
     );
 }
 
-    // ---------- Styles ----------
+// ---------- Styles ----------
 
-    const styles = StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
