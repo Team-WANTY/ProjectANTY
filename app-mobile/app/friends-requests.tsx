@@ -30,9 +30,9 @@ import {
   type DisplayFriend,
 } from "@/services/stores/friends-store";
 import { useUserStore } from "@/services/stores/users-store";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth } = Dimensions.get("window");
-
 
 type DisplayRequest = {
   id: string;
@@ -129,7 +129,6 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
   onViewProfile,
 }) => {
   const displayName = request.user.username || "Unknown user";
-  const initial = displayName[0]?.toUpperCase() ?? "?";
 
   const anim = useRef(new RNAnimated.Value(1)).current;
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
@@ -175,38 +174,18 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
         }
       }}
     >
-      <View
-        style={[
-          styles.friendCard,
-          {
-            backgroundColor: theme.cardBackground,
-          },
-        ]}
-      >
+      <View style={[styles.friendCard, {backgroundColor: theme.cardBackground}]}>
         <View style={styles.friendBanner}>
           {/* Avatar */}
           <View style={styles.friendAvatarWrapper}>
-            {request.user.avatarUrl ? (
-              <View style={styles.friendImage}>
-                <Animated.Image
-                  source={{ uri: request.user.avatarUrl }}
-                  style={styles.friendImage}
+            <AvatarBubble
+                    size={52}
+                    avatarUrl={request.user.avatarUrl}
+                    name={displayName}
+                    bgColor={theme.primary}
+                    initialColor={theme.onPrimary}
+                    style={styles.friendImage}
                 />
-              </View>
-            ) : (
-              <View
-                style={[
-                  styles.friendImage,
-                  {
-                    backgroundColor: theme.primary,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  },
-                ]}
-              >
-                <Text style={styles.friendInitial}>{initial}</Text>
-              </View>
-            )}
           </View>
 
           {/* Username */}

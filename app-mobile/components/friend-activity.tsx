@@ -1,22 +1,40 @@
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => screenWidth * (pct / 100);
 const hp = (pct: number) => screenHeight * (pct / 100);
 
-const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount }) => {
+const FriendActivityItem = ({
+    activity,
+    theme,
+    isLiked,
+    onToggleLike,
+    onCommentPress,
+    commentsCount,
+}) => {
     const heartIconName = isLiked ? "heart" : "heart-outline";
     const heartIconColor = theme.background;
 
+    const displayName = activity.name || "Unknown user";
+
     return (
         <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
-            <Image source={activity.img} style={styles.friendAvatar} />
+            {/* Avatar */}
+            <AvatarBubble
+                size={wp(12)}
+                avatarUrl={activity.avatarUrl}
+                name={activity.name}
+                bgColor={theme.primary}
+                initialColor={theme.background}
+                style={styles.friendAvatar}
+            />
 
-            <View style={styles.friendTextContent}>
+            <View className="friendTextContent" style={styles.friendTextContent}>
                 <Text style={[styles.friendMessage, { color: theme.background }]}>
-                    <Text style={styles.friendName}>{activity.name}</Text>
+                    <Text style={styles.friendName}>{displayName}</Text>
                     {"\n"}
                     {activity.message}
                 </Text>
@@ -27,28 +45,49 @@ const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentP
                     onPress={() => onToggleLike(activity.id)}
                     style={styles.actionButton}
                 >
-                    <Ionicons name={heartIconName} size={wp(5)} color={heartIconColor} />
+                    <Ionicons
+                        name={heartIconName}
+                        size={wp(5)}
+                        color={heartIconColor}
+                    />
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => onCommentPress(activity.id)}
                     style={styles.actionButton}
                 >
-                    <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
+                    <Ionicons
+                        name="chatbubble-outline"
+                        size={wp(5)}
+                        color={heartIconColor}
+                    />
                     {commentsCount > 0 && (
-                        <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
-                            <Text style={[styles.commentBadgeText, { color: theme.background }]}> 
+                        <View
+                            style={[
+                                styles.commentBadge,
+                                { backgroundColor: theme.primary },
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.commentBadgeText,
+                                    { color: theme.background },
+                                ]}
+                            >
                                 {commentsCount}
                             </Text>
                         </View>
                     )}
                 </TouchableOpacity>
-                <Text style={[styles.friendTime, { color: theme.background }]}> 
+                <Text
+                    style={[styles.friendTime, { color: theme.background }]}
+                >
                     {activity.time}
                 </Text>
             </View>
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     friendCard: {

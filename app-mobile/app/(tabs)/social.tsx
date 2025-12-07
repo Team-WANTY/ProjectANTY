@@ -3,6 +3,7 @@ import React, {
     useEffect,
     useCallback,
     useRef,
+    useMemo,
 } from "react";
 import {
     View,
@@ -15,7 +16,6 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,6 +37,7 @@ import { loadPosts, loadCommentsForPosts, loadCommentsForPost } from "@/services
 import FriendActivityItem from "@/components/friend-activity";
 import { PostCreateModal } from "@/components/post-create-modal";
 import { PostEditModal } from "@/components/post-edit-modal";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => (screenWidth * pct) / 100;
@@ -64,6 +65,12 @@ type FeedItem = {
     time: string;
     commentsEnabled: boolean;
     comments: CommentUI[];
+};
+
+// Internal version that keeps references to source post/comments
+type InternalFeedItem = FeedItem & {
+    _rawPost?: Post;
+    _rawComments?: Comment[];
 };
 
 // ---------- Helper functions ----------
@@ -108,8 +115,7 @@ export default function SocialScreen() {
     const removeCommentFromStore = useCommentsStore((s) => s.removeComment);
 
     // Local UI state
-    const [feed, setFeed] = useState<FeedItem[]>([]);
-    const [likedItems, setLikedItems] = useState<string[]>([]);
+    const [feed, setFeed] = useState<InternalFeedItem[]>([]);
 
     const [isAddPostModalVisible, setIsAddPostModalVisible] = useState(false);
     const [newPostText, setNewPostText] = useState("");
@@ -127,7 +133,6 @@ export default function SocialScreen() {
     const [loadingFeed, setLoadingFeed] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
 
-    const selectedPost = feed.find((p) => p.id === selectedPostId) ?? null;
     const commentsForSelectedPost: Comment[] = selectedPostId ? commentsByParent[selectedPostId] ?? [] : [];
 
     const lastRefreshAtRef = useRef<number | null>(null);
@@ -189,10 +194,14 @@ export default function SocialScreen() {
             try {
                 // Always use *current* posts from the store, not the closure
                 const currentPosts = usePostsStore.getState().posts;
-                const newestPostCreatedAt =
-                    currentPosts.length > 0
-                        ? currentPosts.reduce((max, p) => (p.created_at > max ? p.created_at : max), currentPosts[0].created_at)
-                        : null;
+                let newestPostCreatedAt: string | null = null;
+                if (currentPosts.length > 0) {
+                    // Sort to be safe in case posts arrived out of order
+                    const sorted = [...currentPosts].sort((a, b) =>
+                        a.created_at < b.created_at ? 1 : -1
+                    );
+                    newestPostCreatedAt = sorted[0].created_at;
+                }
 
                 await loadPosts(userId, { since: newestPostCreatedAt });
                 await loadCommentsForPosts();
@@ -208,6 +217,10 @@ export default function SocialScreen() {
         [userId]
     );
 
+    const sortedPosts = useMemo(() => [...posts].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)), [posts]);
+    const likedItems = useMemo(
+        () => !userId ? [] : sortedPosts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id),[sortedPosts, userId]);
+
 
     useEffect(() => {
         refreshPosts({ force: true });
@@ -216,29 +229,60 @@ export default function SocialScreen() {
     useEffect(() => {
         if (!userId) {
             setFeed([]);
-            setLikedItems([]);
             return;
         }
 
         try {
-            // Sort Posts by newest first
-            const sortedPosts = [...posts].sort((a, b) => a.created_at < b.created_at ? 1 : -1);
-            const items = sortedPosts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? []));
-            setFeed(items);
+            setFeed((prev) => {
+                const prevById = new Map<string, InternalFeedItem>(prev.map((item) => [item.id, item]));
+                const next: InternalFeedItem[] = [];
 
-            const liked = sortedPosts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id);
-            setLikedItems(liked);
+                for (const p of sortedPosts) {
+                    const prevItem = prevById.get(p.id);
+                    const newComments = commentsByParent[p.id] ?? [];
+                    const prevPost = prevItem?._rawPost;
+                    const prevComments = prevItem?._rawComments;
+
+                    const samePost = prevPost === p;
+                    const sameComments = prevComments === newComments;
+
+                    if (prevItem && samePost && sameComments) {
+                        // Nothing changed, reuse existing FeedItem to avoid re-renders
+                        next.push(prevItem);
+                    } else {
+                        // Something changed -> remap
+                        const item = mapPostToFeedItem(p, newComments) as InternalFeedItem;
+                        item._rawPost = p;
+                        item._rawComments = newComments;
+                        next.push(item);
+                    }
+                }
+
+                return next;
+            });
         } catch (err) {
             console.warn("[Social] hydrate feed from store failed:", err);
         }
-    }, [posts, commentsByParent, userId, mapPostToFeedItem]);
+    }, [sortedPosts, commentsByParent, userId, mapPostToFeedItem]);
 
     // ---------- Likes ----------
 
     const handleToggleLike = async (postId: string) => {
         if (!userId) return;
 
+        // use derived likedItems to know current state
         const isLiked = likedItems.includes(postId);
+
+        // get current post + its liker_ids from the store
+        const postsState = usePostsStore.getState();
+        const target = postsState.posts.find((p) => p.id === postId);
+        if (!target) return;
+
+        const originalLikerIds = target.liker_ids ?? [];
+
+        // build optimistic liker_ids
+        const optimisticLikerIds = isLiked ? originalLikerIds.filter((id) => id !== userId) : [...originalLikerIds, userId];
+
         const body = {
             id: postId,
             liker: {
@@ -247,15 +291,16 @@ export default function SocialScreen() {
             },
         };
 
-        // Optimistic update in local UI only
-        setLikedItems((prev) => isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]);
+        // Optimistic update in the store
+        updatePost(postId, { liker_ids: optimisticLikerIds });
 
         const res = await postsApi.update(body);
-        console.log("[PostLike] Success");
         if (!res.ok) {
-            // revert if failed
-            setLikedItems((prev) => !isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]);
-            console.log("[PostLike] Failed");
+            console.log("[PostLike] Failed, reverting");
+            // Revert to original liker_ids
+            updatePost(postId, { liker_ids: originalLikerIds });
+        } else {
+            console.log("[PostLike] Success");
         }
     };
 
@@ -287,8 +332,8 @@ export default function SocialScreen() {
             console.warn("[AddPost] Failed to load created post:", getRes.message);
             return;
         }
-
-        // Insert into store so UI shows it at the top
+        console.log("[AddPost] Success");
+        // Insert into store
         insertPost(getRes.data);
 
         // Reset modal
@@ -323,9 +368,17 @@ export default function SocialScreen() {
 
         if (res.ok) {
             console.log("[EditPost] Success");
-            updatePost(editingPostId, { text: trimmed });
+
+            // fetch the fresh post from backend and upsert into store
+            const getRes = await postsApi.getById(editingPostId);
+            if (getRes.ok && getRes.data) {
+                insertPost(getRes.data); // upsert full post
+            } else {
+                // Fallback: update text locally
+                updatePost(editingPostId, { text: trimmed });
+                console.warn("[EditPost] Failed to fetch updated post:", getRes.message);
+            }
             closeEditPostModal();
-            await refreshPosts({ force: true});
         } else {
             console.log("[EditPost] Failed:", res.message);
         }
@@ -340,7 +393,6 @@ export default function SocialScreen() {
             console.log("[DeletePost] Success");
             removePost(editingPostId);
             closeEditPostModal();
-            await refreshPosts({ force: true});
             
         } else {
             console.log("[DeletePost] Failed:", res.message);
@@ -437,18 +489,49 @@ export default function SocialScreen() {
     };
 
     // ---------- Render helpers ----------
-    const renderCommentAvatar = (avatarUrl: string | null, uname: string) => {
-        const initial = uname?.[0]?.toUpperCase() ?? "?";
-        if (avatarUrl) {
-            return <Image source={{ uri: avatarUrl }} style={styles.commentAvatar} />;
-        }
+    const renderFeedItem = useCallback(
+        ({ item }: { item: InternalFeedItem }) => {
+            const canEdit = item.creator.id === userId;
+            const commentsCount = commentsByParent[item.id]?.length ?? 0;
 
-        return (
-            <View style={[ styles.commentAvatar, { backgroundColor: theme.primary, alignItems: "center", justifyContent: "center"}]}>
-                <Text style={{ color: theme.onPrimary, fontWeight: "700"}}> {initial} </Text>
-            </View>
-        );
-    };
+            const card = (
+                <FriendActivityItem
+                    activity={{
+                        id: item.id,
+                        name: item.creator.username,
+                        message: item.message,
+                        time: item.time,
+                        avatarUrl: item.creator.avatarUrl,
+                    }}
+                    theme={theme}
+                    isLiked={likedItems.includes(item.id)}
+                    onToggleLike={handleToggleLike}
+                    onCommentPress={openCommentsModal}
+                    commentsCount={commentsCount}
+                />
+            );
+
+            if (!canEdit) return card;
+
+            return (
+                <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={() => openEditPostModal(item.id)}
+                >
+                    {card}
+                </TouchableOpacity>
+            );
+        },
+        [
+            userId,
+            commentsByParent,
+            theme,
+            likedItems,
+            handleToggleLike,
+            openCommentsModal,
+            openEditPostModal,
+        ]
+    );
 
     // ---------- Render ----------
     return (
@@ -486,37 +569,7 @@ export default function SocialScreen() {
                     ) : null
                 }
 
-                renderItem={({ item }) => {
-                    const canEdit = item.creator.id === userId;
-                    const commentsCount = commentsByParent[item.id]?.length ?? 0;
-                    const card = (
-                        <FriendActivityItem
-                            activity={{
-                                id: item.id,
-                                name: item.creator.username,
-                                message: item.message,
-                                time: item.time,
-                                img: item.creator.avatarUrl
-                                ? { uri: item.creator.avatarUrl }
-                                : undefined,
-                            }}
-                            theme={theme}
-                            isLiked={likedItems.includes(item.id)}
-                            onToggleLike={handleToggleLike}
-                            onCommentPress={openCommentsModal}
-                            commentsCount={commentsCount}
-                        />
-                    );
-
-                    if (!canEdit) return card;
-
-                    // Allow editing via press for the author's own posts
-                    return (
-                        <TouchableOpacity activeOpacity={0.95} onPress={() => openEditPostModal(item.id)} >
-                            {card}
-                        </TouchableOpacity>
-                    );
-                }}
+                renderItem={renderFeedItem}
             />
 
             {/* Comments Modal */}
@@ -533,8 +586,22 @@ export default function SocialScreen() {
                         </View>
 
                         {/* Comments list */}
-                        <ScrollView style={styles.commentsList}>
-                            {commentsForSelectedPost.map((c) => { 
+                        <FlatList 
+                            style={styles.commentsList}
+                            data={commentsForSelectedPost}
+                            keyExtractor={(item) => item.id}
+                            ListEmptyComponent={
+                                loadingComments ? (
+                                    <View style={styles.emptyComments}>
+                                        <Text style={{ color: theme.secondaryText }}> Loading comments... </Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.emptyComments}>
+                                        <Text style={{ color: theme.secondaryText }}> No comments yet </Text>
+                                    </View>
+                                )
+                            }
+                            renderItem={({ item: c }) => {
                                 const creator =
                                     creatorsById[c.creator_id] ?? {
                                         id: c.creator_id,
@@ -544,7 +611,14 @@ export default function SocialScreen() {
                                 const isMine = c.creator_id === userId;
                                 return (
                                     <View key={c.id} style={[ styles.commentItem, { borderBottomColor: theme.border }]}>
-                                        {renderCommentAvatar(creator.avatarUrl, creator.username)}
+                                        <AvatarBubble
+                                            size={36}
+                                            avatarUrl={creator.avatarUrl}
+                                            name={creator.username}
+                                            bgColor={theme.primary}
+                                            initialColor={theme.onPrimary}
+                                            style={styles.commentAvatar}
+                                        />
                                         <View style={styles.commentBody}>
                                             <View style={styles.commentHeaderRow}>
                                                 <View style={{ flexDirection: "row", alignItems: "flex-end"  }}>
@@ -566,21 +640,8 @@ export default function SocialScreen() {
                                         </View>
                                     </View>
                                 );
-                                
-                            })}
-
-                            {selectedPost && selectedPost.comments.length === 0 &&!loadingComments && (
-                                <View style={styles.emptyComments}>
-                                    <Text style={{ color: theme.secondaryText }}> No comments yet </Text>
-                                </View>
-                            )}
-
-                            {loadingComments && (
-                                <View style={styles.emptyComments}>
-                                    <Text style={{ color: theme.secondaryText }}> Loading comments...</Text>
-                                </View>
-                            )}
-                        </ScrollView>
+                            }}
+                        />
 
                         {/* Add / Edit comment */}
                         <View

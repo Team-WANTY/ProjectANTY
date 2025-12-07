@@ -16,6 +16,7 @@ import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
 import { useFriendsStore, type DisplayFriend, type FriendUserInfo } from "@/services/stores/friends-store";
 import { useUserStore } from "@/services/stores/users-store";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -106,7 +107,7 @@ const FriendItem: React.FC<FriendItemProps> = ({
     onViewProfile,
 }) => {
     const displayName = friend.user.username || "Unknown user";
-    const initial = displayName[0]?.toUpperCase() ?? "?";
+
 
     const handleUnfriendPress = () => { onUnfriend(friend.friendUserId) };
 
@@ -115,22 +116,14 @@ const FriendItem: React.FC<FriendItemProps> = ({
             style={[styles.friendCard, { backgroundColor: theme.cardBackground, shadowColor: theme.shadow }]}
         >
             <View style={styles.friendBanner}>
-                {friend.user.avatarUrl ? (
-                    <Image source={{ uri: friend.user.avatarUrl }} style={styles.friendImage} />
-                ) : (
-                    <View
-                        style={[
-                            styles.friendImage,
-                            {
-                                backgroundColor: theme.primary,
-                                justifyContent: "center",
-                                alignItems: "center",
-                            },
-                        ]}
-                    >
-                        <Text style={[styles.friendInitial, { color: theme.onPrimary }]}>{initial}</Text>
-                    </View>
-                )}
+                <AvatarBubble
+                    size={52}
+                    avatarUrl={friend.user.avatarUrl}
+                    name={displayName}
+                    bgColor={theme.primary}
+                    initialColor={theme.onPrimary}
+                    style={styles.friendImage}
+                />
 
                 <View style={styles.friendInfo}>
                     <TouchableOpacity
