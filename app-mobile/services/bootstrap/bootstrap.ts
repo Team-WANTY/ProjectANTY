@@ -17,6 +17,7 @@ import { postsApi, type Post } from "../api/posts-api";
 import { usePostsStore } from "../stores/posts-store";
 import { commentsApi, type Comment } from "../api/comments-api";
 import { useCommentsStore } from "../stores/comments-store";
+import { useCreatorsStore, type CreatorInfo } from "../stores/creators-store";
 
 
 
@@ -200,13 +201,62 @@ export async function loadFriends(userId?: string) {
   return displayFriends;
 }
 
+// Creator info for Posts and Comments services
+async function resolveCreatorInfoRaw(userId: string): Promise<CreatorInfo> {
+  let username = "Unknown user";
+  let avatarUrl: string | null = null;
+
+  const userRes = await usersApi.getById(userId);
+  if (userRes.ok && userRes.data) {
+    username = userRes.data.username;
+  }
+
+  const profileRes = await profileApi.getById(userId);
+  if (profileRes.ok && profileRes.data && (profileRes.data as any).avatar_image_id) {
+    const avatarImageId = (profileRes.data as any).avatar_image_id as string;
+    const imgRes = await imagesApi.getUrl(avatarImageId);
+    if (imgRes.ok && imgRes.data) {
+      avatarUrl = imgRes.data;
+    }
+  }
+
+  return { id: userId, username, avatarUrl };
+}
+
+async function resolveCreatorInfoCached(userId: string): Promise<CreatorInfo> {
+  const { byId, setCreator } = useCreatorsStore.getState();
+  const cached = byId[userId];
+  if (cached) return cached;
+
+  const info = await resolveCreatorInfoRaw(userId);
+  setCreator(info);
+  return info;
+}
+
+async function primeCreators(userIds: string[]) {
+  const { byId, setMany } = useCreatorsStore.getState();
+  const unique = Array.from(new Set(userIds));
+  const missing = unique.filter((id) => !byId[id]);
+
+  if (!missing.length) return;
+
+  const infos = await Promise.all(
+    missing.map((id) => resolveCreatorInfoRaw(id))
+  );
+  setMany(infos);
+}
+
 // Load Posts
-export async function loadPosts(userId?: string) {
+export async function loadPosts(
+  userId?: string,
+  options?: { since?: string | null }
+) {
   const meId = userId ?? useUserStore.getState().userId;
   if (!meId) return [];
 
   const result = await postsApi.listRelevantForUser(meId, {
     maxItems: 20,
+    timestamp: options?.since ?? null,
   });
 
   if (!result.ok) {
@@ -219,7 +269,10 @@ export async function loadPosts(userId?: string) {
 
   const ids = result.data?.ids ?? [];
   if (ids.length === 0) {
-    usePostsStore.getState().setPosts([]);
+    if (!options?.since) {
+      // Initial full load: empty means no posts
+      usePostsStore.getState().setPosts([]);
+    }
     return [];
   }
 
@@ -231,9 +284,23 @@ export async function loadPosts(userId?: string) {
     posts.push(res.data);
   }
 
-  usePostsStore.getState().setPosts(posts);
+  // Prime creator cache for these posts
+  await primeCreators(posts.map((p) => p.creator_id));
+
+  if (options?.since) {
+    // Incremental: insert only new posts into store
+    const store = usePostsStore.getState();
+    for (const p of posts) {
+      store.insertPost(p);
+    }
+  } else {
+    // Initial load: replace whole feed
+    usePostsStore.getState().setPosts(posts);
+  }
+
   return posts;
 }
+
 
 // Load Comments
 // Load comments for a single post into the comments-store
@@ -295,6 +362,7 @@ export async function safeBootstrap() {
       loadTasks(me.id),
       loadFriends(me.id),
       loadPosts(me.id),
+      
     ]);
     await loadCommentsForPosts();
   } 
@@ -305,6 +373,7 @@ export async function safeBootstrap() {
     useFriendsStore.getState().clear();
     usePostsStore.getState().clear();
     useCommentsStore.getState().clear();
+    useCreatorsStore.getState().clear();
     if (err?.response?.status !== 401) throw err;
   }
 }
