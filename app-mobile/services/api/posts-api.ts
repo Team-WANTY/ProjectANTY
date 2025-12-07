@@ -55,14 +55,14 @@ export type IdPage = {
 
 export const postsApi = {
   // POST /posts
-  async create(body: NewPost): Promise<ApiResult<null>> {
+  async create(body: NewPost): Promise<ApiResult<string>> {
     try {
-      const res = await api.post<void>(paths.root, body);
+      const res = await api.post<string>(paths.root, body);
       return {
         ok: true,
         status: res.status,
         message: res.statusText || "Post created",
-        data: null,
+        data: res.data,
       };
     } catch (error: any) {
       const status: number | undefined = error?.response?.status;
@@ -186,12 +186,17 @@ export const postsApi = {
     } catch (error: any) {
       const status: number | undefined = error?.response?.status;
       const data = error?.response?.data;
-
+      if (status === 404) {
+            return {
+                ok: true,
+                status,
+                message: "No newer posts",
+                data: { ids: [], continuationToken: null },
+            };
+        }
       const msg =
         status === 401
           ? "Not authenticated"
-          : status === 404
-          ? "No posts found"
           : status && status >= 500
           ? "Server error"
           : toMessage(data, "Failed to load relevant posts");

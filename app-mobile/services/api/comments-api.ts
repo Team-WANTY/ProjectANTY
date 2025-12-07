@@ -55,14 +55,14 @@ export type IdPage = {
 
 export const commentsApi = {
   // POST /comments
-  async create(body: CommentCreateBody): Promise<ApiResult<null>> {
+  async create(body: CommentCreateBody): Promise<ApiResult<string>> {
     try {
-      const res = await api.post<void>(paths.root, body);
+      const res = await api.post<string>(paths.root, body);
       return {
         ok: true,
         status: res.status,
         message: res.statusText || "Comment created",
-        data: null,
+        data: res.data,
       };
     } catch (error: any) {
       const status: number | undefined = error?.response?.status;

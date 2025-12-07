@@ -100,6 +100,12 @@ export default function SocialScreen() {
     const posts = usePostsStore((s) => s.posts);
     const commentsByParent = useCommentsStore((s) => s.commentsByParent);
     const creatorsById = useCreatorsStore((s) => s.byId);
+    const removePost = usePostsStore((s) => s.removePost);
+    const updatePost = usePostsStore((s) => s.updatePost);
+    const insertPost = usePostsStore((s) => s.insertPost);
+    const insertComment = useCommentsStore((s) => s.insertComment);
+    const updateCommentInStore = useCommentsStore((s) => s.updateComment);
+    const removeCommentFromStore = useCommentsStore((s) => s.removeComment);
 
     // Local UI state
     const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -116,11 +122,14 @@ export default function SocialScreen() {
     const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [commentText, setCommentText] = useState("");
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
     const [loadingFeed, setLoadingFeed] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
 
     const selectedPost = feed.find((p) => p.id === selectedPostId) ?? null;
+    const commentsForSelectedPost: Comment[] = selectedPostId ? commentsByParent[selectedPostId] ?? [] : [];
+
     const lastRefreshAtRef = useRef<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -264,18 +273,28 @@ export default function SocialScreen() {
             allow_comments: commentsEnabled,
         };
 
-        const res = await postsApi.create(body);
-        if (res.ok) {
-            // Refresh store + derived UI
-            console.log("[AddPost] Success");
-            await refreshPosts({ force: true });
-
-            setNewPostText("");
-            setCommentsEnabled(true);
-            setIsAddPostModalVisible(false);
-        } else {
-            console.log("[AddPost] failed:", res.message);
+        const createRes = await postsApi.create(body);
+        if (!createRes.ok || !createRes.data) {
+            console.warn("[AddPost] Failed to create:", createRes.message);
+            return;
         }
+
+        const newPostId = createRes.data; // string, not null
+
+        // Fetch full post by ID
+        const getRes = await postsApi.getById(newPostId);
+        if (!getRes.ok || !getRes.data) {
+            console.warn("[AddPost] Failed to load created post:", getRes.message);
+            return;
+        }
+
+        // Insert into store so UI shows it at the top
+        insertPost(getRes.data);
+
+        // Reset modal
+        setNewPostText("");
+        setCommentsEnabled(true);
+        setIsAddPostModalVisible(false);
     };
 
     // ---------- Edit/Delete Post ----------
@@ -304,8 +323,9 @@ export default function SocialScreen() {
 
         if (res.ok) {
             console.log("[EditPost] Success");
-            await refreshPosts({ force: true});
+            updatePost(editingPostId, { text: trimmed });
             closeEditPostModal();
+            await refreshPosts({ force: true});
         } else {
             console.log("[EditPost] Failed:", res.message);
         }
@@ -315,10 +335,13 @@ export default function SocialScreen() {
         if (!editingPostId) return;
 
         const res = await postsApi.remove(editingPostId);
+
         if (res.ok) {
             console.log("[DeletePost] Success");
-            await refreshPosts({ force: true});
+            removePost(editingPostId);
             closeEditPostModal();
+            await refreshPosts({ force: true});
+            
         } else {
             console.log("[DeletePost] Failed:", res.message);
         }
@@ -331,6 +354,7 @@ export default function SocialScreen() {
         setIsCommentsModalVisible(true);
         setCommentText("");
         setLoadingComments(true);
+        setEditingCommentId(null);
         try {
             await loadCommentsForPost(postId, 50); // updates comments-store
             console.log("[Social] Loaded comments for post:", postId);
@@ -345,14 +369,49 @@ export default function SocialScreen() {
         setIsCommentsModalVisible(false);
         setSelectedPostId(null);
         setCommentText("");
+        setEditingCommentId(null);
     };
 
     
-    const handleAddComment = async () => {
+    const startEditComment = (comment: Comment) => {
+        setEditingCommentId(comment.id);
+        setCommentText(comment.text);
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        const res = await commentsApi.remove(commentId);
+        if (res.ok) {
+            console.log("[DeleteComment] Success");
+            removeCommentFromStore(commentId);
+            if (editingCommentId === commentId) {
+                setEditingCommentId(null);
+                setCommentText("");
+            }
+        } else {
+            console.log("[DeleteComment] Failed:", res.message);
+        }
+    };
+
+    const handleSubmitComment = async () => {
         if (!userId || !selectedPostId) return;
         const trimmed = commentText.trim();
         if (!trimmed) return;
 
+        // EDIT existing comment
+        if (editingCommentId) {
+            const res = await commentsApi.update({ id: editingCommentId, text: trimmed });
+            if (res.ok) {
+                updateCommentInStore(editingCommentId, { text: trimmed });
+                console.log("[EditComment] Success");
+                setEditingCommentId(null);
+                setCommentText("");
+            } else {
+                console.log("[EditComment] Failed:", res.message);
+            }
+            return;
+        }
+
+        // CREATE new comment
         const body = {
             creator_id: userId,
             text: trimmed,
@@ -361,21 +420,20 @@ export default function SocialScreen() {
         };
 
         const res = await commentsApi.create(body);
-        if (res.ok) {
-            setCommentText("");
-            console.log("[AddComment] Success");
-            // Re-sync comments for that post into comments-store
-            setLoadingComments(true);
-            try {
-                await loadCommentsForPost(selectedPostId, 50);
-            } catch (err) {
-                console.warn("[AddComment] Failed to refresh comments:", err);
-            } finally {
-                setLoadingComments(false);
-            }
-        } else {
-            console.log("[AddComment] Failed:", res.message);
+        if (!res.ok) {
+            console.log("[AddComment] Failed to Post comment");
+            return;
         }
+        setLoadingComments(true);
+        const full = await commentsApi.getById(res.data);
+        if (!full.ok) {
+            console.log("[AddComment] Failed to load full comment");
+            return;
+        }
+        console.log("[AddComment] Success");
+        insertComment(full.data);
+        setCommentText("");
+        setLoadingComments(false);
     };
 
     // ---------- Render helpers ----------
@@ -406,6 +464,7 @@ export default function SocialScreen() {
 
             {/* Feed */}
             <FlatList
+                style={{ flex: 1 }}
                 data={feed}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[styles.feedList, {paddingBottom: insets.bottom + hp(10)}]}
@@ -429,6 +488,7 @@ export default function SocialScreen() {
 
                 renderItem={({ item }) => {
                     const canEdit = item.creator.id === userId;
+                    const commentsCount = commentsByParent[item.id]?.length ?? 0;
                     const card = (
                         <FriendActivityItem
                             activity={{
@@ -444,7 +504,7 @@ export default function SocialScreen() {
                             isLiked={likedItems.includes(item.id)}
                             onToggleLike={handleToggleLike}
                             onCommentPress={openCommentsModal}
-                            commentsCount={item.comments.length}
+                            commentsCount={commentsCount}
                         />
                     );
 
@@ -474,18 +534,40 @@ export default function SocialScreen() {
 
                         {/* Comments list */}
                         <ScrollView style={styles.commentsList}>
-                            {selectedPost && selectedPost.comments.map((c) => (
-                                <View key={c.id} style={[ styles.commentItem, { borderBottomColor: theme.border }]}>
-                                    {renderCommentAvatar(c.creator.avatarUrl, c.creator.username)}
-                                    <View style={styles.commentBody}>
-                                        <View style={styles.commentHeaderRow}>
-                                            <Text style={[ styles.commentAuthor, { color: theme.text }]}> {c.creator.username} </Text>
-                                            <Text style={[ styles.commentTime, { color: theme.secondaryText }]}> {c.createdAt}</Text>
+                            {commentsForSelectedPost.map((c) => { 
+                                const creator =
+                                    creatorsById[c.creator_id] ?? {
+                                        id: c.creator_id,
+                                        username: "Unknown user",
+                                        avatarUrl: null,
+                                    };
+                                const isMine = c.creator_id === userId;
+                                return (
+                                    <View key={c.id} style={[ styles.commentItem, { borderBottomColor: theme.border }]}>
+                                        {renderCommentAvatar(creator.avatarUrl, creator.username)}
+                                        <View style={styles.commentBody}>
+                                            <View style={styles.commentHeaderRow}>
+                                                <View style={{ flexDirection: "row", alignItems: "flex-end"  }}>
+                                                    <Text style={[ styles.commentAuthor, { color: theme.text }]}> {creator.username} </Text>
+                                                    <Text style={[ styles.commentTime, { color: theme.secondaryText }]}> {"  · "}{formatRelativeTime(c.created_at)}</Text>
+                                                </View>
+                                                {isMine && (
+                                                    <View style={styles.commentActionsRow}>
+                                                        <TouchableOpacity onPress={() => startEditComment(c) } style={{ marginRight: 8}}>
+                                                            <Ionicons name="create-outline" size={18} color= {theme.primary}/>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity  onPress={() => handleDeleteComment(c.id)}>
+                                                            <Ionicons name="trash-outline" size={18} color= "#ff002bff"/>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <Text style={[ styles.commentText, { color: theme.text }]}> {c.text}</Text>
                                         </View>
-                                        <Text style={[ styles.commentText, { color: theme.text }]}> {c.text}</Text>
                                     </View>
-                                </View>
-                            ))}
+                                );
+                                
+                            })}
 
                             {selectedPost && selectedPost.comments.length === 0 &&!loadingComments && (
                                 <View style={styles.emptyComments}>
@@ -500,19 +582,19 @@ export default function SocialScreen() {
                             )}
                         </ScrollView>
 
-                        {/* Add comment */}
+                        {/* Add / Edit comment */}
                         <View
                             style={[ styles.commentInputRow, { borderTopColor: theme.border }]}>
                             <TextInput
                                 style={[ styles.commentInput, { borderColor: theme.border,color: theme.text }]}
-                                placeholder="Add a comment..."
+                                placeholder={editingCommentId ? "Edit your comment..." : "Add a comment..." }
                                 placeholderTextColor={theme.secondaryText}
                                 value={commentText}
                                 onChangeText={setCommentText}
                                 multiline
                             />
-                            <TouchableOpacity style={styles.commentSendButton} onPress={handleAddComment} disabled={!commentText.trim()}>
-                                <Ionicons name="send"size={22}color={ commentText.trim() ? theme.primary: theme.border }/>
+                            <TouchableOpacity style={styles.commentSendButton} onPress={handleSubmitComment} disabled={!commentText.trim()}>
+                                <Ionicons name={editingCommentId ? "checkmark" : "send"} size={22} color={ commentText.trim() ? theme.primary: theme.border }/>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -567,7 +649,6 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     feedList: {
-        flex: 1,
         paddingHorizontal: wp(4),
         paddingBottom: hp(4),
     },
@@ -662,5 +743,9 @@ const styles = StyleSheet.create({
     commentSendButton: {
         paddingHorizontal: wp(1),
         paddingVertical: hp(0.5),
+    },
+        commentActionsRow: {
+        flexDirection: "row",
+        alignItems: "center",
     },
 });
