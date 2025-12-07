@@ -3,14 +3,10 @@ name: Build & Push All Backend Services Manually
 on:
   workflow_dispatch:  # manual trigger
 
-env:
-  TENANT_ID: ${{ secrets.TENANT_ID }}
-  CLIENT_ID: ${{ secrets.CLIENT_ID }}
-  SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
-  ACR_NAME: ${{ vars.ACR_NAME }}
 jobs:
   build-and-push-all:
     runs-on: ubuntu-latest
+    environment: "Azure Deployment Environment"
     permissions:
       id-token: write
       contents: read
@@ -22,72 +18,73 @@ jobs:
       - name: Azure Login via OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ env.CLIENT_ID }}
-          tenant-id: ${{ env.TENANT_ID }}
-          subscription-id: ${{ env.SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ env.ACR_NAME }}
+        run: az acr login --name ${{ vars.ACR_NAME }}
 
       - name: Build and Push Auth Service
         run: |
           docker build -f backend/auth_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/auth-service:latest \
-                       backend/auth_service
-          docker push ${{ env.ACR_NAME }}/auth-service:latest
+            -t ${{ vars.ACR_URL }}/auth-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/auth-service:latest
 
       - name: Build and Push Comments Service
         run: |
           docker build -f backend/comments_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/comments-service:latest \
-                       backend/comments_service
-          docker push ${{ env.ACR_NAME }}/comments-service:latest
+            -t ${{ vars.ACR_URL }}/comments-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/comments-service:latest
 
       - name: Build and Push Friends Service
         run: |
+          run: |
           docker build -f backend/friends_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/friends-service:latest \
-                       backend/friends_service
-          docker push ${{ env.ACR_NAME }}/friends-service:latest
+            -t ${{ vars.ACR_URL }}/friends-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/friends-service:latest
 
       - name: Build and Push Image Service
         run: |
           docker build -f backend/image_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/image-service:latest \
-                       backend/image_service
-          docker push ${{ env.ACR_NAME }}/image-service:latest
+            -t ${{ vars.ACR_URL }}/image-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/image-service:latest
 
       - name: Build and Push Posts Service
         run: |
           docker build -f backend/posts_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/posts-service:latest \
-                       backend/posts_service
-          docker push ${{ env.ACR_NAME }}/posts-service:latest
+            -t ${{ vars.ACR_URL }}/posts-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/posts-service:latest
 
       - name: Build and Push Profiles Service
         run: |
           docker build -f backend/profiles_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/profiles-service:latest \
-                       backend/profiles_service
-          docker push ${{ env.ACR_NAME }}/profiles-service:latest
+            -t ${{ vars.ACR_URL }}/profiles-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/profiles-service:latest
 
       - name: Build and Push Redirect Service
         run: |
           docker build -f backend/redirect_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/redirect-service:latest \
-                       backend/redirect_service
-          docker push ${{ env.ACR_NAME }}/redirect-service:latest
+            -t ${{ vars.ACR_URL }}/redirect-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/redirect-service:latest
 
       - name: Build and Push Tasks Service
         run: |
           docker build -f backend/tasks_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/tasks-service:latest \
-                       backend/tasks_service
-          docker push ${{ env.ACR_NAME }}/tasks-service:latest
+            -t ${{ vars.ACR_URL }}/tasks-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/tasks-service:latest
           
       - name: Build and Push Users Service
         run: |
           docker build -f backend/users_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/users-service:latest \
-                       backend/users_service
-          docker push ${{ env.ACR_NAME }}/users-service:latest
+            -t ${{ vars.ACR_URL }}/users-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/users-service:latest

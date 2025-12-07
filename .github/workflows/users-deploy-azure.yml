@@ -32,6 +32,6 @@ jobs:
       - name: Build and Push
         run: |
           docker build -f backend/users_service/Dockerfile \
-            -t ${{ vars.ACR_NAME }}.azurecr.io/users-service:latest \
-            backend/users_service
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/users-service:latest
+            -t ${{ vars.ACR_URL }}/users-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/users-service:latest
