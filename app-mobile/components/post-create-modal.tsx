@@ -146,11 +146,11 @@ export const PostCreateModal: React.FC<Props> = ({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>
+            <Text style={[styles.title, { color: theme.onBackground }]}>
               Create Post
             </Text>
             <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={theme.primary} />
+              <Ionicons name="close" size={24} color={theme.onBackground} />
             </TouchableOpacity>
           </View>
 
@@ -183,10 +183,10 @@ export const PostCreateModal: React.FC<Props> = ({
                 style={[
                   styles.toggleSwitch,
                   {
-                    borderColor: theme.border,
+                    borderColor: theme.text,
                     backgroundColor: commentsEnabled
-                      ? theme.primary
-                      : "transparent",
+                      ? theme.commentsToggleOn
+                      : theme.commentsToggleOff,
                   },
                 ]}
                 onPress={onToggleComments}
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    // backgroundColor is now set dynamically from theme
   },
   modalContent: {
     width: "90%",

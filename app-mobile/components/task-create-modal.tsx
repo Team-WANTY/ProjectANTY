@@ -74,7 +74,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   repeatEndError,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  
+
   const fadeOut = (cb?: () => void) => {
     Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => cb && cb());
   };
@@ -109,8 +109,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             },
           ]}
         >
-          <Pressable accessible accessibilityLabel="Close new task" onPress={handleClose} style={styles.modalCloseButton}>
-            <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
+          <Pressable
+            accessible
+            accessibilityLabel="Close new task"
+            onPress={handleClose}
+            style={styles.modalCloseButton}
+          >
+            <Text style={[styles.modalCloseText, { color: theme.background }]}>✕</Text>
           </Pressable>
           <Text style={[styles.modalTitle, { color: theme.background }]}> New Task </Text>
 
@@ -150,13 +155,27 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   style={[
                     styles.categoryOption,
                     {
-                      backgroundColor: newTask.category === cat ? theme.primary : "transparent",
-                      borderColor: theme.background,
+                      backgroundColor:
+                        newTask.category === cat ? theme.text : theme.background,
+                      borderColor: theme.text,
                     },
                   ]}
-                  onPress={() =>setNewTask((prev) => ({...prev, category: prev.category === cat ? "" : cat}))}
+                  onPress={() =>
+                    setNewTask((prev) =>
+                      prev
+                        ? { ...prev, category: prev.category === cat ? "" : cat }
+                        : prev
+                    )
+                  }
                 >
-                  <Text style={[styles.categoryOptionText, { color: newTask.category === cat ? "#fff" : theme.background }]}>
+                  <Text
+                    style={[
+                      styles.categoryOptionText,
+                      {
+                        color: newTask.category === cat ? theme.background : theme.text,
+                      },
+                    ]}
+                  >
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -214,7 +233,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                           setIsRepeatOpen(false);
                         }}
                       >
-                        <Text style={[styles.dropdownItemText,{ color: theme.secondaryText }]}>
+                        <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>
                           {opt}
                         </Text>
                       </TouchableOpacity>
@@ -237,7 +256,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.categoryOption,{ marginLeft: 8 }, repeatEndMode === "Until" && { backgroundColor: theme.primary }]}
+                      style={[styles.categoryOption, { marginLeft: 8 }, repeatEndMode === "Until" && { backgroundColor: theme.primary }]}
                       onPress={() => setRepeatEndMode("Until")}
                     >
                       <Text style={[styles.categoryOptionText, { color: repeatEndMode === "Until" ? "#fff" : theme.background }]}>Until</Text>
@@ -248,10 +267,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     <View style={{ marginTop: 10 }}>
                       <Text style={[styles.inputLabel, { color: theme.background }]}>Until Date</Text>
                       <TextInput
-                        style={[styles.input, {color: theme.background, borderColor: repeatEndError ? "#ff4d4f" : theme.background}]}
+                        style={[styles.input, { color: theme.background, borderColor: repeatEndError ? "#ff4d4f" : theme.background }]}
                         value={repeatEndDate}
                         onChangeText={(text) => {
-                          setRepeatEndDate(text);                        
+                          setRepeatEndDate(text);
                           setNewTask((p) => ({ ...p, untilDate: text }));
                         }}
                         placeholder="MM/DD/YYYY"
@@ -272,8 +291,8 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             <Text style={[styles.inputLabel, { color: theme.background }]}>
               {newTask.repeatEnabled ? "Start Date" : "Due Date"}
             </Text>
-            <TextInput 
-              style={[styles.input, {color: theme.background, borderColor: dateError ? "#ff4d4f" : theme.background}]}
+            <TextInput
+              style={[styles.input, { color: theme.background, borderColor: dateError ? "#ff4d4f" : theme.background }]}
               value={newTask.first_relevant_date}
               onChangeText={(text) => setNewTask((prev) => ({ ...prev, first_relevant_date: text }))}
               placeholder="MM/DD/YYYY"
@@ -290,7 +309,9 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             {loading ? (
               <ActivityIndicator />
             ) : (
-              <Text style={[styles.saveButtonText, { color: "#fff" }]}>Add Task</Text>
+              <Text style={[styles.saveButtonText, { color: theme.background === '#151718' ? '#000' : '#fff' }]}>
+                Add Task
+              </Text>
             )}
           </TouchableOpacity>
         </Animated.View>
@@ -406,5 +427,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  
+
 });

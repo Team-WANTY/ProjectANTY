@@ -15,7 +15,7 @@ import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/a
 import { useUserStore } from "@/services/stores/users-store";
 import { useTasksStore, type Task as StoreTask } from "@/services/stores/tasks-store";
 
-import { NewTaskModal, type NewTask  } from "@/components/task-create-modal";
+import { NewTaskModal, type NewTask } from "@/components/task-create-modal";
 import { EditTaskModal, type EditingTask } from "@/components/task-edit-modal";
 import { CategoryCreateModal } from "@/components/category-create-modal";
 import { CategoryEditModal } from "@/components/category-edit-modal";
@@ -160,14 +160,17 @@ const TaskItem = ({ task, theme, isCompleted, onToggle, onDelete, onPress }: any
 
     const renderRightActions = (_progress: any, _dragX: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
-
+        // Get themeName for lilac detection
+        const { themeName } = require("@/context/ThemeContext").useTheme();
+        const purple = '#6c63a2';
+        const deleteColor = themeName === 'lilac' ? purple : "#ff4d4f";
         return (
             <RNAnimated.View style={[{ opacity: anim }]}>
                 <RectButton
                     style={[
                         styles.rightAction,
                         {
-                            backgroundColor: "#ff4d4f",
+                            backgroundColor: deleteColor,
                             width: maxWidth,
                         },
                     ]}
@@ -218,12 +221,12 @@ const TaskItem = ({ task, theme, isCompleted, onToggle, onDelete, onPress }: any
                                     styles.checkboxBox,
                                     {
                                         borderColor: theme.secondaryText,
-                                        backgroundColor: isCompleted  ? theme.primary : "transparent",
+                                        backgroundColor: isCompleted ? theme.primary : "transparent",
                                     },
                                 ]}
                             >
-                                {isCompleted  && (
-                                    <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
+                                {task.completed && (
+                                    <Ionicons name="checkmark-sharp" size={16} color={theme.buttonText} />
                                 )}
                             </View>
                         </TouchableOpacity>
@@ -237,11 +240,11 @@ const TaskItem = ({ task, theme, isCompleted, onToggle, onDelete, onPress }: any
 // --- Category Tag Component ---
 const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) => {
     const tagStyle = {
-        backgroundColor: isActive ? theme.primary : theme.border,
-        borderColor: theme.primary,
+        backgroundColor: isActive ? theme.text : theme.background,
+        borderColor: theme.text,
     };
     const textStyle = {
-        color: isActive ? theme.text : theme.secondaryText,
+        color: isActive ? theme.background : theme.text,
     };
 
     return (
@@ -339,10 +342,14 @@ export default function TasksScreen() {
             )
         ).sort();
 
-        // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
         setCategoriesList((prev) => {
             const merged = new Set([...prev, ...fromTasks]);
-            return Array.from(merged).sort();
+            const mergedArr = Array.from(merged).sort();
+            // Only update if changed
+            if (JSON.stringify(prev) !== JSON.stringify(mergedArr)) {
+                return mergedArr;
+            }
+            return prev;
         });
     }, [tasks]);
 
@@ -354,7 +361,7 @@ export default function TasksScreen() {
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
     const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
-    const [editingTask, setEditingTask] = useState<EditingTask  | null>(null);
+    const [editingTask, setEditingTask] = useState<EditingTask | null>(null);
 
     const makeEmptyNewTask = (): NewTask => ({
         title: "",
@@ -611,7 +618,7 @@ export default function TasksScreen() {
     // Create tasks
     const createTask = async () => {
         const title = newTask.title.trim();
-        
+
 
         if (!title) {
             setTaskNameError("Task name is required");
@@ -677,7 +684,7 @@ export default function TasksScreen() {
                                 value: endParsed,
                             },
                         };
-                    }   else {
+                    } else {
                         // Forever
                         repeatRule = {
                             frequency: { specifier, value: 1 },
@@ -750,9 +757,9 @@ export default function TasksScreen() {
         try {
             let firstRelevant: Date | null | undefined;
             if (
-                !editingTask.first_relevant_date  ||
-                editingTask.first_relevant_date  === "No date" ||
-                editingTask.first_relevant_date  === "No due date"
+                !editingTask.first_relevant_date ||
+                editingTask.first_relevant_date === "No date" ||
+                editingTask.first_relevant_date === "No due date"
             ) {
                 // Explicitly clear date
                 firstRelevant = null;
@@ -794,7 +801,7 @@ export default function TasksScreen() {
                                 value: endParsed,
                             },
                         };
-                    }   else {
+                    } else {
                         // Forever
                         repeatRule = {
                             frequency: { specifier, value: 1 },
@@ -840,7 +847,7 @@ export default function TasksScreen() {
             {/* 1. Top Navigation Bar */}
             <HeaderBar
                 title="Tasks"
-                showTitle={false}
+                showTitle={true}
                 onNotificationPress={showNotifications}
                 onSettingsPress={() => {
                     router.push("../settings");
@@ -886,7 +893,7 @@ export default function TasksScreen() {
                 </View>
 
                 <Text
-                    style={[styles.tasksCompletedText, { color: theme.cardBackground }]}
+                    style={[styles.tasksCompletedText, { color: theme.background === '#fff' ? theme.secondaryText : (theme.background === '#151718' ? '#b0b0b0' : theme.cardBackground) }]}
                 >
                     {completedCount} Tasks Completed
                 </Text>
