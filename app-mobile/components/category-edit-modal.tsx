@@ -41,6 +41,10 @@ export const CategoryEditModal: React.FC<Props> = ({
   onSubmit,
   onDelete,
 }) => {
+  // Get themeName from ThemeContext
+  const { themeName } = require("@/context/ThemeContext").useTheme();
+  const deleteBg = themeName === 'lilac' ? '#6c63a2' : theme.error;
+  const deleteIcon = '#fff';
   return (
     <Modal
       transparent
@@ -72,16 +76,11 @@ export const CategoryEditModal: React.FC<Props> = ({
             <Text style={[styles.modalCloseText, { color: theme.background }]}>✕</Text>
           </Pressable>
 
-          <Text style={[styles.modalTitle, { color: theme.background }]}>
-            Edit Category
-          </Text>
+          <Text style={[styles.modalTitle, { color: theme.background }]}>Edit Category</Text>
 
-          <View style={[styles.inputContainer, { marginBottom: 16 }]}>
+          <View style={[styles.inputContainer, { marginBottom: 16 }]}> 
             <TextInput
-              style={[
-                styles.input,
-                { color: theme.background, borderColor: theme.background },
-              ]}
+              style={[styles.input, { color: theme.background, borderColor: theme.background }]}
               value={value}
               onChangeText={onChangeValue}
               placeholder="Enter category name"
@@ -98,10 +97,10 @@ export const CategoryEditModal: React.FC<Props> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.deleteButton, { backgroundColor: theme.error }]}
+              style={[styles.deleteButton, { backgroundColor: deleteBg }]}
               onPress={onDelete}
             >
-              <Ionicons name="trash" size={20} color={theme.onError} />
+              <Ionicons name="trash" size={20} color={deleteIcon} />
             </TouchableOpacity>
           </View>
         </Animated.View>

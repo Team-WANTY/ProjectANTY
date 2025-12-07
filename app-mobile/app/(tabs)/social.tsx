@@ -17,6 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import FriendActivityItem from "@/components/friend-activity";
+import { PostCreateModal } from "@/components/post-create-modal";
+import { PostEditModal } from "@/components/post-edit-modal";
 import { useNotificationModal } from "@/app/_layout";
 import { useRouter } from "expo-router";
 
@@ -81,7 +83,10 @@ const initialData: FeedItem[] = [
 ];
 
 export default function SocialPage() {
-    const { theme } = useTheme();
+    const [isEditPostModalVisible, setIsEditPostModalVisible] = useState(false);
+    const [editPostId, setEditPostId] = useState<string | null>(null);
+    const [editPostText, setEditPostText] = useState("");
+    const { theme, themeName } = useTheme();
     const [data, setData] = useState<FeedItem[]>(initialData);
     const [likedItems, setLikedItems] = useState<string[]>([]);
     const [isAddPostModalVisible, setIsAddPostModalVisible] = useState(false);
@@ -157,7 +162,7 @@ export default function SocialPage() {
     const selectedPost = data.find(post => post.id === selectedPostId);
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}> 
             {/* Top Navigation Bar */}
             <HeaderBar
                 title="Social"
@@ -168,13 +173,11 @@ export default function SocialPage() {
 
             {/* Add Post Button */}
             <TouchableOpacity
-                style={[styles.addPostButton, { backgroundColor: theme.primary }]}
+                style={[styles.addPostButton, { backgroundColor: themeName === 'blue' ? theme.cardBackground : theme.primary }]}
                 onPress={() => setIsAddPostModalVisible(true)}
             >
-                <Ionicons name="add" size={24} color={theme.background} />
-                <Text style={[styles.addPostButtonText, { color: theme.background }]}>
-                    Create Post
-                </Text>
+                <Ionicons name="add" size={24} color={themeName === 'lilac' ? '#6c63a2' : theme.background} />
+                <Text style={[styles.addPostButtonText, { color: themeName === 'lilac' ? '#6c63a2' : theme.background }]}>Create Post</Text>
             </TouchableOpacity>
 
             {/* Feed List */}
@@ -183,22 +186,83 @@ export default function SocialPage() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.feedList}
                 renderItem={({ item }) => (
-                    <FriendActivityItem
-                        activity={{
-                            id: item.id,
-                            name: item.name,
-                            message: item.message,
-                            time: item.time,
-                            img: item.avatar,
-                        }}
-                        theme={theme}
-                        isLiked={likedItems.includes(item.id)}
-                        onToggleLike={handleToggleLike}
-                        onCommentPress={openCommentsModal}
-                        commentsCount={item.comments.length}
-                    />
+                    <View style={{ marginBottom: 10 }}>
+                        <FriendActivityItem
+                            activity={{
+                                id: item.id,
+                                name: item.name,
+                                message: item.message,
+                                time: item.time,
+                                img: item.avatar,
+                                onEdit: item.name === 'You' ? () => {
+                                    setEditPostId(item.id);
+                                    setEditPostText(item.message);
+                                    setIsEditPostModalVisible(true);
+                                } : undefined,
+                            }}
+                            theme={theme}
+                            themeName={themeName}
+                            isLiked={likedItems.includes(item.id)}
+                            onToggleLike={handleToggleLike}
+                            onCommentPress={() => openCommentsModal(item.id)}
+                            commentsCount={item.comments.length}
+                        />
+                    </View>
                 )}
             />
+
+            {/* Add Post Modal (original implementation) */}
+            <Modal
+                visible={isAddPostModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsAddPostModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.modalOverlay}
+                >
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}> 
+                        <View style={styles.modalHeader}> 
+                            <Text style={[styles.modalTitle, { color: theme.primary }]}>Create Post</Text> 
+                            <TouchableOpacity onPress={() => setIsAddPostModalVisible(false)}> 
+                                <Ionicons name="close" size={28} color={theme.primary} /> 
+                            </TouchableOpacity> 
+                        </View>
+
+                        <ScrollView style={styles.modalBody}> 
+                            <TextInput 
+                                style={[styles.postInput, { backgroundColor: theme.background, color: theme.primary, borderColor: theme.border }]} 
+                                placeholder="What's on your mind?" 
+                                placeholderTextColor={theme.border} 
+                                value={newPostText} 
+                                onChangeText={setNewPostText} 
+                                multiline 
+                                numberOfLines={6} 
+                                textAlignVertical="top" 
+                            /> 
+
+                            <View style={styles.toggleContainer}> 
+                                <Text style={[styles.toggleLabel, { color: theme.primary }]}>Allow Comments</Text> 
+                                <TouchableOpacity 
+                                    style={[styles.toggleButton, { backgroundColor: commentsEnabled ? theme.primary : theme.border }]} 
+                                    onPress={() => setCommentsEnabled(!commentsEnabled)} 
+                                > 
+                                    <View style={[styles.toggleCircle, { backgroundColor: theme.background }, commentsEnabled && styles.toggleCircleActive]} /> 
+                                </TouchableOpacity> 
+                            </View> 
+                        </ScrollView>
+
+                        <TouchableOpacity 
+                            style={[styles.submitButton, { backgroundColor: newPostText.trim() ? theme.primary : theme.border }]} 
+                            onPress={handleAddPost} 
+                            disabled={!newPostText.trim()} 
+                        > 
+                            <Text style={[styles.submitButtonText, { color: theme.background }]}>Post</Text> 
+                        </TouchableOpacity> 
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
             {/* Comments Modal */}
             <Modal
@@ -216,103 +280,68 @@ export default function SocialPage() {
                         activeOpacity={1}
                         onPress={closeCommentsModal}
                     />
-                    <View style={[styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}>
+                    <View style={[styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}> 
                         {/* Header */}
-                        <View style={[styles.commentsModalHeader, { borderBottomColor: theme.border }]}>
-                            <Text style={[styles.commentsModalTitle, { color: theme.primary }]}>
-                                Comments
-                            </Text>
-                            <TouchableOpacity onPress={closeCommentsModal}>
-                                <Ionicons name="close" size={28} color={theme.primary} />
-                            </TouchableOpacity>
+                        <View style={[styles.commentsModalHeader, { borderBottomColor: theme.border }]}> 
+                            <Text style={[styles.commentsModalTitle, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>Comments</Text> 
+                            <TouchableOpacity onPress={closeCommentsModal}> 
+                                <Ionicons name="close" size={28} color={theme.primary} /> 
+                            </TouchableOpacity> 
                         </View>
-
                         {selectedPost && (
                             <>
                                 {/* Post Preview */}
-                                <View style={[styles.postPreview, { borderBottomColor: theme.border }]}>
-                                    <Text style={[styles.postPreviewName, { color: theme.primary }]}>
-                                        {selectedPost.name}
-                                    </Text>
-                                    <Text style={[styles.postPreviewMessage, { color: theme.primary }]}>
-                                        {selectedPost.message}
-                                    </Text>
+                                <View style={[styles.postPreview, { borderBottomColor: theme.border }]}> 
+                                    <Text style={[styles.postPreviewName, { color: theme.primary }]}>{selectedPost.name}</Text> 
+                                    <Text style={[styles.postPreviewMessage, { color: theme.primary }]}>{selectedPost.message}</Text> 
                                 </View>
-
                                 {/* Comments List */}
-                                <ScrollView style={styles.commentsListContainer}>
+                                <ScrollView style={styles.commentsListContainer}> 
                                     {selectedPost.comments.length === 0 ? (
-                                        <View style={styles.noCommentsContainer}>
-                                            <Ionicons name="chatbubbles-outline" size={wp(15)} color={theme.border} />
-                                            <Text style={[styles.noCommentsText, { color: theme.border }]}>
-                                                No comments yet
-                                            </Text>
-                                            <Text style={[styles.noCommentsSubtext, { color: theme.border }]}>
-                                                Be the first to comment!
-                                            </Text>
+                                        <View style={styles.noCommentsContainer}> 
+                                            <Ionicons name="chatbubbles-outline" size={wp(15)} color={themeName === 'lilac' ? '#6c63a2' : theme.border} /> 
+                                            <Text style={[styles.noCommentsText, { color: themeName === 'lilac' ? '#6c63a2' : theme.border }]}>No comments yet</Text> 
+                                            <Text style={[styles.noCommentsSubtext, { color: themeName === 'lilac' ? '#6c63a2' : theme.border }]}>Be the first to comment!</Text> 
                                         </View>
                                     ) : (
                                         selectedPost.comments.map((comment) => (
-                                            <View key={comment.id} style={styles.commentItem}>
-                                                <Image source={comment.avatar} style={styles.commentAvatar} />
-                                                <View style={styles.commentContent}>
-                                                    <Text style={[styles.commentText, { color: theme.primary }]}>
-                                                        <Text style={styles.commentUsername}>
-                                                            {comment.username}
-                                                        </Text>
+                                            <View key={comment.id} style={styles.commentItem}> 
+                                                <Image source={comment.avatar} style={styles.commentAvatar} /> 
+                                                <View style={styles.commentContent}> 
+                                                    <Text style={[styles.commentText, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}> 
+                                                        <Text style={[styles.commentUsername, { color: themeName === 'lilac' ? '#6c63a2' : undefined }]}>{comment.username}</Text> 
                                                         {" "}
-                                                        <Text style={styles.commentMessage}>
-                                                            {comment.text}
-                                                        </Text>
-                                                    </Text>
-                                                    <Text style={[styles.commentTime, { color: theme.primary }]}>
-                                                        {comment.time}
-                                                    </Text>
-                                                </View>
+                                                        <Text style={[styles.commentMessage, { color: themeName === 'lilac' ? '#6c63a2' : undefined }]}>{comment.text}</Text> 
+                                                    </Text> 
+                                                    <Text style={[styles.commentTime, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>{comment.time}</Text> 
+                                                </View> 
                                             </View>
                                         ))
                                     )}
                                 </ScrollView>
-
                                 {/* Add Comment Input */}
                                 {selectedPost.commentsEnabled ? (
-                                    <View style={[styles.addCommentContainer, {
-                                        borderTopColor: theme.border,
-                                        backgroundColor: theme.cardBackground,
-                                    }]}>
-                                        <TextInput
-                                            style={[styles.commentInput, {
-                                                backgroundColor: theme.background,
-                                                color: theme.primary,
-                                                borderColor: theme.border,
-                                            }]}
-                                            placeholder="Write a comment..."
-                                            placeholderTextColor={theme.border}
-                                            value={commentText}
-                                            onChangeText={setCommentText}
-                                            multiline
-                                        />
-                                        <TouchableOpacity
-                                            style={[styles.submitCommentButton, {
-                                                backgroundColor: commentText.trim() ? theme.primary : theme.border
-                                            }]}
-                                            onPress={() => {
-                                                handleAddComment(selectedPost.id);
-                                            }}
-                                            disabled={!commentText.trim()}
-                                        >
-                                            <Ionicons name="send" size={20} color={theme.background} />
-                                        </TouchableOpacity>
+                                    <View style={[styles.addCommentContainer, { borderTopColor: theme.border, backgroundColor: theme.cardBackground }]}> 
+                                        <TextInput 
+                                            style={[styles.commentInput, { backgroundColor: theme.background, color: themeName === 'lilac' ? '#6c63a2' : (themeName === 'blue' ? '#F0F5F9' : theme.primary), borderColor: theme.border }]} 
+                                            placeholder="Write a comment..." 
+                                            placeholderTextColor={theme.border} 
+                                            value={commentText} 
+                                            onChangeText={setCommentText} 
+                                            multiline 
+                                        /> 
+                                        <TouchableOpacity 
+                                            style={[styles.submitCommentButton, { backgroundColor: commentText.trim() ? theme.primary : theme.border }]} 
+                                            onPress={() => { handleAddComment(selectedPost.id); }} 
+                                            disabled={!commentText.trim()} 
+                                        > 
+                                            <Ionicons name="send" size={20} color={theme.background} /> 
+                                        </TouchableOpacity> 
                                     </View>
                                 ) : (
-                                    <View style={[styles.commentsDisabledContainer, {
-                                        borderTopColor: theme.border,
-                                        backgroundColor: theme.background,
-                                    }]}>
-                                        <Ionicons name="lock-closed" size={20} color={theme.border} />
-                                        <Text style={[styles.commentsDisabledText, { color: theme.border }]}>
-                                            Comments are disabled for this post
-                                        </Text>
+                                    <View style={[styles.commentsDisabledContainer, { borderTopColor: theme.border, backgroundColor: theme.background }]}> 
+                                        <Ionicons name="lock-closed" size={20} color={theme.border} /> 
+                                        <Text style={[styles.commentsDisabledText, { color: theme.border }]}>Comments are disabled for this post</Text> 
                                     </View>
                                 )}
                             </>
@@ -321,75 +350,34 @@ export default function SocialPage() {
                 </KeyboardAvoidingView>
             </Modal>
 
-            {/* Add Post Modal */}
-            <Modal
-                visible={isAddPostModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setIsAddPostModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.modalOverlay}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: theme.primary }]}>Create Post</Text>
-                            <TouchableOpacity onPress={() => setIsAddPostModalVisible(false)}>
-                                <Ionicons name="close" size={28} color={theme.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody}>
-                            <TextInput
-                                style={[styles.postInput, {
-                                    backgroundColor: theme.background,
-                                    color: theme.primary,
-                                    borderColor: theme.border,
-                                }]}
-                                placeholder="What's on your mind?"
-                                placeholderTextColor={theme.border}
-                                value={newPostText}
-                                onChangeText={setNewPostText}
-                                multiline
-                                numberOfLines={6}
-                                textAlignVertical="top"
-                            />
-
-                            <View style={styles.toggleContainer}>
-                                <Text style={[styles.toggleLabel, { color: theme.primary }]}>
-                                    Allow Comments
-                                </Text>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.toggleButton,
-                                        { backgroundColor: commentsEnabled ? theme.primary : theme.border }
-                                    ]}
-                                    onPress={() => setCommentsEnabled(!commentsEnabled)}
-                                >
-                                    <View style={[
-                                        styles.toggleCircle,
-                                        { backgroundColor: theme.background },
-                                        commentsEnabled && styles.toggleCircleActive
-                                    ]} />
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-
-                        <TouchableOpacity
-                            style={[styles.submitButton, {
-                                backgroundColor: newPostText.trim() ? theme.primary : theme.border
-                            }]}
-                            onPress={handleAddPost}
-                            disabled={!newPostText.trim()}
-                        >
-                            <Text style={[styles.submitButtonText, { color: theme.background }]}>
-                                Post
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
+            {/* Edit Post Modal */}
+            <PostEditModal
+                visible={isEditPostModalVisible}
+                theme={theme}
+                themeName={themeName}
+                text={editPostText}
+                onChangeText={setEditPostText}
+                onClose={() => {
+                    setIsEditPostModalVisible(false);
+                    setEditPostId(null);
+                }}
+                onSave={() => {
+                    if (editPostId && editPostText.trim()) {
+                        setData(prevData => prevData.map(post =>
+                            post.id === editPostId ? { ...post, message: editPostText.trim() } : post
+                        ));
+                        setIsEditPostModalVisible(false);
+                        setEditPostId(null);
+                    }
+                }}
+                onDelete={() => {
+                    if (editPostId) {
+                        setData(prevData => prevData.filter(post => post.id !== editPostId));
+                        setIsEditPostModalVisible(false);
+                        setEditPostId(null);
+                    }
+                }}
+            />
         </View>
     );
 }

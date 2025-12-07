@@ -154,14 +154,17 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
 
     const renderRightActions = (_progress: any, _dragX: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
-
+        // Get themeName for lilac detection
+        const { themeName } = require("@/context/ThemeContext").useTheme();
+        const purple = '#6c63a2';
+        const deleteColor = themeName === 'lilac' ? purple : "#ff4d4f";
         return (
-            <RNAnimated.View style={[{ opacity: anim }]}>
+            <RNAnimated.View style={[{ opacity: anim }]}> 
                 <RectButton
-                    style={[
+                    style={[ 
                         styles.rightAction,
                         {
-                            backgroundColor: "#ff4d4f",
+                            backgroundColor: deleteColor,
                             width: maxWidth,
                         },
                     ]}
@@ -710,7 +713,7 @@ export default function TasksScreen() {
             {/* 1. Top Navigation Bar */}
             <HeaderBar
                 title="Tasks"
-                showTitle={false}
+                showTitle={true}
                 onNotificationPress={showNotifications}
                 onSettingsPress={() => {
                     router.push("../settings");
@@ -755,7 +758,7 @@ export default function TasksScreen() {
                 </View>
 
                 <Text
-                    style={[styles.tasksCompletedText, { color: theme.cardBackground }]}
+                    style={[styles.tasksCompletedText, { color: theme.background === '#fff' ? theme.secondaryText : (theme.background === '#151718' ? '#b0b0b0' : theme.cardBackground) }]}
                 >
                     {completedCount} Tasks Completed
                 </Text>

@@ -14,6 +14,23 @@ export type Theme = {
 };
 
 export const Colors = {
+    lilac: {
+      text: '#000', // black text (applies to all text elements using theme.text)
+      background: '#fff', // white background
+      primary: '#d8d4f2', // lilac for containers/buttons
+      border: '#d8d4f2', // lilac border
+      inputBackground: '#f3f1fa', // lighter lilac for inputs
+      cardBackground: '#f3f1fa', // lighter lilac for cards
+      secondaryText: '#6c63a2', // muted lilac for secondary text
+      tint: '#d8d4f2',
+      icon: '#6c63a2',
+      tabIconDefault: '#6c63a2',
+      tabIconSelected: '#d8d4f2',
+      onPrimary: '#fff',
+      error: '#ff4d4f',
+      onError: '#fff',
+      shadow: 'rgba(108,99,162,0.15)',
+    },
   light: {
     text: '#11181C',
     background: '#fff',

@@ -128,7 +128,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             onPress={handleClose}
             style={styles.modalCloseButton}
           >
-            <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -316,7 +316,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             {loading ? (
               <ActivityIndicator />
             ) : (
-              <Text style={[styles.saveButtonText, { color: "#fff" }]}>
+              <Text style={[styles.saveButtonText, { color: theme.background === '#151718' ? '#000' : '#fff' }]}>
                 Add Task
               </Text>
             )}
