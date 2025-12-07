@@ -70,7 +70,7 @@ class UsersDB:
         max_items: int,
         continuation_token: str | None = None,
     ) -> tuple[list[str], str | None]:
-        query = "SELECT VALUE c.id FROM c WHERE CONTAINS(c.username, @partial)"
+        query = "SELECT c.id FROM c WHERE CONTAINS(c.username, @partial)"
         parameters: list[dict[str, object]] = [
             {"name": "@partial", "value": partial_username}
         ]
