@@ -1,13 +1,7 @@
-name: Test Auth Build Workflow
+name: Test Auth Workflow
 
 on:
-  workflow_dispatch:   # always manually trigger
-  push:
-    branches:
-      - main
-      - yn-backend-deployment
-    paths:
-      - 'backend/auth_service/**'
+  workflow_dispatch:
 
 jobs:
   test:
