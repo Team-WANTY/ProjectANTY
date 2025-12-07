@@ -824,7 +824,7 @@ export default function TasksScreen() {
                 <View style={styles.taskListContainer}>
                     {sorted.length === 0 ? (
                         <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
-                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
+                            <Text style={{ color: theme.secondaryText, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
                                 You currently have no tasks.
                             </Text>
                         </View>
