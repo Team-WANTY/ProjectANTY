@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, {
+    useState,
+    useEffect,
+    useCallback,
+} from "react";
 import {
     View,
     Text,
@@ -14,138 +18,350 @@ import {
     Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
-import FriendActivityItem from "@/components/friend-activity";
 import { useNotificationModal } from "@/app/_layout";
-import { useRouter } from "expo-router";
+
+import { useUserStore } from "@/services/stores/users-store";
+import { useProfileStore } from "@/services/stores/profiles-store";
+import { usePostsStore } from "@/services/stores/posts-store";
+
+import { postsApi, type Post } from "@/services/api/posts-api";
+import { commentsApi, type Comment } from "@/services/api/comments-api";
+import { usersApi } from "@/services/api/users-api";
+import { profileApi } from "@/services/api/profiles-api";
+import { imagesApi } from "@/services/api/image-api";
+import { loadPosts } from "@/services/bootstrap/bootstrap";
+
+import FriendActivityItem from "@/components/friend-activity";
+import { PostCreateModal } from "@/components/post-create-modal";
+import { PostEditModal } from "@/components/post-edit-modal";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const wp = (pct: number) => (screenWidth * pct) / 100;
+const hp = (pct: number) => (screenHeight * pct) / 100;
 
-// Relative sizing helpers
-const wp = (pct: number) => screenWidth * (pct / 100);
-const hp = (pct: number) => screenHeight * (pct / 100);
+// ---------- Types ----------
 
-interface Comment {
+type CreatorInfo = {
     id: string;
     username: string;
-    text: string;
-    time: string;
-    avatar: any;
-}
+    avatarUrl: string | null;
+};
 
-interface FeedItem {
+type CommentUI = {
     id: string;
-    name: string;
+    creator: CreatorInfo;
+    text: string;
+    createdAt: string;
+};
+
+type FeedItem = {
+    id: string; // post id
+    creator: CreatorInfo;
     message: string;
     time: string;
-    avatar: any;
     commentsEnabled: boolean;
-    comments: Comment[];
+    comments: CommentUI[];
+};
+
+// ---------- Helper functions ----------
+
+function formatRelativeTime(iso: string): string {
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return "Just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHr < 24) return `${diffHr}h ago`;
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return date.toLocaleDateString();
 }
 
-const initialData: FeedItem[] = [
-    {
-        id: "1",
-        name: "tinnguyen",
-        message: "Just took a nap",
-        time: "2 hrs. ago",
-        avatar: require("@/assets/images/default-avatar.png"),
-        commentsEnabled: true,
-        comments: [],
-    },
-    {
-        id: "2",
-        name: "anitadmrc",
-        message: "i'll give $20 to whoever does my homework",
-        time: "4 hrs. ago",
-        avatar: require("@/assets/images/default-avatar.png"),
-        commentsEnabled: true,
-        comments: [
-            {
-                id: "c1",
-                username: "tinnguyen",
-                text: "I got you bro",
-                time: "3 hrs. ago",
-                avatar: require("@/assets/images/default-avatar.png"),
-            },
-            {
-                id: "c2",
-                username: "nickfan",
-                text: "lol same",
-                time: "2 hrs. ago",
-                avatar: require("@/assets/images/default-avatar.png"),
-            },
-        ],
-    },
-];
+// Resolve username + avatarUrl for a given user
+async function resolveCreatorInfo(
+    targetUserId: string,
+    currentUserId: string | null,
+    currentUsername: string | null,
+    currentAvatarUrl: string | null
+    ): Promise<CreatorInfo> {
+    // If it's me, use store values directly (no extra network hit)
+    if (currentUserId && targetUserId === currentUserId) {
+        return {
+        id: targetUserId,
+        username: currentUsername ?? "You",
+        avatarUrl: currentAvatarUrl ?? null,
+        };
+    }
 
-export default function SocialPage() {
+    let username = "Unknown user";
+    let avatarUrl: string | null = null;
+
+    try {
+        const userRes = await usersApi.getById(targetUserId);
+        if (userRes.ok && userRes.data) {
+        username = userRes.data.username;
+        }
+    } catch (err) {
+        console.warn("[SocialScreen] failed to resolve username", err);
+    }
+
+    try {
+        const profileRes = await profileApi.getById(targetUserId);
+        if (
+        profileRes.ok &&
+        profileRes.data &&
+        (profileRes.data as any).avatar_image_id
+        ) {
+        const avatarImageId = (profileRes.data as any).avatar_image_id as string;
+        const imgRes = await imagesApi.getUrl(avatarImageId);
+        if (imgRes.ok && imgRes.data) {
+            avatarUrl = imgRes.data;
+        }
+        }
+    } catch (err) {
+        console.warn("[SocialScreen] failed to resolve avatar", err);
+    }
+
+    return { id: targetUserId, username, avatarUrl };
+}
+
+// ---------- Component ----------
+
+export default function SocialScreen() {
     const { theme } = useTheme();
-    const [data, setData] = useState<FeedItem[]>(initialData);
+    const router = useRouter();
+    const { showNotifications } = useNotificationModal();
+
+    // Global stores
+    const userId = useUserStore((s) => s.userId);
+    const username = useUserStore((s) => s.username);
+    const avatarUrlSelf = useProfileStore((s) => s.avatarUrl);
+    const posts = usePostsStore((s) => s.posts);
+
+    // Local UI state
+    const [feed, setFeed] = useState<FeedItem[]>([]);
     const [likedItems, setLikedItems] = useState<string[]>([]);
+
     const [isAddPostModalVisible, setIsAddPostModalVisible] = useState(false);
     const [newPostText, setNewPostText] = useState("");
     const [commentsEnabled, setCommentsEnabled] = useState(true);
+
+    const [isEditPostModalVisible, setIsEditPostModalVisible] = useState(false);
+    const [editingPostId, setEditingPostId] = useState<string | null>(null);
+    const [editPostText, setEditPostText] = useState("");
+
     const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [commentText, setCommentText] = useState("");
-    const router = useRouter();
 
-    const { showNotifications } = useNotificationModal();
+    const [loadingFeed, setLoadingFeed] = useState(false);
+    const [loadingComments, setLoadingComments] = useState(false);
 
-    const handleToggleLike = (id: string) => {
-        setLikedItems((prev) =>
-            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-        );
-    };
+    const [commentsByPost, setCommentsByPost] = useState<{
+        [postId: string]: CommentUI[];
+    }>({});
 
-    const handleAddPost = () => {
-        if (newPostText.trim()) {
-            const newPost: FeedItem = {
-                id: Date.now().toString(),
-                name: "You",
-                message: newPostText.trim(),
-                time: "Just now",
-                avatar: require("@/assets/images/default-avatar.png"),
-                commentsEnabled: commentsEnabled,
+    const selectedPost = feed.find((p) => p.id === selectedPostId) ?? null;
+
+    // Map Post (from store) -> FeedItem
+    const mapPostToFeedItem = useCallback(
+        async (post: Post): Promise<FeedItem> => {
+            const creator = await resolveCreatorInfo(
+                post.creator_id,
+                userId,
+                username,
+                avatarUrlSelf
+            );
+
+            return {
+                id: post.id,
+                creator,
+                message: post.text,
+                time: formatRelativeTime(post.created_at),
+                commentsEnabled: post.allow_comments,
                 comments: [],
             };
-            setData([newPost, ...data]);
+        },
+        [userId, username, avatarUrlSelf]
+    );
+
+    // Refresh posts in the store from backend
+    const refreshPosts = useCallback(async () => {
+        if (!userId) return;
+        setLoadingFeed(true);
+        try {
+            await loadPosts(userId);
+            console.log("[Social] Refresh Posts Success");
+        } catch (err) {
+            console.warn("[SocialScreen.refreshPosts] error:", err);
+        } finally {
+            setLoadingFeed(false);
+        }
+    }, [userId]);
+
+    // On screen focus, refresh posts store
+    useFocusEffect(
+        useCallback(() => {
+        refreshPosts();
+        }, [refreshPosts])
+    );
+
+    // Whenever posts in the store change, re-derive the feed + likedItems
+    useEffect(() => {
+        let cancelled = false;
+
+        const hydrate = async () => {
+            if (!userId) {
+                setFeed([]);
+                setLikedItems([]);
+                return;
+            }
+
+            try {
+                const items = await Promise.all(posts.map((p) => mapPostToFeedItem(p)));
+                if (!cancelled) {
+                    setFeed(items);
+
+                    const liked = posts
+                        .filter((p) => p.liker_ids.includes(userId))
+                        .map((p) => p.id);
+                    setLikedItems(liked);
+                }
+                console.log("[Social] hydrate feed from store success");
+            } catch (err) {
+                console.warn("[Social] hydrate feed from store failed:", err);
+            }
+        };
+
+        hydrate();
+        return () => {
+            cancelled = true;
+        };
+    }, [posts, userId, mapPostToFeedItem]);
+
+    // ---------- Likes ----------
+
+    const handleToggleLike = async (postId: string) => {
+        if (!userId) return;
+
+        const isLiked = likedItems.includes(postId);
+        const body = {
+            id: postId,
+            liker: {
+                id: userId,
+                like: !isLiked,
+            },
+        };
+
+        // Optimistic update in local UI only
+        setLikedItems((prev) =>
+            isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]
+        );
+
+        const res = await postsApi.update(body);
+        console.log("[PostLike] Success");
+        if (!res.ok) {
+            // revert if failed
+            setLikedItems((prev) =>
+                !isLiked ? prev.filter((id) => id !== postId) : [...prev, postId]
+            );
+            console.log("[PostLike] Failed");
+        }
+    };
+
+    // ---------- Create Post ----------
+
+    const handleAddPost = async () => {
+        if (!userId) return;
+        const trimmed = newPostText.trim();
+        if (!trimmed) return;
+
+        const body = {
+            creator_id: userId,
+            text: trimmed,
+            image_ids: [],
+            allow_comments: commentsEnabled,
+        };
+
+        const res = await postsApi.create(body);
+        if (res.ok) {
+            // Refresh store + derived UI
+            console.log("[AddPost] Success");
+            await refreshPosts();
+
             setNewPostText("");
             setCommentsEnabled(true);
             setIsAddPostModalVisible(false);
+        } else {
+            console.log("[AddPost] failed:", res.message);
         }
     };
 
-    const handleAddComment = (postId: string) => {
-        if (commentText.trim()) {
-            setData((prevData) =>
-                prevData.map((post) => {
-                    if (post.id === postId) {
-                        const newComment: Comment = {
-                            id: Date.now().toString(),
-                            username: "You",
-                            text: commentText.trim(),
-                            time: "Just now",
-                            avatar: require("@/assets/images/default-avatar.png"),
-                        };
-                        return {
-                            ...post,
-                            comments: [...post.comments, newComment],
-                        };
-                    }
-                    return post;
-                })
-            );
-            setCommentText("");
+    // ---------- Edit/Delete Post ----------
+
+    const openEditPostModal = (postId: string) => {
+        const target = feed.find((p) => p.id === postId);
+        if (!target) return;
+
+        setEditingPostId(postId);
+        setEditPostText(target.message);
+        setIsEditPostModalVisible(true);
+    };
+
+    const closeEditPostModal = () => {
+        setEditingPostId(null);
+        setEditPostText("");
+        setIsEditPostModalVisible(false);
+    };
+
+    const handleSavePostEdits = async () => {
+        if (!editingPostId) return;
+        const trimmed = editPostText.trim();
+        if (!trimmed) return;
+
+        const res = await postsApi.update({
+            id: editingPostId,
+            text: trimmed,
+        });
+
+        if (res.ok) {
+            console.log("[EditPost] Success");
+            await refreshPosts();
+            closeEditPostModal();
+        } else {
+            console.log("[EditPost] Failed:", res.message);
         }
     };
 
-    const openCommentsModal = (postId: string) => {
+    const handleDeletePost = async () => {
+        if (!editingPostId) return;
+
+        const res = await postsApi.remove(editingPostId);
+        if (res.ok) {
+            console.log("[DeletePost] Success");
+            await refreshPosts();
+            closeEditPostModal();
+        } else {
+            console.log("[DeletePost] Failed:", res.message);
+        }
+    };
+
+    // ---------- Comments ----------
+
+    const openCommentsModal = async (postId: string) => {
         setSelectedPostId(postId);
         setIsCommentsModalVisible(true);
         setCommentText("");
+        await loadCommentsForPost(postId);
     };
 
     const closeCommentsModal = () => {
@@ -154,247 +370,384 @@ export default function SocialPage() {
         setCommentText("");
     };
 
-    const selectedPost = data.find(post => post.id === selectedPostId);
+    const loadCommentsForPost = async (postId: string) => {
+        setLoadingComments(true);
+        try {
+            const pageRes = await commentsApi.listForContent(postId, 50);
+        if (!pageRes.ok || !pageRes.data) {
+            setCommentsByPost((prev) => ({
+                ...prev,
+                [postId]: [],
+            }));
+                // also clear on feed
+            setFeed((prev) =>
+                prev.map((p) =>
+                    p.id === postId ? { ...p, comments: [] } : p
+                )
+            );
+            return;
+        }
+
+        const ids = pageRes.data.ids ?? [];
+        const commentResults = await Promise.all(
+            ids.map((id) => commentsApi.getById(id))
+        );
+
+        const enriched: CommentUI[] = [];
+
+        for (const res of commentResults) {
+            if (!res.ok || !res.data) continue;
+            const c: Comment = res.data;
+            const creator = await resolveCreatorInfo(
+                c.creator_id,
+                userId,
+                username,
+                avatarUrlSelf
+            );
+            enriched.push({
+                id: c.id,
+                creator,
+                text: c.text,
+                createdAt: formatRelativeTime(c.created_at),
+            });
+        }
+
+        setCommentsByPost((prev) => ({
+            ...prev,
+            [postId]: enriched,
+        }));
+
+        // Update feed's comments for that post
+        setFeed((prev) =>
+            prev.map((p) =>
+            p.id === postId ? { ...p, comments: enriched } : p
+            )
+        );
+        console.log("[LoadComments] Success");
+        } catch (err) {
+            console.warn("[LoadComments] Failed:", err);
+        } finally {
+            setLoadingComments(false);
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!userId || !selectedPostId) return;
+        const trimmed = commentText.trim();
+        if (!trimmed) return;
+
+        const body = {
+            creator_id: userId,
+            text: trimmed,
+            parent_content_id: selectedPostId,
+            parent_content_type: "post" as const,
+        };
+
+        const res = await commentsApi.create(body);
+        if (res.ok) {
+            setCommentText("");
+            console.log("[AddComment] Success");
+            await loadCommentsForPost(selectedPostId);
+        } else {
+            console.log("[AddComment] Failed:", res.message);
+        }
+    };
+
+    // ---------- Render helpers ----------
+
+    const renderCommentAvatar = (avatarUrl: string | null, uname: string) => {
+        const initial = uname?.[0]?.toUpperCase() ?? "?";
+
+        if (avatarUrl) {
+        return (
+            <Image source={{ uri: avatarUrl }} style={styles.commentAvatar} />
+        );
+        }
+
+        return (
+        <View
+            style={[
+            styles.commentAvatar,
+            {
+                backgroundColor: theme.primary,
+                alignItems: "center",
+                justifyContent: "center",
+            },
+            ]}
+        >
+            <Text
+            style={{
+                color: theme.onPrimary,
+                fontWeight: "700",
+            }}
+            >
+            {initial}
+            </Text>
+        </View>
+        );
+    };
+
+    // ---------- Render ----------
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {/* Top Navigation Bar */}
-            <HeaderBar
-                title="Social"
-                showTitle={true}
-                onNotificationPress={showNotifications}
-                onSettingsPress={() => { router.push("../settings") }}
-            />
+        {/* Header */}
+        <HeaderBar
+            title="Social"
+            showTitle
+            onNotificationPress={showNotifications}
+            onSettingsPress={() => router.push("../settings")}
+        />
 
-            {/* Add Post Button */}
-            <TouchableOpacity
-                style={[styles.addPostButton, { backgroundColor: theme.primary }]}
-                onPress={() => setIsAddPostModalVisible(true)}
+        {/* Create Post Button */}
+        <TouchableOpacity
+            style={[styles.addPostButton, { backgroundColor: theme.primary }]}
+            onPress={() => setIsAddPostModalVisible(true)}
+        >
+            <Ionicons name="add" size={22} color={theme.background} />
+            <Text
+            style={[
+                styles.addPostButtonText,
+                { color: theme.background },
+            ]}
             >
-                <Ionicons name="add" size={24} color={theme.background} />
-                <Text style={[styles.addPostButtonText, { color: theme.background }]}>
-                    Create Post
+            Create Post
+            </Text>
+        </TouchableOpacity>
+
+        {/* Feed */}
+        <FlatList
+            data={feed}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.feedList}
+            ListEmptyComponent={
+            !loadingFeed ? (
+                <View style={styles.emptyContainer}>
+                <Text style={{ color: theme.secondaryText }}>
+                    No posts yet
                 </Text>
-            </TouchableOpacity>
+                </View>
+            ) : null
+            }
+            renderItem={({ item }) => {
+            const canEdit = item.creator.id === userId;
 
-            {/* Feed List */}
-            <FlatList
-                data={data}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.feedList}
-                renderItem={({ item }) => (
-                    <FriendActivityItem
-                        activity={{
-                            id: item.id,
-                            name: item.name,
-                            message: item.message,
-                            time: item.time,
-                            img: item.avatar,
-                        }}
-                        theme={theme}
-                        isLiked={likedItems.includes(item.id)}
-                        onToggleLike={handleToggleLike}
-                        onCommentPress={openCommentsModal}
-                        commentsCount={item.comments.length}
-                    />
-                )}
+            const card = (
+                <FriendActivityItem
+                activity={{
+                    id: item.id,
+                    name: item.creator.username,
+                    message: item.message,
+                    time: item.time,
+                    img: item.creator.avatarUrl
+                    ? { uri: item.creator.avatarUrl }
+                    : undefined,
+                }}
+                theme={theme}
+                isLiked={likedItems.includes(item.id)}
+                onToggleLike={handleToggleLike}
+                onCommentPress={openCommentsModal}
+                commentsCount={item.comments.length}
+                />
+            );
+
+            if (!canEdit) return card;
+
+            // Allow editing via long press for the author's own posts
+            return (
+                <TouchableOpacity
+                activeOpacity={0.95}
+                onLongPress={() => openEditPostModal(item.id)}
+                >
+                {card}
+                </TouchableOpacity>
+            );
+            }}
+        />
+
+        {/* Comments Modal */}
+        <Modal
+            visible={isCommentsModalVisible}
+            transparent
+            animationType="slide"
+            onRequestClose={closeCommentsModal}
+        >
+            <KeyboardAvoidingView
+            style={styles.commentsModalOverlay}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            >
+            <TouchableOpacity
+                style={styles.commentsModalBackdrop}
+                activeOpacity={1}
+                onPress={closeCommentsModal}
             />
-
-            {/* Comments Modal */}
-            <Modal
-                visible={isCommentsModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={closeCommentsModal}
+            <View
+                style={[
+                styles.commentsModalContent,
+                { backgroundColor: theme.cardBackground },
+                ]}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.commentsModalOverlay}
+                {/* Header */}
+                <View
+                style={[
+                    styles.commentsModalHeader,
+                    { borderBottomColor: theme.border },
+                ]}
                 >
-                    <TouchableOpacity
-                        style={styles.commentsModalBackdrop}
-                        activeOpacity={1}
-                        onPress={closeCommentsModal}
+                <Text
+                    style={[
+                    styles.commentsModalTitle,
+                    { color: theme.text },
+                    ]}
+                >
+                    Comments
+                </Text>
+                <TouchableOpacity onPress={closeCommentsModal}>
+                    <Ionicons
+                    name="close"
+                    size={26}
+                    color={theme.primary}
                     />
-                    <View style={[styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}>
-                        {/* Header */}
-                        <View style={[styles.commentsModalHeader, { borderBottomColor: theme.border }]}>
-                            <Text style={[styles.commentsModalTitle, { color: theme.primary }]}>
-                                Comments
-                            </Text>
-                            <TouchableOpacity onPress={closeCommentsModal}>
-                                <Ionicons name="close" size={28} color={theme.primary} />
-                            </TouchableOpacity>
-                        </View>
+                </TouchableOpacity>
+                </View>
 
-                        {selectedPost && (
-                            <>
-                                {/* Post Preview */}
-                                <View style={[styles.postPreview, { borderBottomColor: theme.border }]}>
-                                    <Text style={[styles.postPreviewName, { color: theme.primary }]}>
-                                        {selectedPost.name}
-                                    </Text>
-                                    <Text style={[styles.postPreviewMessage, { color: theme.primary }]}>
-                                        {selectedPost.message}
-                                    </Text>
-                                </View>
-
-                                {/* Comments List */}
-                                <ScrollView style={styles.commentsListContainer}>
-                                    {selectedPost.comments.length === 0 ? (
-                                        <View style={styles.noCommentsContainer}>
-                                            <Ionicons name="chatbubbles-outline" size={wp(15)} color={theme.border} />
-                                            <Text style={[styles.noCommentsText, { color: theme.border }]}>
-                                                No comments yet
-                                            </Text>
-                                            <Text style={[styles.noCommentsSubtext, { color: theme.border }]}>
-                                                Be the first to comment!
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        selectedPost.comments.map((comment) => (
-                                            <View key={comment.id} style={styles.commentItem}>
-                                                <Image source={comment.avatar} style={styles.commentAvatar} />
-                                                <View style={styles.commentContent}>
-                                                    <Text style={[styles.commentText, { color: theme.primary }]}>
-                                                        <Text style={styles.commentUsername}>
-                                                            {comment.username}
-                                                        </Text>
-                                                        {" "}
-                                                        <Text style={styles.commentMessage}>
-                                                            {comment.text}
-                                                        </Text>
-                                                    </Text>
-                                                    <Text style={[styles.commentTime, { color: theme.primary }]}>
-                                                        {comment.time}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                        ))
-                                    )}
-                                </ScrollView>
-
-                                {/* Add Comment Input */}
-                                {selectedPost.commentsEnabled ? (
-                                    <View style={[styles.addCommentContainer, {
-                                        borderTopColor: theme.border,
-                                        backgroundColor: theme.cardBackground,
-                                    }]}>
-                                        <TextInput
-                                            style={[styles.commentInput, {
-                                                backgroundColor: theme.background,
-                                                color: theme.primary,
-                                                borderColor: theme.border,
-                                            }]}
-                                            placeholder="Write a comment..."
-                                            placeholderTextColor={theme.border}
-                                            value={commentText}
-                                            onChangeText={setCommentText}
-                                            multiline
-                                        />
-                                        <TouchableOpacity
-                                            style={[styles.submitCommentButton, {
-                                                backgroundColor: commentText.trim() ? theme.primary : theme.border
-                                            }]}
-                                            onPress={() => {
-                                                handleAddComment(selectedPost.id);
-                                            }}
-                                            disabled={!commentText.trim()}
-                                        >
-                                            <Ionicons name="send" size={20} color={theme.background} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    <View style={[styles.commentsDisabledContainer, {
-                                        borderTopColor: theme.border,
-                                        backgroundColor: theme.background,
-                                    }]}>
-                                        <Ionicons name="lock-closed" size={20} color={theme.border} />
-                                        <Text style={[styles.commentsDisabledText, { color: theme.border }]}>
-                                            Comments are disabled for this post
-                                        </Text>
-                                    </View>
-                                )}
-                            </>
+                {/* Comments list */}
+                <ScrollView style={styles.commentsList}>
+                {selectedPost &&
+                    selectedPost.comments.map((c) => (
+                    <View
+                        key={c.id}
+                        style={[
+                        styles.commentItem,
+                        { borderBottomColor: theme.border },
+                        ]}
+                    >
+                        {renderCommentAvatar(
+                        c.creator.avatarUrl,
+                        c.creator.username
                         )}
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
-
-            {/* Add Post Modal */}
-            <Modal
-                visible={isAddPostModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setIsAddPostModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.modalOverlay}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: theme.primary }]}>Create Post</Text>
-                            <TouchableOpacity onPress={() => setIsAddPostModalVisible(false)}>
-                                <Ionicons name="close" size={28} color={theme.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody}>
-                            <TextInput
-                                style={[styles.postInput, {
-                                    backgroundColor: theme.background,
-                                    color: theme.primary,
-                                    borderColor: theme.border,
-                                }]}
-                                placeholder="What's on your mind?"
-                                placeholderTextColor={theme.border}
-                                value={newPostText}
-                                onChangeText={setNewPostText}
-                                multiline
-                                numberOfLines={6}
-                                textAlignVertical="top"
-                            />
-
-                            <View style={styles.toggleContainer}>
-                                <Text style={[styles.toggleLabel, { color: theme.primary }]}>
-                                    Allow Comments
-                                </Text>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.toggleButton,
-                                        { backgroundColor: commentsEnabled ? theme.primary : theme.border }
-                                    ]}
-                                    onPress={() => setCommentsEnabled(!commentsEnabled)}
-                                >
-                                    <View style={[
-                                        styles.toggleCircle,
-                                        { backgroundColor: theme.background },
-                                        commentsEnabled && styles.toggleCircleActive
-                                    ]} />
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-
-                        <TouchableOpacity
-                            style={[styles.submitButton, {
-                                backgroundColor: newPostText.trim() ? theme.primary : theme.border
-                            }]}
-                            onPress={handleAddPost}
-                            disabled={!newPostText.trim()}
-                        >
-                            <Text style={[styles.submitButtonText, { color: theme.background }]}>
-                                Post
+                        <View style={styles.commentBody}>
+                        <View style={styles.commentHeaderRow}>
+                            <Text
+                            style={[
+                                styles.commentAuthor,
+                                { color: theme.text },
+                            ]}
+                            >
+                            {c.creator.username}
                             </Text>
-                        </TouchableOpacity>
+                            <Text
+                            style={[
+                                styles.commentTime,
+                                { color: theme.secondaryText },
+                            ]}
+                            >
+                            {c.createdAt}
+                            </Text>
+                        </View>
+                        <Text
+                            style={[
+                            styles.commentText,
+                            { color: theme.text },
+                            ]}
+                        >
+                            {c.text}
+                        </Text>
+                        </View>
                     </View>
-                </KeyboardAvoidingView>
-            </Modal>
+                    ))}
+
+                {selectedPost &&
+                    selectedPost.comments.length === 0 &&
+                    !loadingComments && (
+                    <View style={styles.emptyComments}>
+                        <Text style={{ color: theme.secondaryText }}>
+                        No comments yet
+                        </Text>
+                    </View>
+                    )}
+
+                {loadingComments && (
+                    <View style={styles.emptyComments}>
+                    <Text style={{ color: theme.secondaryText }}>
+                        Loading comments...
+                    </Text>
+                    </View>
+                )}
+                </ScrollView>
+
+                {/* Add comment */}
+                <View
+                style={[
+                    styles.commentInputRow,
+                    { borderTopColor: theme.border },
+                ]}
+                >
+                <TextInput
+                    style={[
+                    styles.commentInput,
+                    {
+                        borderColor: theme.border,
+                        color: theme.text,
+                    },
+                    ]}
+                    placeholder="Add a comment..."
+                    placeholderTextColor={theme.secondaryText}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                />
+                <TouchableOpacity
+                    style={styles.commentSendButton}
+                    onPress={handleAddComment}
+                    disabled={!commentText.trim()}
+                >
+                    <Ionicons
+                    name="send"
+                    size={22}
+                    color={
+                        commentText.trim()
+                        ? theme.primary
+                        : theme.border
+                    }
+                    />
+                </TouchableOpacity>
+                </View>
+            </View>
+            </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Create Post Modal */}
+        <PostCreateModal
+            visible={isAddPostModalVisible}
+            theme={theme}
+            text={newPostText}
+            commentsEnabled={commentsEnabled}
+            onChangeText={setNewPostText}
+            onToggleComments={() =>
+            setCommentsEnabled((prev) => !prev)
+            }
+            onClose={() => setIsAddPostModalVisible(false)}
+            onSubmit={handleAddPost}
+        />
+
+        {/* Edit Post Modal */}
+        <PostEditModal
+            visible={isEditPostModalVisible}
+            theme={theme}
+            text={editPostText}
+            onChangeText={setEditPostText}
+            onClose={closeEditPostModal}
+            onSave={handleSavePostEdits}
+            onDelete={handleDeletePost}
+        />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+    // ---------- Styles ----------
+
+    const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -402,208 +755,111 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        marginHorizontal: wp(3),
-        marginTop: hp(1),
+        marginHorizontal: wp(5),
+        marginTop: hp(2),
+        marginBottom: hp(1),
         paddingVertical: hp(1.5),
-        borderRadius: wp(2),
-        gap: wp(2),
+        borderRadius: wp(3),
     },
     addPostButtonText: {
+        marginLeft: wp(2),
         fontSize: wp(4),
         fontWeight: "600",
     },
     feedList: {
-        padding: wp(3),
-        gap: hp(1.5),
+        paddingHorizontal: wp(4),
+        paddingBottom: hp(4),
     },
-    commentItem: {
-        flexDirection: "row",
-        paddingVertical: hp(1.5),
-        paddingHorizontal: wp(2),
-        gap: wp(3),
+    emptyContainer: {
+        padding: hp(4),
+        alignItems: "center",
     },
-    commentAvatar: {
-        width: wp(8),
-        height: wp(8),
-        borderRadius: wp(4),
-    },
-    commentContent: {
-        flex: 1,
-    },
-    commentUsername: {
-        fontWeight: "700",
-    },
-    commentMessage: {
-        fontWeight: "400",
-    },
-    commentText: {
-        fontSize: wp(3.5),
-        lineHeight: wp(5),
-        marginBottom: hp(0.3),
-    },
-    commentTime: {
-        fontSize: wp(3),
-    },
+
+    // Comments modal
     commentsModalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: "rgba(0,0,0,0.5)",
         justifyContent: "flex-end",
     },
     commentsModalBackdrop: {
         flex: 1,
     },
     commentsModalContent: {
+        maxHeight: screenHeight * 0.7,
         borderTopLeftRadius: wp(5),
         borderTopRightRadius: wp(5),
-        maxHeight: hp(85),
+        paddingHorizontal: wp(5),
+        paddingTop: hp(2),
         paddingBottom: hp(2),
     },
     commentsModalHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: wp(5),
-        paddingVertical: hp(2),
-        borderBottomWidth: 1,
+        paddingBottom: hp(1),
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     commentsModalTitle: {
         fontSize: wp(5),
         fontWeight: "700",
     },
-    postPreview: {
-        paddingHorizontal: wp(5),
+    commentsList: {
+        marginTop: hp(1.5),
+        marginBottom: hp(1),
+    },
+    commentItem: {
+        flexDirection: "row",
+        paddingVertical: hp(1.2),
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    commentAvatar: {
+        width: wp(10),
+        height: wp(10),
+        borderRadius: wp(5),
+        marginRight: wp(3),
+    },
+    commentBody: {
+        flex: 1,
+    },
+    commentHeaderRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 2,
+    },
+    commentAuthor: {
+        fontSize: wp(3.8),
+        fontWeight: "600",
+    },
+    commentTime: {
+        fontSize: wp(3),
+    },
+    commentText: {
+        fontSize: wp(3.6),
+        marginTop: 2,
+    },
+    emptyComments: {
         paddingVertical: hp(2),
-        borderBottomWidth: 1,
-    },
-    postPreviewName: {
-        fontSize: wp(3.5),
-        fontWeight: "600",
-        marginBottom: hp(0.5),
-    },
-    postPreviewMessage: {
-        fontSize: wp(3.5),
-    },
-    commentsListContainer: {
-        maxHeight: hp(50),
-        paddingHorizontal: wp(5),
-    },
-    noCommentsContainer: {
         alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: hp(5),
     },
-    noCommentsText: {
-        fontSize: wp(4.5),
-        fontWeight: "600",
-        marginTop: hp(2),
-    },
-    noCommentsSubtext: {
-        fontSize: wp(3.5),
-        marginTop: hp(0.5),
-    },
-    addCommentContainer: {
+    commentInputRow: {
         flexDirection: "row",
         alignItems: "flex-end",
-        gap: wp(2),
-        paddingHorizontal: wp(5),
-        paddingTop: hp(1.5),
-        paddingBottom: hp(1),
-        borderTopWidth: 1,
-    },
-    commentsDisabledContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: wp(2),
-        paddingVertical: hp(2),
-        borderTopWidth: 1,
-    },
-    commentsDisabledText: {
-        fontSize: wp(3.5),
-        fontStyle: "italic",
+        paddingTop: hp(1),
+        borderTopWidth: StyleSheet.hairlineWidth,
     },
     commentInput: {
         flex: 1,
+        minHeight: hp(5),
+        maxHeight: hp(15),
         borderWidth: 1,
-        borderRadius: wp(2),
-        padding: wp(3),
-        maxHeight: hp(12),
-        fontSize: wp(3.5),
+        borderRadius: wp(3),
+        paddingHorizontal: wp(3),
+        paddingVertical: hp(0.8),
+        fontSize: wp(3.6),
+        marginRight: wp(2),
     },
-    submitCommentButton: {
-        width: wp(12),
-        height: wp(12),
-        borderRadius: wp(6),
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        justifyContent: "flex-end",
-    },
-    modalContent: {
-        borderTopLeftRadius: wp(5),
-        borderTopRightRadius: wp(5),
-        paddingTop: hp(2),
-        paddingBottom: hp(3),
-        paddingHorizontal: wp(5),
-        maxHeight: hp(80),
-    },
-    modalHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: hp(2),
-    },
-    modalTitle: {
-        fontSize: wp(5),
-        fontWeight: "700",
-    },
-    modalBody: {
-        marginBottom: hp(2),
-    },
-    postInput: {
-        borderWidth: 1,
-        borderRadius: wp(2),
-        padding: wp(3),
-        fontSize: wp(4),
-        minHeight: hp(15),
-        marginBottom: hp(2),
-    },
-    toggleContainer: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: hp(1),
-    },
-    toggleLabel: {
-        fontSize: wp(4),
-        fontWeight: "500",
-    },
-    toggleButton: {
-        width: wp(12),
-        height: hp(3),
-        borderRadius: wp(6),
-        justifyContent: "center",
-        padding: wp(0.5),
-    },
-    toggleCircle: {
-        width: wp(5),
-        height: wp(5),
-        borderRadius: wp(2.5),
-    },
-    toggleCircleActive: {
-        alignSelf: "flex-end",
-    },
-    submitButton: {
-        paddingVertical: hp(1.8),
-        borderRadius: wp(2),
-        alignItems: "center",
-    },
-    submitButtonText: {
-        fontSize: wp(4.5),
-        fontWeight: "700",
+    commentSendButton: {
+        paddingHorizontal: wp(1),
+        paddingVertical: hp(0.5),
     },
 });
-

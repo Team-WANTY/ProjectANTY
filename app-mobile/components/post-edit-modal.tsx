@@ -27,7 +27,6 @@ export type Theme = {
 type Props = {
   visible: boolean;
   theme: Theme;
-  themeName?: string;
   text: string;
   onChangeText: (text: string) => void;
   onClose: () => void;
@@ -38,7 +37,6 @@ type Props = {
 export const PostEditModal: React.FC<Props> = ({
   visible,
   theme,
-  themeName,
   text,
   onChangeText,
   onClose,
@@ -46,30 +44,36 @@ export const PostEditModal: React.FC<Props> = ({
   onDelete,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const darkBlue = '#1A2A3A';
-  const lightBlue = '#AECDD9';
-  const isBlueTheme = theme.cardBackground === lightBlue || themeName === 'blue';
-  const canSave = text.trim().length > 0;
+
+  const fadeIn = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const fadeOut = (cb?: () => void) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => cb && cb());
+  };
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      fadeIn();
     } else {
       fadeAnim.setValue(0);
     }
   }, [visible, fadeAnim]);
 
   const handleClose = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => onClose());
+    fadeOut(onClose);
   };
+
+  const canSave = text.trim().length > 0;
 
   return (
     <Modal
@@ -91,7 +95,7 @@ export const PostEditModal: React.FC<Props> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: isBlueTheme ? lightBlue : theme.cardBackground,
+              backgroundColor: theme.cardBackground,
               opacity: fadeAnim,
               transform: [
                 {
@@ -104,12 +108,17 @@ export const PostEditModal: React.FC<Props> = ({
             },
           ]}
         >
+          {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: isBlueTheme ? theme.primary : theme.text }]}>Edit Post</Text>
+            <Text style={[styles.title, { color: theme.text }]}>
+              Edit Post
+            </Text>
             <TouchableOpacity onPress={handleClose}>
               <Ionicons name="close" size={24} color={theme.primary} />
             </TouchableOpacity>
           </View>
+
+          {/* Body */}
           <ScrollView
             style={styles.body}
             keyboardShouldPersistTaps="handled"
@@ -120,37 +129,48 @@ export const PostEditModal: React.FC<Props> = ({
                 styles.input,
                 {
                   borderColor: theme.border,
-                  backgroundColor: isBlueTheme ? '#1D3B53' : '#fff',
-                  color: themeName === 'dark' ? '#000' : (isBlueTheme ? '#fff' : theme.text),
+                  color: theme.text,
                 },
               ]}
               placeholder="Edit your post..."
-              placeholderTextColor={isBlueTheme ? '#F0F5F9' : theme.secondaryText}
+              placeholderTextColor={theme.secondaryText}
               value={text}
               onChangeText={onChangeText}
               multiline
               textAlignVertical="top"
             />
           </ScrollView>
+
+          {/* Actions */}
           <View style={styles.footer}>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  { backgroundColor: canSave ? theme.primary : theme.border, flex: 1, height: 50 },
-                ]}
-                onPress={onSave}
-                disabled={!canSave}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                {
+                  backgroundColor: canSave ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={onSave}
+              disabled={!canSave}
+            >
+              <Text
+                style={[styles.saveButtonText, { color: theme.background }]}
               >
-                <Text style={[styles.saveButtonText, { color: theme.onPrimary || theme.background }]}>Save Changes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deleteButton, { backgroundColor: themeName === 'lilac' ? '#6c63a2' : '#ff4d4f' }]}
-                onPress={onDelete}
-              >
-                <Ionicons name="trash" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
+                Save Changes
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.deleteButton,
+                { borderColor: "#ff4d4f" },
+              ]}
+              onPress={onDelete}
+            >
+              <Text style={[styles.deleteText, { color: "#ff4d4f" }]}>
+                Delete Post
+              </Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
@@ -159,23 +179,6 @@ export const PostEditModal: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-      saveButtonText: {
-        fontSize: 16,
-        fontWeight: "bold",
-      },
-    modalButtons: {
-      flexDirection: "row",
-      gap: 12,
-      alignItems: "center",
-      marginTop: 8,
-    },
-    deleteButton: {
-      width: 50,
-      height: 50,
-      borderRadius: 10,
-      justifyContent: "center",
-      alignItems: "center",
-    },
   overlay: {
     flex: 1,
     justifyContent: "center",
@@ -215,12 +218,24 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 4,
   },
-  // ...existing code...
   saveButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteButton: {
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  deleteText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

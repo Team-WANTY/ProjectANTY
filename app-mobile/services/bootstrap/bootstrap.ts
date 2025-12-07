@@ -13,6 +13,8 @@ import {
   type DisplayFriend,
   type FriendUserInfo,
 } from "../stores/friends-store";
+import { postsApi, type Post } from "../api/posts-api";
+import { usePostsStore } from "../stores/posts-store";
 
 export async function loadUser() {
   const result = await usersApi.me();
@@ -143,6 +145,41 @@ async function resolveFriendInfo(userId: string): Promise<FriendUserInfo> {
   return { id: userId, username, avatarUrl };
 }
 
+// Load Posts
+export async function loadPosts(userId?: string) {
+  const meId = userId ?? useUserStore.getState().userId;
+  if (!meId) return [];
+
+  const result = await postsApi.listRelevantForUser(meId, {
+    maxItems: 20,
+  });
+
+  if (!result.ok) {
+    if (result.status === 404) {
+      usePostsStore.getState().setPosts([]);
+      return [];
+    }
+    throw new Error(result.message ?? "Failed to load posts");
+  }
+
+  const ids = result.data?.ids ?? [];
+  if (ids.length === 0) {
+    usePostsStore.getState().setPosts([]);
+    return [];
+  }
+
+  const postResults = await Promise.all(ids.map((pid) => postsApi.getById(pid)));
+
+  const posts: Post[] = [];
+  for (const res of postResults) {
+    if (!res.ok || !res.data) continue;
+    posts.push(res.data);
+  }
+
+  usePostsStore.getState().setPosts(posts);
+  return posts;
+}
+
 export async function loadFriends(userId?: string) {
   const meId = userId ?? useUserStore.getState().userId;
   if (!meId) return [];
@@ -199,6 +236,7 @@ export async function safeBootstrap() {
       loadProfile(me.id),
       loadTasks(me.id),
       loadFriends(me.id),
+      loadPosts(me.id),
     ]);
   } 
   catch (err: any) {
@@ -206,6 +244,7 @@ export async function safeBootstrap() {
     useProfileStore.getState().clear();
     useTasksStore.getState().clear();
     useFriendsStore.getState().clear();
+    usePostsStore.getState().clear();
     if (err?.response?.status !== 401) throw err;
   }
 }
