@@ -212,10 +212,12 @@ export default function SocialScreen() {
         }
 
         try {
-            const items = posts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? []));
+            // Sort Posts by newest first
+            const sortedPosts = [...posts].sort((a, b) => a.created_at < b.created_at ? 1 : -1);
+            const items = sortedPosts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? []));
             setFeed(items);
 
-            const liked = posts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id);
+            const liked = sortedPosts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id);
             setLikedItems(liked);
         } catch (err) {
             console.warn("[Social] hydrate feed from store failed:", err);
