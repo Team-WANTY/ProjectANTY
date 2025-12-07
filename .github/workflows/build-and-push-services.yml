@@ -19,7 +19,7 @@ env:
   TENANT_ID: ${{ secrets.TENANT_ID }}
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
-  ACR_NAME: projectantymicroservices-gdcucpgjfjfeaxht
+  ACR_NAME: ${{ vars.ACR_NAME }}
 
 jobs:
   build-and-push:
