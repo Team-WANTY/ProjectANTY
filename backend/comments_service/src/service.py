@@ -58,7 +58,8 @@ class CommentsService:
             f"Starting to update comment: {comment_update.model_dump()}, starting with authorization"
         )
         comment = await self.get_comment(comment_update.id)
-        await authorize_operation(updater, comment.creator_id)
+        if comment_update.text is not None:
+            await authorize_operation(updater, comment.creator_id)
         await self.comments_db.update_comment(comment_update)
 
     async def delete_comment(self, comment_id: str, deleter: UserInDB):

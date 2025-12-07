@@ -93,7 +93,8 @@ class PostsService:
             f"Starting to create task: {post_update.model_dump()}, starting with authorization"
         )
         post = await self.get_post(post_update.id)
-        await authorize_operation(updater, post.creator_id)
+        if post_update.text is not None or post_update.image_ids is not None:
+            await authorize_operation(updater, post.creator_id)
         await self.posts_db.update_post(post_update)
 
     async def delete_post(self, post_id: str, deleter: UserInDB):
