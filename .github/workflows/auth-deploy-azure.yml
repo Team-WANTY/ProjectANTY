@@ -27,7 +27,7 @@ jobs:
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ vars.ACR_NAME }}
+        run: az acr login ${{ vars.ACR_NAME }}
 
       - name: Build and Push
         run: |
