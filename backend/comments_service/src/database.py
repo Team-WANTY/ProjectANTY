@@ -98,6 +98,8 @@ class CommentsDB:
             if items is None:
                 raise RecordNotFoundError()
             return items, new_cont
+        except RecordNotFoundError:
+            raise
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except StopAsyncIteration:
