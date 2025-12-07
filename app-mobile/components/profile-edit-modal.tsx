@@ -91,7 +91,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         >
           {/* Close button */}
           <Pressable style={styles.closeButton} onPress={handleClose}>
-            <Text style={[styles.closeText, { color: theme.primary }]}>✕</Text>
+            <Text style={[styles.closeText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
           </Pressable>
 
           {/* Avatar */}

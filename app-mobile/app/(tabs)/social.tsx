@@ -17,6 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { HeaderBar } from "@/components/header-bar";
 import FriendActivityItem from "@/components/friend-activity";
+import { PostCreateModal } from "@/components/post-create-modal";
+import { PostEditModal } from "@/components/post-edit-modal";
 import { useNotificationModal } from "@/app/_layout";
 import { useRouter } from "expo-router";
 
@@ -81,7 +83,7 @@ const initialData: FeedItem[] = [
 ];
 
 export default function SocialPage() {
-    const { theme } = useTheme();
+    const { theme, themeName } = useTheme();
     const [data, setData] = useState<FeedItem[]>(initialData);
     const [likedItems, setLikedItems] = useState<string[]>([]);
     const [isAddPostModalVisible, setIsAddPostModalVisible] = useState(false);
@@ -90,7 +92,14 @@ export default function SocialPage() {
     const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [commentText, setCommentText] = useState("");
+<<<<<<< Updated upstream
     const router = useRouter();
+=======
+        // Edit post modal state
+        const [isEditPostModalVisible, setIsEditPostModalVisible] = useState(false);
+        const [editPostId, setEditPostId] = useState<string | null>(null);
+        const [editPostText, setEditPostText] = useState("");
+>>>>>>> Stashed changes
 
     const { showNotifications } = useNotificationModal();
 
@@ -156,25 +165,28 @@ export default function SocialPage() {
 
     const selectedPost = data.find(post => post.id === selectedPostId);
 
+    const router = require('expo-router').useRouter();
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}> 
             {/* Top Navigation Bar */}
             <HeaderBar
                 title="Social"
                 showTitle={true}
                 onNotificationPress={showNotifications}
+<<<<<<< Updated upstream
                 onSettingsPress={() => { router.push("../settings") }}
+=======
+                onSettingsPress={() => { router.push("../settings"); }}
+>>>>>>> Stashed changes
             />
 
             {/* Add Post Button */}
             <TouchableOpacity
-                style={[styles.addPostButton, { backgroundColor: theme.primary }]}
+                style={[styles.addPostButton, { backgroundColor: themeName === 'blue' ? theme.cardBackground : theme.primary }]}
                 onPress={() => setIsAddPostModalVisible(true)}
             >
-                <Ionicons name="add" size={24} color={theme.background} />
-                <Text style={[styles.addPostButtonText, { color: theme.background }]}>
-                    Create Post
-                </Text>
+                <Ionicons name="add" size={24} color={themeName === 'lilac' ? '#6c63a2' : theme.background} />
+                <Text style={[styles.addPostButtonText, { color: themeName === 'lilac' ? '#6c63a2' : theme.background }]}>Create Post</Text>
             </TouchableOpacity>
 
             {/* Feed List */}
@@ -183,20 +195,28 @@ export default function SocialPage() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.feedList}
                 renderItem={({ item }) => (
-                    <FriendActivityItem
-                        activity={{
-                            id: item.id,
-                            name: item.name,
-                            message: item.message,
-                            time: item.time,
-                            img: item.avatar,
-                        }}
-                        theme={theme}
-                        isLiked={likedItems.includes(item.id)}
-                        onToggleLike={handleToggleLike}
-                        onCommentPress={openCommentsModal}
-                        commentsCount={item.comments.length}
-                    />
+                    <View style={{ marginBottom: 10 }}>
+                        <FriendActivityItem
+                            activity={{
+                                id: item.id,
+                                name: item.name,
+                                message: item.message,
+                                time: item.time,
+                                img: item.avatar,
+                                onEdit: item.name === 'You' ? () => {
+                                    setEditPostId(item.id);
+                                    setEditPostText(item.message);
+                                    setIsEditPostModalVisible(true);
+                                } : undefined,
+                            }}
+                            theme={theme}
+                            themeName={themeName}
+                            isLiked={likedItems.includes(item.id)}
+                            onToggleLike={handleToggleLike}
+                            onCommentPress={openCommentsModal}
+                            commentsCount={item.comments.length}
+                        />
+                    </View>
                 )}
             />
 
@@ -219,7 +239,7 @@ export default function SocialPage() {
                     <View style={[styles.commentsModalContent, { backgroundColor: theme.cardBackground }]}>
                         {/* Header */}
                         <View style={[styles.commentsModalHeader, { borderBottomColor: theme.border }]}>
-                            <Text style={[styles.commentsModalTitle, { color: theme.primary }]}>
+                            <Text style={[styles.commentsModalTitle, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>
                                 Comments
                             </Text>
                             <TouchableOpacity onPress={closeCommentsModal}>
@@ -243,11 +263,11 @@ export default function SocialPage() {
                                 <ScrollView style={styles.commentsListContainer}>
                                     {selectedPost.comments.length === 0 ? (
                                         <View style={styles.noCommentsContainer}>
-                                            <Ionicons name="chatbubbles-outline" size={wp(15)} color={theme.border} />
-                                            <Text style={[styles.noCommentsText, { color: theme.border }]}>
+                                            <Ionicons name="chatbubbles-outline" size={wp(15)} color={themeName === 'lilac' ? '#6c63a2' : theme.border} />
+                                            <Text style={[styles.noCommentsText, { color: themeName === 'lilac' ? '#6c63a2' : theme.border }]}>
                                                 No comments yet
                                             </Text>
-                                            <Text style={[styles.noCommentsSubtext, { color: theme.border }]}>
+                                            <Text style={[styles.noCommentsSubtext, { color: themeName === 'lilac' ? '#6c63a2' : theme.border }]}>
                                                 Be the first to comment!
                                             </Text>
                                         </View>
@@ -256,16 +276,16 @@ export default function SocialPage() {
                                             <View key={comment.id} style={styles.commentItem}>
                                                 <Image source={comment.avatar} style={styles.commentAvatar} />
                                                 <View style={styles.commentContent}>
-                                                    <Text style={[styles.commentText, { color: theme.primary }]}>
-                                                        <Text style={styles.commentUsername}>
+                                                    <Text style={[styles.commentText, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>
+                                                        <Text style={[styles.commentUsername, { color: themeName === 'lilac' ? '#6c63a2' : undefined }]}>
                                                             {comment.username}
                                                         </Text>
                                                         {" "}
-                                                        <Text style={styles.commentMessage}>
+                                                        <Text style={[styles.commentMessage, { color: themeName === 'lilac' ? '#6c63a2' : undefined }]}>
                                                             {comment.text}
                                                         </Text>
                                                     </Text>
-                                                    <Text style={[styles.commentTime, { color: theme.primary }]}>
+                                                    <Text style={[styles.commentTime, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>
                                                         {comment.time}
                                                     </Text>
                                                 </View>
@@ -283,7 +303,7 @@ export default function SocialPage() {
                                         <TextInput
                                             style={[styles.commentInput, {
                                                 backgroundColor: theme.background,
-                                                color: theme.primary,
+                                                color: themeName === 'lilac' ? '#6c63a2' : (themeName === 'blue' ? '#F0F5F9' : theme.primary),
                                                 borderColor: theme.border,
                                             }]}
                                             placeholder="Write a comment..."
@@ -334,7 +354,7 @@ export default function SocialPage() {
                 >
                     <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: theme.primary }]}>Create Post</Text>
+                            <Text style={[styles.modalTitle, { color: themeName === 'lilac' ? '#6c63a2' : theme.primary }]}>Create Post</Text>
                             <TouchableOpacity onPress={() => setIsAddPostModalVisible(false)}>
                                 <Ionicons name="close" size={28} color={theme.primary} />
                             </TouchableOpacity>
@@ -344,7 +364,7 @@ export default function SocialPage() {
                             <TextInput
                                 style={[styles.postInput, {
                                     backgroundColor: theme.background,
-                                    color: theme.primary,
+                                    color: themeName === 'lilac' ? '#6c63a2' : (themeName === 'blue' ? '#F0F5F9' : theme.primary),
                                     borderColor: theme.border,
                                 }]}
                                 placeholder="What's on your mind?"
@@ -383,13 +403,41 @@ export default function SocialPage() {
                             onPress={handleAddPost}
                             disabled={!newPostText.trim()}
                         >
-                            <Text style={[styles.submitButtonText, { color: theme.background }]}>
+                            <Text style={[styles.submitButtonText, { color: themeName === 'lilac' ? '#6c63a2' : theme.background }]}>
                                 Post
                             </Text>
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+            {/* Edit Post Modal */}
+            <PostEditModal
+                visible={isEditPostModalVisible}
+                theme={theme}
+                themeName={themeName}
+                text={editPostText}
+                onChangeText={setEditPostText}
+                onClose={() => {
+                    setIsEditPostModalVisible(false);
+                    setEditPostId(null);
+                }}
+                onSave={() => {
+                    if (editPostId && editPostText.trim()) {
+                        setData(prevData => prevData.map(post =>
+                            post.id === editPostId ? { ...post, message: editPostText.trim() } : post
+                        ));
+                        setIsEditPostModalVisible(false);
+                        setEditPostId(null);
+                    }
+                }}
+                onDelete={() => {
+                    if (editPostId) {
+                        setData(prevData => prevData.filter(post => post.id !== editPostId));
+                        setIsEditPostModalVisible(false);
+                        setEditPostId(null);
+                    }
+                }}
+            />
         </View>
     );
 }

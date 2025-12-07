@@ -97,7 +97,7 @@ export default function SettingsScreen() {
         setToggles(prev => ({ ...prev, [name]: !prev[name] }));
     };
 
-    const headerTextColor = theme.background;
+    const headerTextColor = themeName === 'lilac' ? '#000' : theme.background;
     const bodyBackground = theme.background;
 
     // Define the height of the custom header area
@@ -172,6 +172,7 @@ export default function SettingsScreen() {
                         <NavSubSetting theme={theme} label="Blue" iconName="color-palette-outline" onPress={() => { setTheme('blue'); }} isSelected={themeName === 'blue'} />
                         <NavSubSetting theme={theme} label="Dark" iconName="color-palette-outline" onPress={() => { setTheme('dark'); }} isSelected={themeName === 'dark'} />
                         <NavSubSetting theme={theme} label="Light" iconName="color-palette-outline" onPress={() => { setTheme('light'); }} isSelected={themeName === 'light'} />
+                        <NavSubSetting theme={theme} label="Lilac" iconName="color-palette-outline" onPress={() => { setTheme('lilac'); }} isSelected={themeName === 'lilac'} />
                     </View>
                 )}
 

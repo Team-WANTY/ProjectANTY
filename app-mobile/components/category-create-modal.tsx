@@ -38,6 +38,7 @@ export const CategoryCreateModal: React.FC<Props> = ({
   onClose,
   onSubmit,
 }) => {
+  const { themeName } = require("@/context/ThemeContext").useTheme();
   return (
     <Modal
       transparent
@@ -70,7 +71,7 @@ export const CategoryCreateModal: React.FC<Props> = ({
             onPress={onClose}
             style={styles.modalCloseButton}
           >
-            <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -94,10 +95,10 @@ export const CategoryCreateModal: React.FC<Props> = ({
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: theme.primary }]}
+            style={[styles.saveButton, theme.name === 'dark' ? { backgroundColor: '#000' } : { backgroundColor: theme.primary }]}
             onPress={onSubmit}
           >
-            <Text style={[styles.saveButtonText, { color: theme.onPrimary }]}>Add Category</Text>
+            <Text style={[styles.saveButtonText, theme.name === 'dark' ? { color: '#fff' } : { color: theme.onPrimary }]}>Add Category</Text>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

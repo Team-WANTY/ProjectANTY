@@ -6,29 +6,50 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => screenWidth * (pct / 100);
 const hp = (pct: number) => screenHeight * (pct / 100);
 
-const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount }) => {
+interface FriendActivityItemProps {
+    activity: {
+        id: string;
+        name: string;
+        message: string;
+        time: string;
+        img: any;
+        onEdit?: () => void;
+    };
+    theme: any;
+    isLiked: boolean;
+    onToggleLike: (id: string) => void;
+    onCommentPress?: (id: string) => void;
+    commentsCount?: number;
+    themeName: string;
+}
+
+const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount, themeName }) => {
+    const { id, name, message, time, img, onEdit } = activity;
     const heartIconName = isLiked ? "heart" : "heart-outline";
     const heartIconColor = theme.background;
-
+    const purple = '#6c63a2';
+    const textColor = themeName === 'lilac' ? purple : theme.background;
+    const editIconColor = themeName === 'dark' ? '#000' : (themeName === 'light' || themeName === 'lilac') ? '#fff' : theme.primary;
     return (
-        <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
-            <Image source={activity.img} style={styles.friendAvatar} />
+        <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}> 
+            <Image source={img} style={styles.friendAvatar} />
 
-            <View style={styles.friendTextContent}>
-                <Text style={[styles.friendMessage, { color: theme.background }]}>
-                    <Text style={styles.friendName}>{activity.name}</Text>
+            <View style={styles.friendTextContent}> 
+                <Text style={[styles.friendMessage, { color: textColor }]}> 
+                    <Text style={styles.friendName}>{name}</Text>
                     {"\n"}
-                    {activity.message}
+                    {message}
                 </Text>
             </View>
 
-            <View style={styles.friendActions}>
+            <View style={styles.friendActions}> 
                 <TouchableOpacity
-                    onPress={() => onToggleLike(activity.id)}
+                    onPress={() => onToggleLike(id)}
                     style={styles.actionButton}
                 >
                     <Ionicons name={heartIconName} size={wp(5)} color={heartIconColor} />
                 </TouchableOpacity>
+<<<<<<< Updated upstream
                 <TouchableOpacity
                     onPress={() => onCommentPress(activity.id)}
                     style={styles.actionButton}
@@ -44,6 +65,34 @@ const FriendActivityItem = ({ activity, theme, isLiked, onToggleLike, onCommentP
                 </TouchableOpacity>
                 <Text style={[styles.friendTime, { color: theme.background }]}> 
                     {activity.time}
+=======
+                {onCommentPress && commentsCount !== undefined && (
+                    <TouchableOpacity
+                        onPress={() => onCommentPress(id)}
+                        style={styles.actionButton}
+                    >
+                        <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
+                        {commentsCount > 0 && (
+                            <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
+                                <Text style={[styles.commentBadgeText, { color: themeName === 'blue' ? '#AECDD9' : theme.background }]}> 
+                                    {commentsCount}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                )}
+                {/* Edit icon only for own posts */}
+                {name === 'You' && onEdit && (
+                    <TouchableOpacity
+                        onPress={onEdit}
+                        style={[styles.actionButton, { marginLeft: wp(1) }]}
+                    >
+                        <Ionicons name="create-outline" size={wp(5)} color={editIconColor} />
+                    </TouchableOpacity>
+                )}
+                <Text style={[styles.friendTime, { color: textColor }]}> 
+                    {time}
+>>>>>>> Stashed changes
                 </Text>
             </View>
         </View>

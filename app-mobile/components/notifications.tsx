@@ -28,7 +28,7 @@ const demoNotifications: NotificationItem[] = [
 ];
 
 export default function Notifications({ visible, onClose }: NotificationsProps) {
-  const { theme } = useTheme();
+  const { theme, themeName } = useTheme();
   const [notifications, setNotifications] = useState<NotificationItem[]>(demoNotifications);
   const sheetAnim = useRef(new Animated.Value(0)).current;
 
@@ -73,8 +73,10 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
     };
 
     const renderRightActions = () => {
+      const purple = '#6c63a2';
+      const bgColor = themeName === 'lilac' ? purple : styles.rightAction.backgroundColor;
       return (
-        <RectButton style={styles.rightAction} onPress={handleDelete}>
+        <RectButton style={[styles.rightAction, { backgroundColor: bgColor }]} onPress={handleDelete}>
           <View style={styles.trashIconContainer}>
             <Ionicons name="trash-outline" size={20} color="#fff" />
           </View>
@@ -91,9 +93,19 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
             rightThreshold={40}
             friction={2}
           >
-            <View style={styles.notificationItem}>
+            <View style={[styles.notificationItem,
+              themeName === 'lilac'
+                ? { backgroundColor: '#d8d4f2', borderColor: '#d8d4f2' }
+                : themeName === 'blue'
+                  ? { backgroundColor: '#AECDD9', borderColor: '#AECDD9' }
+                  : {}
+            ]}>
               <Image source={item.avatar} style={styles.avatar} />
+<<<<<<< Updated upstream
               <Text style={[styles.notificationText, { color: theme.text, textAlign: 'left' }]}>
+=======
+              <Text style={[styles.notificationText, { color: themeName === 'lilac' ? '#fff' : ((theme.background === '#151718') ? '#000' : theme.primary), textAlign: 'left' }]}> 
+>>>>>>> Stashed changes
                 <Text style={{ fontWeight: 'bold' }}>{item.username}</Text> {item.text}
               </Text>
             </View>
