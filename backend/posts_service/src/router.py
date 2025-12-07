@@ -22,14 +22,16 @@ from src.service import PostsService
 posts_router = APIRouter()
 
 
-@posts_router.post("/", status_code=status.HTTP_201_CREATED, tags=["posts"])
+@posts_router.post(
+    "/", status_code=status.HTTP_201_CREATED, response_model=str, tags=["posts"]
+)
 async def create_post(
     new_post: PostCreate,
     posts_service: PostsService = Depends(get_posts_service),
     current_user: UserInDB = Depends(get_current_user),
 ):
     try:
-        await posts_service.create_post(new_post, current_user)
+        return await posts_service.create_post(new_post, current_user)
     except AuthError:
         logger.warning(
             f"Error creating post: {new_post.model_dump()}: authorization error"
