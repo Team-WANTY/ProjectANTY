@@ -3,6 +3,8 @@ import * as ImagePicker from "expo-image-picker";
 import { imagesApi } from "@/services/api/image-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { useProfileStore } from "@/services/stores/profiles-store";
+import { useCreatorsStore } from "../stores/creators-store";
+import { useUserStore } from "../stores/users-store";
 import { Alert } from "react-native";
 
 type AvatarSource = "camera" | "library";
@@ -19,6 +21,8 @@ export async function changeAvatar(
       setProfile,
       setAvatarUploading,
     } = useProfileStore.getState();  
+  const { setCreator } = useCreatorsStore.getState();
+  const { username } = useUserStore.getState();
     
     try {
       setAvatarUploading(true);
@@ -71,6 +75,13 @@ export async function changeAvatar(
       avatarUrl: asset.uri,
       // do NOT change avatarImageId yet; it's still the old one until backend confirms
     });
+    if (setCreator) {
+      setCreator({
+        id: userId,
+        username: username ?? "You",
+        avatarUrl: asset.uri,
+      });
+    }
     console.log("UPDATING UI AVATAR...");
     closeModal();
 
@@ -118,10 +129,7 @@ export async function changeAvatar(
           const urlRes = await imagesApi.getUrl(newAvatarId);
           if (urlRes.ok) remoteUrl = urlRes.data;
         } catch (e) {
-          console.warn(
-            "[changeAvatar] Failed to fetch remote avatar URL",
-            e
-          );
+          console.warn("[changeAvatar] Failed to fetch remote avatar URL", e);
         }
 
         console.log("Retrieved new avatarUrl from backend");
@@ -131,7 +139,14 @@ export async function changeAvatar(
           avatarImageId: newAvatarId,
           avatarUrl: remoteUrl ?? asset.uri, // fallback to local if URL fails
         });
-        console.log("Updated Zustand Profile store with new avatarID, avatarUrl");
+        if (setCreator) {
+          setCreator({
+            id: userId,
+            username: username ?? "You",
+            avatarUrl: remoteUrl,
+          });
+        }
+        console.log("Updated Zustand Profile and Creator stores with new avatarID, avatarUrl");
 
         // If there was an old avatar, delete it in the backend
         if (oldAvatarId && oldAvatarId !== newAvatarId) {
