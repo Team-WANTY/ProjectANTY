@@ -88,14 +88,17 @@ export async function loadTasks(userId?: string){
   if (!result.ok) {
     if (result.status === 404) {
       useTasksStore.getState().setTasks([]);
+      useTasksStore.getState().setOccurrences({});
       return [];
     }
     throw new Error(result.message ?? "Failed to load tasks");
   }
 
-  // result.data is OccurrencesByDate: { occurrences: { "YYYY-MM-DD": [taskId, ...], ... } }
+  // Get occurrences from backend result
   const occurrences = result.data?.occurrences ?? {};
-
+  // Store occurrences in Zustand
+  useTasksStore.getState().setOccurrences(occurrences);
+  // Extract unique task IDs
   const uniqueTaskIds = Array.from(
     new Set(
       Object.values(occurrences).flat() // flatten list of lists
