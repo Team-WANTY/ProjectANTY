@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
-    Modal, TextInput, Pressable, Animated as RNAnimated } from "react-native";
+import {
+    View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity,
+    Modal, TextInput, Pressable, Animated as RNAnimated
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
@@ -273,8 +275,8 @@ export default function TasksScreen() {
         const matchDate = !taskDate
             ? true
             : taskDate.getFullYear() === date.getFullYear() &&
-              taskDate.getMonth() === date.getMonth() &&
-              taskDate.getDate() === date.getDate();
+            taskDate.getMonth() === date.getMonth() &&
+            taskDate.getDate() === date.getDate();
 
         const matchCategory = !selectedCategory || t.cat === selectedCategory;
 
@@ -332,7 +334,7 @@ export default function TasksScreen() {
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-    
+
     const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState<any | null>(null);
 
@@ -389,7 +391,7 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
-    
+
 
     // CATEGORY AND TASKS CATEGORY HELPERS
 
@@ -470,7 +472,7 @@ export default function TasksScreen() {
         setNewCategoryName("");
         fadeOutNewCategory(() => setIsNewCategoryModalVisible(false));
     };
-   
+
     const handleDeleteCategory = () => {
         if (!selectedCategoryForMenu) return;
         const toDelete = selectedCategoryForMenu;
@@ -514,7 +516,7 @@ export default function TasksScreen() {
         fadeOutEditCategory(() => setIsEditCategoryModalVisible(false));
     };
 
-    
+
     // TASKS handlers
 
     const handleEditTask = (id: string) => {
@@ -570,7 +572,7 @@ export default function TasksScreen() {
     // Create tasks
     const createTask = async () => {
         const title = newTask.title.trim();
-        
+
         const repeatRule = buildRepeatRuleFromLabel(newTask.repeatLabel);
 
         if (!title) {
@@ -652,7 +654,7 @@ export default function TasksScreen() {
                 repeatLabel: "",
                 first_relevant_date: "",
             });
-            fadeOut(() => setIsNewTaskModalVisible(false));
+            fadeOutNewCategory(() => setIsNewTaskModalVisible(false));
         } finally {
             setLoading(false);
         }
@@ -698,7 +700,7 @@ export default function TasksScreen() {
                 console.log("Update failed", res.message);
             }
 
-            fadeOut(() => setIsEditTaskModalVisible(false));
+            fadeOutEditCategory(() => setIsEditTaskModalVisible(false));
             setEditingTask(null);
         } finally {
             setLoading(false);
@@ -787,7 +789,7 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
-                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
                             onLongPress={(event: any) => handleCategoryLongPress(cat, event)}
                         />
                     ))}
@@ -851,7 +853,7 @@ export default function TasksScreen() {
                 onClose={() => fadeOutNewCategory(() => setIsNewCategoryModalVisible(false))}
                 onSubmit={handleSaveNewCategory}
             />
-            
+
             <CategoryEditModal
                 visible={isEditCategoryModalVisible}
                 fadeAnim={fadeAnimEditCategory}
