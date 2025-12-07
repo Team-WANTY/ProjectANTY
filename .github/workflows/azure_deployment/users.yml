@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - yn-backend-deployment
     # Only trigger rebuilds if backend services change
     paths:
       - 'backend/users_service/**'
