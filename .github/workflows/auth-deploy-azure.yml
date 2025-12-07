@@ -3,6 +3,7 @@ name: Build & Push Auth Service
 on:
   push:
     branches: ["main"]
+    paths: ["backend/auth_service/**"]
   workflow_dispatch:
 
 jobs:
@@ -31,6 +32,6 @@ jobs:
       - name: Build and Push
         run: |
           docker build -f backend/auth_service/Dockerfile \
-            -t ${{ vars.ACR_NAME }}.azurecr.io/auth-service:latest \
+            -t ${{ vars.ACR_URL }}/auth-service:latest \
             backend
-          docker push ${{ vars.ACR_NAME }}.azurecr.io/auth-service:latest
+          docker push ${{ vars.ACR_URL }}/auth-service:latest
