@@ -15,13 +15,22 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 export type Theme = {
-  background: string;
-  border: string;
-  primary: string;
-  text: string;
-  secondaryText: string;
-  cardBackground: string;
-  onPrimary: string;
+  text: string,
+  background: string,
+  primary: string,
+  secondary: string,
+  border: string,
+  inputBackground: string,
+  cardBackground: string,
+  secondaryText: string,
+  tint: string,
+  icon: string,
+  tabIconDefault: string,
+  tabIconSelected: string,
+  onPrimary: string,
+  error: string,
+  onError: string,
+  shadow: string,
 };
 
 type Props = {
@@ -122,7 +131,7 @@ export const PostCreateModal: React.FC<Props> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: theme.cardBackground,
+              backgroundColor: theme.inputBackground,
               opacity: fadeAnim,
               transform: [
                 {
@@ -202,7 +211,7 @@ export const PostCreateModal: React.FC<Props> = ({
           <TouchableOpacity
             style={[
               styles.saveButton,
-              { backgroundColor: canSubmit ? theme.primary : theme.border },
+              { backgroundColor: canSubmit ? theme.border : theme.secondary },
             ]}
             onPress={onSubmit}
             disabled={!canSubmit}
