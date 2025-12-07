@@ -3,8 +3,10 @@ name: Auth Service Validation Pipelines
 on:
   push:
     branches: ["main"]
+    paths: ["backend/auth_service/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/auth_service/**"]
 
 jobs:
   # Make sure code abides by the ruff format.

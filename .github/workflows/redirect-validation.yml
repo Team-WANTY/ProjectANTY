@@ -3,8 +3,10 @@ name: Redirect Service Validation
 on:
   push:
     branches: ["main"]
+    paths: ["backend/redirect_service/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/redirect_service/**"]
 
 jobs:
   # Make sure code abides by the ruff format.

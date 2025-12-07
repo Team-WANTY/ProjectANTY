@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Azure Login via OIDC
         uses: azure/login@v2
@@ -27,7 +29,7 @@ jobs:
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login -n ${{ vars.ACR_NAME }}
+        run: az acr login --name ${{ vars.ACR_NAME }}
 
       - name: Build and Push
         run: |

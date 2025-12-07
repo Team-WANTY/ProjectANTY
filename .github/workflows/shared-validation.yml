@@ -3,8 +3,10 @@ name: Shared Validation
 on:
   push:
     branches: ["main"]
+    paths: ["backend/shared/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/shared/**"]
 
 jobs:
   # Make sure code abides by the ruff format.

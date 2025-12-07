@@ -3,8 +3,10 @@ name: Users Service Validation
 on:
   push:
     branches: ["main"]
+    paths: ["backend/users_service/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/users_service/**"]
 
 jobs:
   # Make sure code abides by the ruff format.

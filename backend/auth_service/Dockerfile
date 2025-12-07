@@ -10,10 +10,8 @@ COPY ./auth_service ./auth_service
 
 WORKDIR /app/auth_service
 
-RUN uv sync --locked
+# The proper thing to do is uv sync --lock, with a uv.lock in version control.
+# But prof doesn't want us to commit lock files so we can't.
+RUN uv sync && uv lock
 
-RUN groupadd -r anty && useradd -r -m -g anty anty
-
-USER anty
-
-CMD ["uv", "run", "fastapi", "src/main.py", "--host", "0.0.0.0","--port", "8000"]
+CMD ["uv", "run", "fastapi", "run", "src/main.py", "--host", "0.0.0.0","--port", "8000"]
