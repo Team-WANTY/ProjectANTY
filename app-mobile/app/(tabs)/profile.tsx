@@ -22,6 +22,7 @@ import * as ImagePicker from "expo-image-picker";
 
 import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
+import { useCreatorsStore } from "@/services/stores/creators-store";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
@@ -104,7 +105,11 @@ export default function ProfileScreen() {
         // Optimistically update Zustand store FIRST 
         if (usernameChanged) {
             useUserStore.getState().setUser({ username: newUsername });
+            if(userId) {
+                useCreatorsStore.getState().setCreator({id: userId, username: newUsername, avatarUrl: avatarUrl});
+            }
         }
+            
         if (bioChanged) {
             useProfileStore.getState().setProfile({ bio: newBio });
         }
