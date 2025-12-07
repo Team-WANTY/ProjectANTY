@@ -28,13 +28,18 @@ import { useNotificationModal } from "@/app/_layout";
 import { useUserStore } from "@/services/stores/users-store";
 import { useProfileStore } from "@/services/stores/profiles-store";
 import { usePostsStore } from "@/services/stores/posts-store";
+import { useCommentsStore } from "@/services/stores/comments-store";
 
 import { postsApi, type Post } from "@/services/api/posts-api";
 import { commentsApi, type Comment } from "@/services/api/comments-api";
 import { usersApi } from "@/services/api/users-api";
 import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
-import { loadPosts } from "@/services/bootstrap/bootstrap";
+import {
+  loadPosts,
+  loadCommentsForPosts,
+  loadCommentsForPost,
+} from "@/services/bootstrap/bootstrap";
 
 import FriendActivityItem from "@/components/friend-activity";
 import { PostCreateModal } from "@/components/post-create-modal";
@@ -146,6 +151,7 @@ export default function SocialScreen() {
     const username = useUserStore((s) => s.username);
     const avatarUrlSelf = useProfileStore((s) => s.avatarUrl);
     const posts = usePostsStore((s) => s.posts);
+    const commentsByParent = useCommentsStore((s) => s.commentsByParent);
 
     // Local UI state
     const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -166,21 +172,39 @@ export default function SocialScreen() {
     const [loadingFeed, setLoadingFeed] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
 
-    const [commentsByPost, setCommentsByPost] = useState<{
-        [postId: string]: CommentUI[];
-    }>({});
-
     const selectedPost = feed.find((p) => p.id === selectedPostId) ?? null;
 
     // Map Post (from store) -> FeedItem
     const mapPostToFeedItem = useCallback(
-        async (post: Post): Promise<FeedItem> => {
+        async (post: Post, commentsForPost?: Comment[]): Promise<FeedItem> => {
             const creator = await resolveCreatorInfo(
                 post.creator_id,
                 userId,
                 username,
                 avatarUrlSelf
             );
+            
+            let comments: CommentUI[] = [];
+
+            if (commentsForPost && commentsForPost.length > 0) {
+                const ui = await Promise.all(
+                    commentsForPost.map(async (c) => {
+                    const cCreator = await resolveCreatorInfo(
+                        c.creator_id,
+                        userId,
+                        username,
+                        avatarUrlSelf
+                    );
+                    return {
+                        id: c.id,
+                        creator: cCreator,
+                        text: c.text,
+                        createdAt: formatRelativeTime(c.created_at),
+                    };
+                    })
+                );
+                comments = ui;
+            }
 
             return {
                 id: post.id,
@@ -188,7 +212,7 @@ export default function SocialScreen() {
                 message: post.text,
                 time: formatRelativeTime(post.created_at),
                 commentsEnabled: post.allow_comments,
-                comments: [],
+                comments,
             };
         },
         [userId, username, avatarUrlSelf]
@@ -200,9 +224,10 @@ export default function SocialScreen() {
         setLoadingFeed(true);
         try {
             await loadPosts(userId);
-            console.log("[Social] Refresh Posts Success");
+            await loadCommentsForPosts();
+            console.log("[Social] Refresh Posts & Comments Success");
         } catch (err) {
-            console.warn("[SocialScreen.refreshPosts] error:", err);
+            console.warn("[Social] Refresh Posts & Comments Failed:", err);
         } finally {
             setLoadingFeed(false);
         }
@@ -227,7 +252,7 @@ export default function SocialScreen() {
             }
 
             try {
-                const items = await Promise.all(posts.map((p) => mapPostToFeedItem(p)));
+                const items = await Promise.all(posts.map((p) => mapPostToFeedItem(p, commentsByParent[p.id] ?? [])));
                 if (!cancelled) {
                     setFeed(items);
 
@@ -236,7 +261,6 @@ export default function SocialScreen() {
                         .map((p) => p.id);
                     setLikedItems(liked);
                 }
-                console.log("[Social] hydrate feed from store success");
             } catch (err) {
                 console.warn("[Social] hydrate feed from store failed:", err);
             }
@@ -246,7 +270,7 @@ export default function SocialScreen() {
         return () => {
             cancelled = true;
         };
-    }, [posts, userId, mapPostToFeedItem]);
+    }, [posts, commentsByParent, userId, mapPostToFeedItem]);
 
     // ---------- Likes ----------
 
@@ -361,7 +385,15 @@ export default function SocialScreen() {
         setSelectedPostId(postId);
         setIsCommentsModalVisible(true);
         setCommentText("");
-        await loadCommentsForPost(postId);
+        setLoadingComments(true);
+        try {
+            await loadCommentsForPost(postId, 50); // updates comments-store
+            console.log("[Social] Loaded comments for post:", postId);
+        } catch (err) {
+            console.warn("[Social] Failed to load comments for post:", err);
+        } finally {
+            setLoadingComments(false);
+        }
     };
 
     const closeCommentsModal = () => {
@@ -370,67 +402,7 @@ export default function SocialScreen() {
         setCommentText("");
     };
 
-    const loadCommentsForPost = async (postId: string) => {
-        setLoadingComments(true);
-        try {
-            const pageRes = await commentsApi.listForContent(postId, 50);
-        if (!pageRes.ok || !pageRes.data) {
-            setCommentsByPost((prev) => ({
-                ...prev,
-                [postId]: [],
-            }));
-                // also clear on feed
-            setFeed((prev) =>
-                prev.map((p) =>
-                    p.id === postId ? { ...p, comments: [] } : p
-                )
-            );
-            return;
-        }
-
-        const ids = pageRes.data.ids ?? [];
-        const commentResults = await Promise.all(
-            ids.map((id) => commentsApi.getById(id))
-        );
-
-        const enriched: CommentUI[] = [];
-
-        for (const res of commentResults) {
-            if (!res.ok || !res.data) continue;
-            const c: Comment = res.data;
-            const creator = await resolveCreatorInfo(
-                c.creator_id,
-                userId,
-                username,
-                avatarUrlSelf
-            );
-            enriched.push({
-                id: c.id,
-                creator,
-                text: c.text,
-                createdAt: formatRelativeTime(c.created_at),
-            });
-        }
-
-        setCommentsByPost((prev) => ({
-            ...prev,
-            [postId]: enriched,
-        }));
-
-        // Update feed's comments for that post
-        setFeed((prev) =>
-            prev.map((p) =>
-            p.id === postId ? { ...p, comments: enriched } : p
-            )
-        );
-        console.log("[LoadComments] Success");
-        } catch (err) {
-            console.warn("[LoadComments] Failed:", err);
-        } finally {
-            setLoadingComments(false);
-        }
-    };
-
+    
     const handleAddComment = async () => {
         if (!userId || !selectedPostId) return;
         const trimmed = commentText.trim();
@@ -447,7 +419,15 @@ export default function SocialScreen() {
         if (res.ok) {
             setCommentText("");
             console.log("[AddComment] Success");
-            await loadCommentsForPost(selectedPostId);
+            // Re-sync comments for that post into comments-store
+            setLoadingComments(true);
+            try {
+                await loadCommentsForPost(selectedPostId, 50);
+            } catch (err) {
+                console.warn("[AddComment] Failed to refresh comments:", err);
+            } finally {
+                setLoadingComments(false);
+            }
         } else {
             console.log("[AddComment] Failed:", res.message);
         }

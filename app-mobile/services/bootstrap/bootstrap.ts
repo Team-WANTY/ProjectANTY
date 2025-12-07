@@ -15,6 +15,10 @@ import {
 } from "../stores/friends-store";
 import { postsApi, type Post } from "../api/posts-api";
 import { usePostsStore } from "../stores/posts-store";
+import { commentsApi, type Comment } from "../api/comments-api";
+import { useCommentsStore } from "../stores/comments-store";
+
+
 
 export async function loadUser() {
   const result = await usersApi.me();
@@ -66,6 +70,7 @@ export async function loadProfile(userId?: string) {
 
   return { ...raw, avatarUrl };
 }
+
 export async function loadTasks(userId?: string){
   const id = userId ?? useUserStore.getState().userId;
   if (!id) return null;
@@ -145,40 +150,6 @@ async function resolveFriendInfo(userId: string): Promise<FriendUserInfo> {
   return { id: userId, username, avatarUrl };
 }
 
-// Load Posts
-export async function loadPosts(userId?: string) {
-  const meId = userId ?? useUserStore.getState().userId;
-  if (!meId) return [];
-
-  const result = await postsApi.listRelevantForUser(meId, {
-    maxItems: 20,
-  });
-
-  if (!result.ok) {
-    if (result.status === 404) {
-      usePostsStore.getState().setPosts([]);
-      return [];
-    }
-    throw new Error(result.message ?? "Failed to load posts");
-  }
-
-  const ids = result.data?.ids ?? [];
-  if (ids.length === 0) {
-    usePostsStore.getState().setPosts([]);
-    return [];
-  }
-
-  const postResults = await Promise.all(ids.map((pid) => postsApi.getById(pid)));
-
-  const posts: Post[] = [];
-  for (const res of postResults) {
-    if (!res.ok || !res.data) continue;
-    posts.push(res.data);
-  }
-
-  usePostsStore.getState().setPosts(posts);
-  return posts;
-}
 
 export async function loadFriends(userId?: string) {
   const meId = userId ?? useUserStore.getState().userId;
@@ -229,6 +200,93 @@ export async function loadFriends(userId?: string) {
   return displayFriends;
 }
 
+// Load Posts
+export async function loadPosts(userId?: string) {
+  const meId = userId ?? useUserStore.getState().userId;
+  if (!meId) return [];
+
+  const result = await postsApi.listRelevantForUser(meId, {
+    maxItems: 20,
+  });
+
+  if (!result.ok) {
+    if (result.status === 404) {
+      usePostsStore.getState().setPosts([]);
+      return [];
+    }
+    throw new Error(result.message ?? "Failed to load posts");
+  }
+
+  const ids = result.data?.ids ?? [];
+  if (ids.length === 0) {
+    usePostsStore.getState().setPosts([]);
+    return [];
+  }
+
+  const postResults = await Promise.all(ids.map((pid) => postsApi.getById(pid)));
+
+  const posts: Post[] = [];
+  for (const res of postResults) {
+    if (!res.ok || !res.data) continue;
+    posts.push(res.data);
+  }
+
+  usePostsStore.getState().setPosts(posts);
+  return posts;
+}
+
+// Load Comments
+// Load comments for a single post into the comments-store
+export async function loadCommentsForPost(
+  postId: string,
+  maxItems = 50
+): Promise<Comment[]> {
+  const pageRes = await commentsApi.listForContent(postId, maxItems);
+  if (!pageRes.ok || !pageRes.data) {
+    useCommentsStore.getState().setComments(postId, []);
+    return [];
+  }
+
+  const ids = pageRes.data.ids ?? [];
+  if (ids.length === 0) {
+    useCommentsStore.getState().setComments(postId, []);
+    return [];
+  }
+
+  const commentResults = await Promise.all(
+    ids.map((id) => commentsApi.getById(id))
+  );
+
+  const comments: Comment[] = [];
+  for (const res of commentResults) {
+    if (!res.ok || !res.data) continue;
+    comments.push(res.data);
+  }
+
+  useCommentsStore.getState().setComments(postId, comments);
+  return comments;
+}
+
+// Load comments for all posts currently in the posts-store
+export async function loadCommentsForPosts(
+  maxItemsPerPost = 50
+): Promise<Record<string, Comment[]>> {
+  const posts = usePostsStore.getState().posts;
+  if (!posts.length) {
+    useCommentsStore.getState().clear();
+    return {};
+  }
+
+  const result: Record<string, Comment[]> = {};
+
+  for (const post of posts) {
+    const comments = await loadCommentsForPost(post.id, maxItemsPerPost);
+    result[post.id] = comments;
+  }
+
+  return result;
+}
+
 export async function safeBootstrap() {
   try {
     const me = await loadUser();
@@ -238,6 +296,7 @@ export async function safeBootstrap() {
       loadFriends(me.id),
       loadPosts(me.id),
     ]);
+    await loadCommentsForPosts();
   } 
   catch (err: any) {
     useUserStore.getState().clear();
@@ -245,6 +304,7 @@ export async function safeBootstrap() {
     useTasksStore.getState().clear();
     useFriendsStore.getState().clear();
     usePostsStore.getState().clear();
+    useCommentsStore.getState().clear();
     if (err?.response?.status !== 401) throw err;
   }
 }
