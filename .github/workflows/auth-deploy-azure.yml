@@ -3,7 +3,6 @@ name: Build & Push Auth Service
 on:
   push:
     branches: ["main"]
-    paths: ["backend/auth_service/**"]
   workflow_dispatch:
 
 jobs:
@@ -18,9 +17,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          sparse-checkout: false          # disables sparse checkout
-          sparse-checkout-cone-mode: false # ensures full repo
 
       - name: Azure Login via OIDC
         uses: azure/login@v2
