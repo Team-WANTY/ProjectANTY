@@ -1,4 +1,4 @@
-name: Shared Backend Pipelines
+name: Shared Validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  shared-backend:
+  shared-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
 

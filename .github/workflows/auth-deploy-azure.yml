@@ -1,0 +1,37 @@
+name: Build & Push Auth Service
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/auth_service/**"]
+  workflow_dispatch:
+
+jobs:
+  build-and-push-auth:
+    name: Build and push service to Container Registry
+    runs-on: ubuntu-latest
+    environment: "Azure Deployment Environment"
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push
+        run: |
+          docker build -f backend/auth_service/Dockerfile \
+            -t ${{ vars.ACR_NAME }}.azurecr.io/auth-service:latest \
+            backend/auth_service
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/auth-service:latest

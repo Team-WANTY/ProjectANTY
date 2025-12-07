@@ -1,4 +1,4 @@
-name: Auth Backend Pipelines
+name: Profiles Service Validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  auth-backend:
+  profiles-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
     environment: "ANTY Backend Environment"
@@ -20,29 +20,15 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Auth checks.
+      - name: Profiles checks.
         env:
           COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
           COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
           COSMOSDB_DATABASE_NAME: ${{ secrets.COSMOSDB_DATABASE_NAME }}
           AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
-          AUTH_EXTERNAL_URL: ''
           INTERSERVICE_KEY: ${{ secrets.INTERSERVICE_KEY }}
-          PROFILES_SERVICE_URL: ${{ vars.PROFILES_SERVICE_URL }}
-
-          TOKEN_PUBLIC_KEY: ''
-          TOKEN_PRIVATE_KEY: ''
-          TOKEN_ALGORITHM: ''
-          ACCESS_TOKEN_EXPIRATION_MINUTES: ${{ vars.ACCESS_TOKEN_EXPIRATION_MINUTES }}
-          REFRESH_TOKEN_EXPIRATION_DAYS: ${{ vars.REFRESH_TOKEN_EXPIRATION_DAYS }}
-          PW_RESET_TOKEN_EXPIRATION_MINUTES: ${{ vars.PW_RESET_TOKEN_EXPIRATION_MINUTES }}
-
-          FRONTEND_URL: ''
-          SMTP_USER: ${{ vars.SMTP_USER }}
-          SMTP_PASSWORD: ${{ vars.SMTP_PASSWORD }}
         run: |
-          cd backend/auth_service
+          cd backend/profiles_service
           uv sync --dev
           uv run ruff check
           uv run ty check
-          uv run pytest

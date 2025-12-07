@@ -1,4 +1,4 @@
-name: Redirect Backend Pipelines
+name: Tasks Service Validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  redirect-backend:
+  tasks-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
 
@@ -19,9 +19,10 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Redirect checks.
+      - name: Tasks checks.
         run: |
-          cd backend/redirect_service
+          cd backend/tasks_service
           uv sync --dev
           uv run ruff check
           uv run ty check
+          uv run pytest
