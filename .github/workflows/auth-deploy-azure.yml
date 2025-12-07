@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
     paths: ["backend/auth_service/**"]
-  workflow_dispatch:   # ← correctly indented under "on:"
+  workflow_dispatch:
 
 jobs:
   build-and-push-auth:

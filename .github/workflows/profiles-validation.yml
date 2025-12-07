@@ -1,4 +1,4 @@
-name: Profiles Backend Pipelines
+name: Profiles Service Validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  profiles-backend:
+  profiles-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
     environment: "ANTY Backend Environment"
