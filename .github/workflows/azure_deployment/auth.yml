@@ -1,0 +1,43 @@
+name: Build & Push Auth Service
+
+on:
+  push:
+    branches:
+      - main
+    # Only trigger rebuilds if backend services change
+    paths:
+      - 'backend/auth_service/**'
+
+env:
+  TENANT_ID: ${{ secrets.TENANT_ID }}
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
+  ACR_NAME: ${{ vars.ACR_NAME }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.CLIENT_ID }}
+          tenant-id: ${{ env.TENANT_ID }}
+          subscription-id: ${{ env.SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and Push
+        run: |
+          docker build -f backend/auth_service/Dockerfile \
+                       -t ${{ env.ACR_NAME }}/auth-service:latest \
+                       backend/auth_service
+          docker push ${{ env.ACR_NAME }}/auth-service:latest
