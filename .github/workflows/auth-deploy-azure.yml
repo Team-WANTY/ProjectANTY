@@ -2,22 +2,16 @@ name: Build & Push Auth Service
 
 on:
   push:
-    branches:
-      - main
-      - yn-backend-deployment
+    branches: ["main"]
     # Only trigger rebuilds if backend services change
-    paths:
-      - 'backend/auth_service/**'
-
-env:
-  TENANT_ID: ${{ secrets.TENANT_ID }}
-  CLIENT_ID: ${{ secrets.CLIENT_ID }}
-  SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
-  ACR_NAME: ${{ vars.ACR_NAME }}
+    paths: ["backend/auth_service/**"]
+    workflow_dispatch:  # manual trigger, TESTING ONLY
 
 jobs:
-  build-and-push:
+  build-and-push-auth:
+    name: Build and push service to Container Registry
     runs-on: ubuntu-latest
+    environment: "Azure Deployment Environment"
     permissions:
       id-token: write
       contents: read
@@ -29,16 +23,16 @@ jobs:
       - name: Azure Login via OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ env.CLIENT_ID }}
-          tenant-id: ${{ env.TENANT_ID }}
-          subscription-id: ${{ env.SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ env.ACR_NAME }}
+        run: az acr login --name ${{ vars.ACR_NAME }}
 
       - name: Build and Push
         run: |
           docker build -f backend/auth_service/Dockerfile \
-                       -t ${{ env.ACR_NAME }}/auth-service:latest \
+                       -t ${{ vars.ACR_NAME }}/auth-service:latest \
                        backend/auth_service
-          docker push ${{ env.ACR_NAME }}/auth-service:latest
+          docker push ${{ vars.ACR_NAME }}/auth-service:latest

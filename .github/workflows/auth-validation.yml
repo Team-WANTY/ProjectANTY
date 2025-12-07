@@ -1,4 +1,4 @@
-name: Auth Backend Pipelines
+name: Auth Service Validation Pipelines
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
 
 jobs:
   # Make sure code abides by the ruff format.
-  auth-backend:
-    name: Lint, Typecheck, Unit Test.
+  auth-validation:
+    name: Lint, Typecheck, Pytest Auth Service.
     runs-on: ubuntu-latest
     environment: "ANTY Backend Environment"
 
