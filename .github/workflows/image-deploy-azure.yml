@@ -35,3 +35,14 @@ jobs:
             -t ${{ vars.ACR_URL }}/image-service:latest \
             backend
           docker push ${{ vars.ACR_URL }}/image-service:latest
+
+      - name: Deploy to Azure Container App
+        run: |
+          az containerapp update \
+            --name image-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/image-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
