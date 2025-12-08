@@ -160,14 +160,17 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
 
     const renderRightActions = (_progress: any, _dragX: any) => {
         const maxWidth = width * 0.25; // 25% of screen width
-
+        // Get themeName for lilac detection
+        const { themeName } = require("@/context/ThemeContext").useTheme();
+        const purple = '#6c63a2';
+        const deleteColor = themeName === 'lilac' ? purple : "#ff4d4f";
         return (
-            <RNAnimated.View style={[{ opacity: anim }]}>
+            <RNAnimated.View style={[{ opacity: anim }]}> 
                 <RectButton
-                    style={[
+                    style={[ 
                         styles.rightAction,
                         {
-                            backgroundColor: "#ff4d4f",
+                            backgroundColor: deleteColor,
                             width: maxWidth,
                         },
                     ]}
@@ -223,7 +226,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
                                 ]}
                             >
                                 {task.completed && (
-                                    <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
+                                    <Ionicons name="checkmark-sharp" size={16} color={theme.buttonText} />
                                 )}
                             </View>
                         </TouchableOpacity>
@@ -237,11 +240,11 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
 // --- Category Tag Component ---
 const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) => {
     const tagStyle = {
-        backgroundColor: isActive ? theme.primary : theme.border,
-        borderColor: theme.primary,
+        backgroundColor: isActive ? theme.text : theme.background,
+        borderColor: theme.text,
     };
     const textStyle = {
-        color: isActive ? theme.text : theme.secondaryText,
+        color: isActive ? theme.background : theme.text,
     };
 
     return (
@@ -336,10 +339,14 @@ export default function TasksScreen() {
             )
         ).sort();
 
-        // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
         setCategoriesList((prev) => {
             const merged = new Set([...prev, ...fromTasks]);
-            return Array.from(merged).sort();
+            const mergedArr = Array.from(merged).sort();
+            // Only update if changed
+            if (JSON.stringify(prev) !== JSON.stringify(mergedArr)) {
+                return mergedArr;
+            }
+            return prev;
         });
     }, [tasks]);
 
@@ -839,7 +846,7 @@ export default function TasksScreen() {
             {/* 1. Top Navigation Bar */}
             <HeaderBar
                 title="Tasks"
-                showTitle={false}
+                showTitle={true}
                 onNotificationPress={showNotifications}
                 onSettingsPress={() => {
                     router.push("../settings");
@@ -885,7 +892,7 @@ export default function TasksScreen() {
                 </View>
 
                 <Text
-                    style={[styles.tasksCompletedText, { color: theme.cardBackground }]}
+                    style={[styles.tasksCompletedText, { color: theme.background === '#fff' ? theme.secondaryText : (theme.background === '#151718' ? '#b0b0b0' : theme.cardBackground) }]}
                 >
                     {completedCount} Tasks Completed
                 </Text>

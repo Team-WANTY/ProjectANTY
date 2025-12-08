@@ -21,12 +21,39 @@ export default function BottomNavBar() {
     const segments = useSegments();
     const activeSegment = segments[segments.length - 1]; // Get the current tab name
 
-    // Use the darkest color for the outer container
-    const containerBackgroundColor = theme.background;
+    // Theme-dependent styles
+    const menuBarContainerStyle = {
+        position: "absolute",
+        bottom: 0,
+        width: "100%",
+        alignItems: 'center',
+        paddingHorizontal: width * 0.05,
+        paddingTop: 15,
+        backgroundColor: theme.background,
+        paddingBottom: insets.bottom + 15,
+    };
+    const menuBarStyle = {
+        width: "100%",
+        height: 70,
+        borderRadius: 35,
+        flexDirection: "row",
+        justifyContent: "space-around",
+        alignItems: "center",
+        backgroundColor: theme.border,
+        shadowColor: theme.shadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+        elevation: 8,
+    };
+    const menuItemStyle = {
+        padding: 5,
+        alignItems: 'center',
+    };
 
     return (
-        <View style={[styles.menuBarContainer, { backgroundColor: containerBackgroundColor, paddingBottom: insets.bottom + 15 }]}>
-            <View style={[styles.menuBar, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
+        <View style={menuBarContainerStyle}>
+            <View style={menuBarStyle}>
                 {menuItems.map((item) => {
                     const isActive = item.name === activeSegment;
                     const iconName = isActive ? item.activeIcon : item.icon;
@@ -34,7 +61,7 @@ export default function BottomNavBar() {
 
                     return (
                         <Link key={item.name} href={`/${item.name}`} asChild>
-                            <TouchableOpacity style={styles.menuItem}>
+                            <TouchableOpacity style={menuItemStyle}>
                                 <Ionicons
                                     name={iconName}
                                     size={26}
@@ -49,32 +76,4 @@ export default function BottomNavBar() {
     );
 }
 
-// Ensure these styles are defined here
-const styles = StyleSheet.create({
-    menuBarContainer: {
-        position: "absolute",
-        bottom: 0,
-        width: "100%",
-        alignItems: 'center',
-        paddingHorizontal: width * 0.05,
-        paddingTop: 15, // Space above the pill
-    },
-    menuBar: {
-        width: "100%",
-        height: 70,
-        borderRadius: 35,
-        flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4.65,
-        elevation: 8,
-
-    },
-    menuItem: {
-        padding: 5,
-        alignItems: 'center',
-    },
-});
+// ...existing code...

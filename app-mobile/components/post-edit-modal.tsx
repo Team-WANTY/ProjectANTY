@@ -36,6 +36,7 @@ export type Theme = {
 type Props = {
   visible: boolean;
   theme: Theme;
+  themeName?: string;
   text: string;
   onChangeText: (text: string) => void;
   onClose: () => void;
@@ -46,6 +47,7 @@ type Props = {
 export const PostEditModal: React.FC<Props> = ({
   visible,
   theme,
+  themeName,
   text,
   onChangeText,
   onClose,

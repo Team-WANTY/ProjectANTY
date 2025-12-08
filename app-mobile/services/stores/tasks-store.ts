@@ -7,6 +7,7 @@ import type { Task as ApiTask } from "../api/tasks-api";
 
 export type Task = ApiTask & {
   completed?: boolean; // UI-only
+  due_date?: number;
 };
 
 export type TaskUpdate = Partial<Omit<Task, "id" | "user_id">>;

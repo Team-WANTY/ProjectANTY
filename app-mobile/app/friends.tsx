@@ -146,8 +146,8 @@ const FriendItem: React.FC<FriendItemProps> = ({
 };
 
 
-export default function FriendsScreen() {
-    const { theme } = useTheme();
+function FriendsScreen() {
+    const { theme, themeName } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new RNAnimated.Value(0)).current;
@@ -219,7 +219,6 @@ export default function FriendsScreen() {
         // Optimistically remove friend from the store
         removeFriend(friendUserId);
         setErrorText(null);
-
         (async () => {
             try {
                 // Call the API in the background
@@ -389,7 +388,7 @@ export default function FriendsScreen() {
 
             {/* Friend Count */}
             <View style={styles.header}>
-                <Text style={[styles.friendCount, { color: theme.text }]}>
+                <Text style={[styles.friendCount, { color: theme.secondaryText }]}> 
                     {friendCount} {friendCount === 1 ? "Friend" : "Friends"}
                 </Text>
             </View>
@@ -454,7 +453,10 @@ export default function FriendsScreen() {
                             style={styles.modalCloseButton}
                             onPress={closeAddFriendModal}
                         >
-                            <Text style={styles.modalCloseText}>✕</Text>
+                            <Text style={[
+                                styles.modalCloseText,
+                                themeName === "dark" && { color: "#000" }
+                            ]}>✕</Text>
                         </Pressable>
 
                         <Text style={[styles.modalTitle, { color: theme.background }]}>Add Friend</Text>
@@ -488,9 +490,10 @@ export default function FriendsScreen() {
                         <Pressable
                             style={[
                                 styles.addButton,
-                                { backgroundColor: theme.primary },
+                                theme.background === '#151718'
+                                    ? { backgroundColor: '#000' }
+                                    : { backgroundColor: theme.primary },
                                 (isSending || !friendUsername.trim()) && { opacity: 0.6 }
-
                             ]}
                             disabled={isSending || !friendUsername.trim()}
                             onPress={handleAddFriend}
@@ -498,7 +501,7 @@ export default function FriendsScreen() {
                             {isSending ? (
                                 <ActivityIndicator />
                             ) : (
-                                <Text style={styles.addButtonText}>Send Request</Text>
+                                <Text style={[styles.addButtonText, theme.background === '#151718' ? { color: '#fff' } : { color: '#fff' }]}>Send Request</Text>
                             )}
                         </Pressable>
                     </RNAnimated.View>
@@ -509,56 +512,209 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
+                modalCloseText: {
+                    fontSize: 24,
+                    fontWeight: "300",
+                    color: "#1e3a8a", // default for light theme
+                },
+                addButton: {
+                    padding: 16,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    marginTop: 10,
+                },
+                addButtonText: {
+                    color: "#fff",
+                    fontSize: 16,
+                    fontWeight: "600",
+                },
+                errorText: {
+                    color: "red",
+                    marginTop: 4,
+                    fontSize: 14,
+                },
+            friendBanner: {
+                flexDirection: "row",
+                alignItems: "center",
+                flex: 1,
+            },
+            friendImage: {
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                marginRight: 12,
+            },
+            friendInfo: {
+                flex: 1,
+            },
+            friendName: {
+                fontSize: 18,
+                fontWeight: "600",
+            },
+            friendInitial: {
+                color: "#fff",
+                fontSize: 18,
+                fontWeight: "700",
+            },
+            unfriendButton: {
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                justifyContent: "center",
+                alignItems: "center",
+                marginLeft: 12,
+            },
+            headerTitle: {
+                position: "absolute",
+                fontSize: 28,
+                fontWeight: "bold",
+            },
+            rightIcons: {
+                position: "absolute",
+                right: 20,
+                flexDirection: "row",
+                gap: 15,
+            },
+            iconButton: {
+                padding: 8,
+                borderRadius: 8,
+                backgroundColor: "transparent",
+            },
+            modalOverlay: {
+                flex: 1,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                justifyContent: "center",
+                alignItems: "center",
+            },
+            modalContent: {
+                width: "85%",
+                borderRadius: 20,
+                padding: 24,
+                elevation: 5,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                backgroundColor: "#fff",
+            },
+            modalCloseButton: {
+                position: "absolute",
+                top: 12,
+                right: 12,
+                width: 30,
+                height: 30,
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 1,
+            },
+            emptyState: {
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                paddingTop: 100,
+            },
+            emptyText: {
+                fontSize: 16,
+                marginTop: 16,
+            },
+        friendCard: {
+            flexDirection: "row",
+            alignItems: "center",
+            borderRadius: 12,
+            padding: 12,
+            marginVertical: 8,
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowRadius: 3,
+            elevation: 2,
+            backgroundColor: "#fff",
+        },
+        header: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 20,
+            paddingTop: 20,
+        },
+        friendCount: {
+            fontSize: 16,
+            fontWeight: "bold",
+        },
+        scrollContent: {
+            paddingBottom: 40,
+        },
     container: {
         flex: 1,
     },
     backButton: {
         position: "absolute",
-        left: 20,
-        zIndex: 10,
-    },
-    headerTitle: {
-        position: "absolute",
-        fontSize: 28,
-        fontWeight: "bold",
-    },
-    rightIcons: {
-        position: "absolute",
-        right: 20,
-        flexDirection: "row",
-        gap: 15,
-    },
-    iconButton: {
-        width: 40,
-        height: 40,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    header: {
-        padding: 20,
-        paddingTop: 10,
-    },
-    friendCount: {
-        fontSize: 18,
-        fontWeight: "600",
-    },
-    scrollContent: {
-        padding: 20,
-        paddingTop: 10,
-        paddingBottom: 100,
-    },
-    friendCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        friendBanner: {
+            flexDirection: "row",
+            alignItems: "center",
+            flex: 1,
+        },
+        friendImage: {
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            marginRight: 12,
+        },
+        friendInfo: {
+            flex: 1,
+        },
+        friendName: {
+            fontSize: 18,
+            fontWeight: "600",
+        },
+        friendInitial: {
+            color: "#fff",
+            fontSize: 18,
+            fontWeight: "700",
+        },
+        unfriendButton: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            justifyContent: "center",
+            alignItems: "center",
+            marginLeft: 12,
+        },
+        emptyState: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingTop: 100,
+        },
+        emptyText: {
+            fontSize: 16,
+            marginTop: 16,
+        },
+        modalTitle: {
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 20,
+            textAlign: "center",
+        },
+        inputContainer: {
+            marginBottom: 20,
+        },
+        inputLabel: {
+            fontSize: 14,
+            fontWeight: "500",
+            marginBottom: 6,
+        },
+        input: {
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: 10,
+            fontSize: 16,
+            marginBottom: 10,
+            backgroundColor: "#fff",
+        },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            elevation: 3,
     },
     friendBanner: {
         flexDirection: "row",
@@ -630,35 +786,34 @@ const styles = StyleSheet.create({
     modalCloseText: {
         fontSize: 24,
         fontWeight: "300",
-        color: "#1e3a8a",
+    },  color: "#1e3a8a", // default for light theme
+    modalOverlay: {
+        position: "absolute" as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center" as const,
+        alignItems: "center" as const,
     },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: "bold",
-        marginBottom: 20,
-        textAlign: "center",
-    },
-    inputContainer: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: "600",
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderRadius: 10,
-        padding: 12,
-        fontSize: 16,
+    modalContent: {
+        width: "85%",
+        borderRadius: 20,
+        padding: 24,
+        elevation: 5,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
     },
     addButton: {
         padding: 16,
         borderRadius: 10,
         alignItems: "center",
-    },
+    },  alignItems: "center",
     addButtonText: {
-        color: "#fff",
+        color: '#fff',
         fontSize: 16,
         fontWeight: "600",
     },
@@ -667,5 +822,8 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontSize: 14,
     },
-
+    },
 });
+
+// Ensure default export for route
+export default FriendsScreen;

@@ -23,7 +23,40 @@ export type Theme = {
 };
 
 export const Colors = {
-  light: {
+    lilac: {
+      archiveAllText: '#6c63a2', // purple for lilac theme
+      buttonText: '#fff',
+      modalBorder: '#fff',
+      commentsToggleBackgroundOn: '#d8d4f2',
+      commentsToggleBackgroundOff: '#6c63a2',
+      commentsToggleOn: '#fff',
+      commentsToggleOff: '#000',
+      text: '#6c63a2', // black text (applies to all text elements using theme.text)
+      background: '#fff', // white background
+      primary: '#d8d4f2', // lilac for containers/buttons
+      border: '#d8d4f2', // lilac border
+      inputBackground: '#f3f1fa', // lighter lilac for inputs
+      cardBackground: '#f3f1fa', // lighter lilac for cards
+      secondaryText: '#6c63a2', // muted lilac for secondary text
+      tint: '#d8d4f2',
+      icon: '#6c63a2',
+      tabIconDefault: '#6c63a2',
+      tabIconSelected: '#d8d4f2',
+      onPrimary: '#fff',
+      onBackground: '#6c63a2',
+      error: '#ff4d4f',
+      onError: '#fff',
+      shadow: 'rgba(108,99,162,0.15)',
+    },
+    light: {
+      onBackground: '#11181C', // black for light theme
+      archiveAllText: '#000',
+            buttonText: '#fff',
+          modalBorder: '#fff',
+        commentsToggleBackgroundOn: '#bdbdbd',
+        commentsToggleBackgroundOff: '#505050ff',
+      commentsToggleOn: '#fff',
+      commentsToggleOff: '#000',
     text: '#11181C',
     background: '#fff',
     primary: "#cecdcdff",
@@ -39,10 +72,19 @@ export const Colors = {
     onPrimary: '#fff',
     error: '#ff4d4f',
     onError: '#fff',
+    // removed duplicate onBackground
     shadow: 'rgba(0,0,0,0.25)',
   },
-  dark: {
-    text: '#ECEDEE',
+    dark: {
+      onBackground: '#fff', // white for dark theme
+      archiveAllText: '#fff', 
+            buttonText: '#000',
+          modalBorder: '#000',
+        commentsToggleBackgroundOn: '#888',
+        commentsToggleBackgroundOff: '#000',
+      commentsToggleOn: '#fff',
+      commentsToggleOff: '#000',
+    text: '#fff',
     background: '#151718',
     primary: "#E0E0E0",
     secondary: "#9BA1A6",
@@ -53,13 +95,22 @@ export const Colors = {
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
+    // removed duplicate onBackground
     tabIconSelected: tintColorDark,
     onPrimary: '#151718',
     error: '#ff4d4f',
     onError: '#fff',
     shadow: 'rgba(0,0,0,0.6)',
   },
-  blue: {
+    blue: {
+      onBackground: '#32617D', // dark blue for blue theme
+      archiveAllText: '#fff', // secondaryText for blue theme
+        buttonText: '#ffffffff',
+      modalBorder: '#1D3B53',
+    commentsToggleBackgroundOn: '#6592acff',
+    commentsToggleBackgroundOff: '#1D3B53',
+  commentsToggleOn: '#fff',
+  commentsToggleOff: '#000',
 
     // Main dark blue background color
     background: '#1D3B53',
@@ -70,6 +121,7 @@ export const Colors = {
     // The bright blue/light color used for the dashboard and cards (Light Blue/Gray)
     border: '#AECDD9',
 
+    // removed duplicate onBackground
     // The color used for the main accent/progress bars (Darker Blue)
     primary: "#32617D",
 
@@ -88,7 +140,7 @@ export const Colors = {
     icon: '#F0F5F9',
     tabIconDefault: '#BFC8D1',
     tabIconSelected: tintColorDark,
-    onPrimary: '#F0F5F9',
+    onPrimary: '#32617D',
     error: '#ff4d4f',
     onError: '#fff',
     shadow: 'rgba(0,0,0,0.4)',
@@ -113,6 +165,7 @@ export const Fonts = Platform.select({
     mono: 'monospace',
   },
   web: {
+    onBackground: '#fff',
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
     rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",

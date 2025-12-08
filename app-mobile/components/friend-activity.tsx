@@ -38,13 +38,13 @@ const FriendActivityItem = ({
                 <Text style={[styles.friendMessage, { color: theme.background }]}>
                     <Text style={styles.friendName}>{displayName}</Text>
                     {"\n"}
-                    {activity.message}
+                    {message}
                 </Text>
             </View>
 
-            <View style={styles.friendActions}>
+            <View style={styles.friendActions}> 
                 <TouchableOpacity
-                    onPress={() => onToggleLike(activity.id)}
+                    onPress={() => onToggleLike(id)}
                     style={styles.actionButton}
                 >
                     <Ionicons
@@ -53,8 +53,24 @@ const FriendActivityItem = ({
                         color={heartIconColor}
                     />
                 </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => onCommentPress(activity.id)}
+                {onCommentPress && (
+                    <TouchableOpacity
+                        onPress={() => onCommentPress(activity.id)}
+                        style={styles.actionButton}
+                    >
+                        <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
+                        {(commentsCount ?? 0) > 0 && (
+                            <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
+                                <Text style={[styles.commentBadgeText, { color: commentCountColor ?? theme.onBackground }]}> 
+                                    {commentsCount ?? 0}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                )}
+                {onEdit && (
+                  <TouchableOpacity
+                    onPress={onEdit}
                     style={styles.actionButton}
                 >
                     <Ionicons
@@ -85,6 +101,7 @@ const FriendActivityItem = ({
                 >
                     {formatRelativeTime(activity.createdAt)}
                 </Text>
+                </Text>
             </View>
         </View>
     );
@@ -98,7 +115,6 @@ const styles = StyleSheet.create({
         borderRadius: wp(2),
         padding: wp(3),
         marginVertical: hp(1),
-        shadowColor: "#000",
         shadowOpacity: 0.2,
         shadowRadius: 3,
         elevation: 2,

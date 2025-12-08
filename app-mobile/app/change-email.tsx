@@ -66,7 +66,7 @@ export default function ChangeEmail() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.background}
+            color={theme.onBackground}
             onPress={() => router.back()}
             style={[
               styles.backButton,
@@ -87,7 +87,7 @@ export default function ChangeEmail() {
         <TextInput
           style={[
             styles.input,
-            { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text },
+            { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.onBackground },
           ]}
           placeholder="New email"
           placeholderTextColor={theme.primary}
