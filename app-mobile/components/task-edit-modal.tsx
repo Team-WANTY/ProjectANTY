@@ -202,7 +202,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                     setRepeatEndDate("");
                   }
                 }}
-                trackColor={{ false: theme.cardBackground, true: theme.primary }}
+                trackColor={{ false: "#b0b0b0", true: theme.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -264,7 +264,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                       <Text style={[styles.inputLabel, { color: theme.background }]}>Until Date</Text>
                       <TextInput
                         style={[styles.input, {color: theme.background, borderColor: repeatEndError ? theme.error ?? "#ff4d4f" : theme.background}]}
-                        value={editingTask.untilDate}
+                        value={repeatEndDate}
                         onChangeText={(text) => {
                           setRepeatEndDate(text);
                           setEditingTask((p) => (p ? { ...p, untilDate: text } : p));
