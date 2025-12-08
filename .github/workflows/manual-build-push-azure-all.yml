@@ -32,15 +32,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/auth-service:latest
 
-      - name: Scale down running app
+      - name: Stop Auth Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name auth-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service"
 
-      - name: Deploy Auth Service Container App
+      - name: Deploy to Auth Container App
         run: |
           az containerapp update \
             --name auth-service \
@@ -51,6 +47,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Auth Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service"
+
       - name: Build and Push Comments Service
         run: |
           docker build -f backend/comments_service/Dockerfile \
@@ -58,15 +58,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/comments-service:latest
 
-      - name: Scale down running app
+      - name: Stop Comments Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name comments-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service"
 
-      - name: Deploy Comments Service Container App
+      - name: Deploy to Comments Container App
         run: |
           az containerapp update \
             --name comments-service \
@@ -77,6 +73,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Comments Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service"
+
       - name: Build and Push Friends Service
         run: |
           run: |
@@ -85,15 +85,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/friends-service:latest
 
-      - name: Scale down running app
+      - name: Stop Friends Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name friends-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service"
 
-      - name: Deploy Friends Service Container App
+      - name: Deploy to Friends Container App
         run: |
           az containerapp update \
             --name friends-service \
@@ -104,6 +100,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Friends Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service"
+
       - name: Build and Push Image Service
         run: |
           docker build -f backend/image_service/Dockerfile \
@@ -111,15 +111,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/image-service:latest
 
-      - name: Scale down running app
+      - name: Stop Image Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name image-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
 
-      - name: Deploy Image Service Container App
+      - name: Deploy to Image Container App
         run: |
           az containerapp update \
             --name image-service \
@@ -130,6 +126,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Image Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
+
       - name: Build and Push Posts Service
         run: |
           docker build -f backend/posts_service/Dockerfile \
@@ -137,15 +137,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/posts-service:latest
 
-      - name: Scale down running app
+      - name: Stop Posts Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name posts-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service"
 
-      - name: Deploy Posts Service Container App
+      - name: Deploy to Posts Container App
         run: |
           az containerapp update \
             --name posts-service \
@@ -156,6 +152,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Posts Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service"
+
       - name: Build and Push Profiles Service
         run: |
           docker build -f backend/profiles_service/Dockerfile \
@@ -163,15 +163,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/profiles-service:latest
 
-      - name: Scale down running app
+      - name: Stop Profiles Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name profiles-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service"
 
-      - name: Deploy Profiles Service Container App
+      - name: Deploy to Profiles Container App
         run: |
           az containerapp update \
             --name profiles-service \
@@ -182,6 +178,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Profiles Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service"
+
       - name: Build and Push Redirect Service
         run: |
           docker build -f backend/redirect_service/Dockerfile \
@@ -189,15 +189,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/redirect-service:latest
 
-      - name: Scale down running app
+      - name: Stop Redirect Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name redirect-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service"
 
-      - name: Deploy Redirect Service Container App
+      - name: Deploy to Redirect Container App
         run: |
           az containerapp update \
             --name redirect-service \
@@ -208,6 +204,10 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
+      - name: Start Redirect Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service"
+
       - name: Build and Push Tasks Service
         run: |
           docker build -f backend/tasks_service/Dockerfile \
@@ -215,15 +215,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/tasks-service:latest
 
-      - name: Scale down running app
+      - name: Stop Tasks Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name tasks-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service"
 
-      - name: Deploy Tasks Service Container App
+      - name: Deploy to Tasks Container App
         run: |
           az containerapp update \
             --name tasks-service \
@@ -233,6 +229,10 @@ jobs:
             --memory 0.5Gi \
             --min-replicas 1 \
             --max-replicas 3
+
+      - name: Start Tasks Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service"
           
       - name: Build and Push Users Service
         run: |
@@ -241,15 +241,11 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/users-service:latest
 
-      - name: Scale down running app
+      - name: Stop Users Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name users-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"
 
-      - name: Deploy Users Service Container App
+      - name: Deploy to Users Container App
         run: |
           az containerapp update \
             --name users-service \
@@ -259,3 +255,7 @@ jobs:
             --memory 0.5Gi \
             --min-replicas 1 \
             --max-replicas 3
+
+      - name: Start Users Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"

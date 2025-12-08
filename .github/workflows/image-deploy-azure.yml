@@ -26,6 +26,9 @@ jobs:
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
+      - name: Set up Azure PowerShell
+        uses: azure/setup-powershell@v2
+
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
 
@@ -36,13 +39,9 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/image-service:latest
 
-      - name: Scale down running app
+      - name: Stop Azure Container App (PowerShell)
         run: |
-          az containerapp update \
-            --name image-service \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 \
-            --max-replicas 0
+          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
 
       - name: Deploy to Azure Container App
         run: |
@@ -54,3 +53,7 @@ jobs:
             --memory 0.5Gi \
             --min-replicas 1 \
             --max-replicas 3
+
+      - name: Start Azure Container App (PowerShell)
+        run: |
+          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
