@@ -38,7 +38,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name image-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \

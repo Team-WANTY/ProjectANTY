@@ -34,7 +34,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name auth-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -60,7 +60,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name comments-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -87,7 +87,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name friends-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -113,7 +113,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name image-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -139,7 +139,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name posts-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -165,7 +165,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name profiles-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -191,7 +191,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name redirect-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -217,7 +217,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name tasks-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
@@ -243,7 +243,7 @@ jobs:
 
       - name: Scale down running app
         run: |
-          az containerapp scale \
+          az containerapp update \
             --name users-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 0 \
