@@ -1,0 +1,50 @@
+name: Build & Push Friends Service
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/friends_service/**"]
+  workflow_dispatch:
+
+jobs:
+  build-and-push-friends:
+    name: Build and push service to Container Registry
+    runs-on: ubuntu-latest
+    environment: "Azure Deployment Environment"
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push Friends Service
+        run: |
+          run: |
+          docker build -f backend/friends_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/friends-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/friends-service:latest
+
+      - name: Deploy to Friends Container App
+        run: |
+          az containerapp update \
+            --name friends-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/friends-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3

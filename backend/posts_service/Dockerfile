@@ -6,9 +6,9 @@ WORKDIR /app
 
 # Copy source code
 COPY ./shared ./shared
-COPY ./auth_service ./auth_service
+COPY ./posts_service ./posts_service
 
-WORKDIR /app/auth_service
+WORKDIR /app/posts_service
 
 # The proper thing to do is uv sync --lock, with a uv.lock in version control.
 # But prof doesn't want us to commit lock files so we can't.

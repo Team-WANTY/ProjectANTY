@@ -18,7 +18,7 @@ class ProfileService:
             raise RecordAlreadyExistsError()
         except RecordNotFoundError:
             pass
-        await self.db.create_profile(user_id)
+        return await self.db.create_profile(user_id)
 
     async def get_profile(self, user_id: str):
         profile = await self.db.get_profile(user_id)

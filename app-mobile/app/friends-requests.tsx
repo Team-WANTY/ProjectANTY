@@ -8,6 +8,7 @@ import {
   Animated as RNAnimated,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,9 +31,9 @@ import {
   type DisplayFriend,
 } from "@/services/stores/friends-store";
 import { useUserStore } from "@/services/stores/users-store";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth } = Dimensions.get("window");
-
 
 type DisplayRequest = {
   id: string;
@@ -129,7 +130,6 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
   onViewProfile,
 }) => {
   const displayName = request.user.username || "Unknown user";
-  const initial = displayName[0]?.toUpperCase() ?? "?";
 
   const anim = useRef(new RNAnimated.Value(1)).current;
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
@@ -175,38 +175,18 @@ const FriendRequestItem: React.FC<FriendRequestItemProps> = ({
         }
       }}
     >
-      <View
-        style={[
-          styles.friendCard,
-          {
-            backgroundColor: theme.cardBackground,
-          },
-        ]}
-      >
+      <View style={[styles.friendCard, {backgroundColor: theme.cardBackground}]}>
         <View style={styles.friendBanner}>
           {/* Avatar */}
           <View style={styles.friendAvatarWrapper}>
-            {request.user.avatarUrl ? (
-              <View style={styles.friendImage}>
-                <Animated.Image
-                  source={{ uri: request.user.avatarUrl }}
-                  style={styles.friendImage}
+            <AvatarBubble
+                    size={52}
+                    avatarUrl={request.user.avatarUrl}
+                    name={displayName}
+                    bgColor={theme.primary}
+                    initialColor={theme.onPrimary}
+                    style={styles.friendImage}
                 />
-              </View>
-            ) : (
-              <View
-                style={[
-                  styles.friendImage,
-                  {
-                    backgroundColor: theme.primary,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  },
-                ]}
-              >
-                <Text style={styles.friendInitial}>{initial}</Text>
-              </View>
-            )}
           </View>
 
           {/* Username */}
@@ -276,6 +256,7 @@ const FriendRequestsScreen: React.FC = () => {
   const [outgoing, setOutgoing] = useState<DisplayRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const addFriend = useFriendsStore((s) => s.addFriend);
 
@@ -327,6 +308,50 @@ const FriendRequestsScreen: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setErrorText(null);
+
+    try {
+      const [incomingRes, outgoingRes] = await Promise.all([
+        friendsApi.listIncoming(20),
+        friendsApi.listOutgoing(20),
+      ]);
+
+      if (!incomingRes.ok && !outgoingRes.ok) {
+        setErrorText(
+          incomingRes.message ||
+            outgoingRes.message ||
+            "Failed to load friend requests"
+        );
+        return;
+      }
+
+      const incomingIds =
+        incomingRes.ok && incomingRes.data ? incomingRes.data.ids : [];
+      const outgoingIds =
+        outgoingRes.ok && outgoingRes.data ? outgoingRes.data.ids : [];
+
+      const [incomingEnriched, outgoingEnriched] = await Promise.all([
+        Promise.all(incomingIds.map((id) => enrichRequest(id))),
+        Promise.all(outgoingIds.map((id) => enrichRequest(id))),
+      ]);
+
+      setIncoming(
+        incomingEnriched.filter((r): r is DisplayRequest => r !== null)
+      );
+      setOutgoing(
+        outgoingEnriched.filter((r): r is DisplayRequest => r !== null)
+      );
+    } catch (e) {
+      console.log("[FriendRequests] refresh error", e);
+      setErrorText("Failed to load friend requests");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
 
   const promoteToFriend = async (req: DisplayRequest) => {
     // After accept, hydrate the friendship and push into Friends store
@@ -443,6 +468,13 @@ const FriendRequestsScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.primary}
+            />
+          }
         >
           {errorText ? (
             <Text

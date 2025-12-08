@@ -25,6 +25,7 @@ friends_router = APIRouter()
 @friends_router.post(
     "/request/{to_user_id}",
     status_code=status.HTTP_201_CREATED,
+    response_model=str,
     tags=["friend_requests"],
 )
 async def request_friendship(
@@ -36,7 +37,7 @@ async def request_friendship(
         logger.debug(
             f"Trying to create a pending relationship '{me.id}' <-> '{to_user_id}'"
         )
-        await service.request_friendship(me, to_user_id)
+        return await service.request_friendship(me, to_user_id)
     except RecordAlreadyExistsError:
         logger.error(
             f"Error creating a pending relationship '{me.id}' <-> '{to_user_id}': friendship already exists"

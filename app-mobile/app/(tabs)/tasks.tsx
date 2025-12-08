@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, 
-    Modal, TextInput, Pressable, Animated as RNAnimated } from "react-native";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Animated as RNAnimated, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { LinearTransition, FadeIn, FadeOut } from "react-native-reanimated";
@@ -14,12 +13,13 @@ import { useNotificationModal } from "@/app/_layout";
 
 import { tasksApi, type RepeatRule, type FrequencySpecifier } from "@/services/api/tasks-api";
 import { useUserStore } from "@/services/stores/users-store";
-import { useTasksStore } from "@/services/stores/tasks-store";
+import { useTasksStore, type Task as StoreTask } from "@/services/stores/tasks-store";
 
-import { NewTaskModal } from "@/components/task-create-modal";
-import { EditTaskModal } from "@/components/task-edit-modal";
+import { NewTaskModal, type NewTask  } from "@/components/task-create-modal";
+import { EditTaskModal, type EditingTask } from "@/components/task-edit-modal";
 import { CategoryCreateModal } from "@/components/category-create-modal";
 import { CategoryEditModal } from "@/components/category-edit-modal";
+import { loadTasks } from "@/services/bootstrap/bootstrap";
 
 
 const { width } = Dimensions.get("window");
@@ -45,6 +45,15 @@ const parseInputDate = (dateStr: string): Date | null => {
     if (!isValidDateFormat(dateStr)) return null;
     const [month, day, year] = dateStr.split("/").map(Number);
     return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
+// Local Date -> "YYYY-MM-DD" (matches backend OccurrencesByDate keys)
+const toDateKey = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+    return `${y}-${pad(m)}-${pad(day)}`;
 };
 
 // Backend first_relevant_date (YYYY-MM-DD string or Date) -> Date | null
@@ -78,32 +87,6 @@ const firstRelevantToDisplay = (
 };
 
 
-// Turn repeat rule from front end to match backend
-const buildRepeatRuleFromLabel = (label: string): RepeatRule | null => {
-    if (!label || label === "None") return null;
-
-    const freqMap: Record<string, FrequencySpecifier> = {
-        Daily: "daily",
-        Weekly: "weekly",
-        Monthly: "monthly",
-        Yearly: "yearly",
-    };
-
-    const specifier = freqMap[label];
-    if (!specifier) return null;
-
-    return {
-        frequency: {
-            specifier,
-            value: 1,
-        },
-        duration: {
-            specifier: "forever",
-            value: null,
-        },
-    };
-};
-
 // Turn repeat rule from back end to a label for frontend
 const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
     if (!rule || !rule.frequency || !rule.frequency.specifier) return null;
@@ -120,6 +103,29 @@ const formatRepeatRule = (rule?: RepeatRule | null): string | null => {
         default:
             return null;
     }
+};
+
+const deriveEndFromRepeatRule = (
+    rule?: RepeatRule | null
+): { mode: "Forever" | "Until"; dateDisplay: string } => {
+    if (!rule || !rule.duration || !rule.duration.specifier) {
+        return { mode: "Forever", dateDisplay: "" };
+    }
+
+    if (rule.duration.specifier === "forever") {
+        return { mode: "Forever", dateDisplay: "" };
+    }
+
+    if (rule.duration.specifier === "until_date" && rule.duration.value) {
+        const d = normalizeFirstRelevantDate(rule.duration.value as any);
+        if (!d) return { mode: "Until", dateDisplay: "" };
+        return {
+            mode: "Until",
+            dateDisplay: `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`,
+        };
+    }
+
+    return { mode: "Forever", dateDisplay: "" };
 };
 
 // Task Animation
@@ -254,19 +260,13 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
 };
 
 export default function TasksScreen() {
-        // pull tasks from Zustand
-        const userId = useUserStore((s) => s.userId);
-        // MOCK DATA FOR THEME TESTING
-        const mockTasks = [
-            { id: '1', name: 'Buy groceries', first_relevant_date: new Date(), repeat_rule: null, completed: false },
-            { id: '2', name: 'Finish homework', first_relevant_date: new Date(), repeat_rule: null, completed: true },
-            { id: '3', name: 'Call friend', first_relevant_date: new Date(), repeat_rule: null, completed: false },
-        ];
-        const tasks = mockTasks; // Replace with mock data for testing
-        // const tasks = useTasksStore((s) => s.tasks); // Restore for real data
-        const insertTask = useTasksStore((s) => s.insertTask);
-        const updateTask = useTasksStore((s) => s.updateTask);
-        const removeTask = useTasksStore((s) => s.removeTask);
+    // pull tasks from Zustand
+    const userId = useUserStore((s) => s.userId);
+    const tasks = useTasksStore((s) => s.tasks);
+    const insertTask = useTasksStore((s) => s.insertTask);
+    const updateTask = useTasksStore((s) => s.updateTask);
+    const removeTask = useTasksStore((s) => s.removeTask);
+    const occurrencesByDate = useTasksStore((s) => s.occurrencesByDate);
 
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
@@ -278,39 +278,49 @@ export default function TasksScreen() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     // Filter Tasks for selected Date
-    const filtered = tasks.filter((t) => {
-        const taskDate = normalizeFirstRelevantDate(t.first_relevant_date);
-        const matchDate = !taskDate
-            ? true
-            : taskDate.getFullYear() === date.getFullYear() &&
-              taskDate.getMonth() === date.getMonth() &&
-              taskDate.getDate() === date.getDate();
+    const dateKey = toDateKey(date);
 
-        const matchCategory = !selectedCategory || t.cat === selectedCategory;
+    // Build a quick lookup map: taskId -> task
+    const taskById = useMemo(() => {
+        const map = new Map<string, StoreTask>();
+        for (const t of tasks) {
+            map.set(t.id, t);
+        }
+        return map;
+    }, [tasks]);
 
-        return matchDate && matchCategory;
-    });
+    // Get all task IDs that actually occur on this date from the backend
+    const idsForDay = occurrencesByDate[dateKey] ?? [];
 
-    // Sort the filtered tasks
+    // Turn IDs into Task objects and apply category filter
+    const filtered = idsForDay
+        .map((id) => taskById.get(id))
+        .filter((t): t is StoreTask => !!t)
+        .filter((t) => !selectedCategory || t.cat === selectedCategory);
+
+    // Sort Logic
     const sorted = [...filtered].sort((a, b) => {
         const aCompleted = !!a.completed;
         const bCompleted = !!b.completed;
 
-        // Incomplete first, completed last
         if (aCompleted !== bCompleted) {
-            return aCompleted ? 1 : -1; // a goes after b if a is completed
+            return aCompleted ? 1 : -1;
         }
 
-        // Within each group, has due date first, no due date last
         const aNoDate = !a.first_relevant_date;
         const bNoDate = !b.first_relevant_date;
 
         if (aNoDate && !bNoDate) return 1;
         if (!aNoDate && bNoDate) return -1;
 
-        // If both have dates (or both no date and same completed status),
-        // fall back to name to make the order stable
-        return a.name.localeCompare(b.name);
+        const aDate = normalizeFirstRelevantDate(a.first_relevant_date);
+        const bDate = normalizeFirstRelevantDate(b.first_relevant_date);
+
+        if (!aDate && !bDate) return 0;
+        if (!aDate) return 1;
+        if (!bDate) return -1;
+
+        return aDate.getTime() - bDate.getTime();
     });
 
 
@@ -346,25 +356,23 @@ export default function TasksScreen() {
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-    
-    const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
-    const [editingTask, setEditingTask] = useState<any | null>(null);
 
-    // Form states
-    const [newCategoryName, setNewCategoryName] = useState("");
-    const [newTask, setNewTask] = useState<{
-        title: string;
-        description: string;
-        category: string;
-        repeatLabel: string; // "None" | "Daily" | "Weekly" | ...
-        first_relevant_date: string; // MM/DD/YYYY
-    }>({
+    const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
+    const [editingTask, setEditingTask] = useState<EditingTask  | null>(null);
+
+    const makeEmptyNewTask = (): NewTask => ({
         title: "",
         description: "",
         category: "",
         repeatLabel: "",
         first_relevant_date: "",
+        repeatEnabled: false,
+        untilDate: "",
     });
+
+    // Form states
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [newTask, setNewTask] = useState<NewTask>(() => makeEmptyNewTask());
 
     const [isRepeatOpen, setIsRepeatOpen] = useState(false);
     const [dateError, setDateError] = useState("");
@@ -372,6 +380,24 @@ export default function TasksScreen() {
     const fadeAnimNewCategory = useRef(new RNAnimated.Value(0)).current;
     const fadeAnimEditCategory = useRef(new RNAnimated.Value(0)).current;
     const [loading, setLoading] = useState(false);
+
+    const [repeatEndMode, setRepeatEndMode] = useState<"Forever" | "Until">("Forever");
+    const [repeatEndDate, setRepeatEndDate] = useState("");
+    const [repeatEndError, setRepeatEndError] = useState("");
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        if (!userId) return;
+        setRefreshing(true);
+        try {
+            await loadTasks(userId);
+        } catch (err) {
+            console.warn("[Tasks] Refresh failed", err);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     // Animation helpers
     const fadeInNewCategory = () => {
@@ -403,7 +429,7 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
-    
+
 
     // CATEGORY AND TASKS CATEGORY HELPERS
 
@@ -484,7 +510,7 @@ export default function TasksScreen() {
         setNewCategoryName("");
         fadeOutNewCategory(() => setIsNewCategoryModalVisible(false));
     };
-   
+
     const handleDeleteCategory = () => {
         if (!selectedCategoryForMenu) return;
         const toDelete = selectedCategoryForMenu;
@@ -528,22 +554,29 @@ export default function TasksScreen() {
         fadeOutEditCategory(() => setIsEditCategoryModalVisible(false));
     };
 
-    
+
     // TASKS handlers
 
     const handleEditTask = (id: string) => {
         const taskToEdit = tasks.find((t) => t.id === id);
         if (!taskToEdit) return;
 
+        const { mode, dateDisplay } = deriveEndFromRepeatRule(taskToEdit.repeat_rule);
+
         setEditingTask({
             id: taskToEdit.id,
             title: taskToEdit.name,
             description: taskToEdit.desc,
-            category: taskToEdit.cat,
+            category: taskToEdit.cat ?? null,
             repeatLabel: formatRepeatRule(taskToEdit.repeat_rule) || "",
-            dueDate: firstRelevantToDisplay(taskToEdit.first_relevant_date),
+            first_relevant_date: firstRelevantToDisplay(taskToEdit.first_relevant_date),
+            repeatEnabled: !!taskToEdit.repeat_rule,
+            untilDate: dateDisplay,
         });
 
+        setRepeatEndMode(mode);
+        setRepeatEndDate(dateDisplay);
+        setRepeatEndError("");
         setIsEditTaskModalVisible(true);
         setDateError("");
     };
@@ -585,7 +618,6 @@ export default function TasksScreen() {
     const createTask = async () => {
         const title = newTask.title.trim();
         
-        const repeatRule = buildRepeatRuleFromLabel(newTask.repeatLabel);
 
         if (!title) {
             setTaskNameError("Task name is required");
@@ -601,6 +633,7 @@ export default function TasksScreen() {
 
         setLoading(true);
         setDateError("");
+        setRepeatEndError("");
 
         try {
             // Determine first relevant date:
@@ -616,11 +649,51 @@ export default function TasksScreen() {
                 }
                 firstRelevant = parsed;
             } else {
-                firstRelevant = new Date(
-                    date.getFullYear(),
-                    date.getMonth(),
-                    date.getDate()
-                );
+                firstRelevant = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            }
+
+
+            // Build repeatRule only when repeatEnabled is true
+            let repeatRule: RepeatRule | null = null;
+            if (newTask.repeatEnabled && newTask.repeatLabel) {
+                const freqMap: Record<string, FrequencySpecifier> = {
+                    Daily: "daily",
+                    Weekly: "weekly",
+                    Monthly: "monthly",
+                    Yearly: "yearly",
+                };
+
+                const specifier = freqMap[newTask.repeatLabel];
+                if (specifier) {
+                    if (repeatEndMode === "Until") {
+                        const endParsed = parseInputDate(repeatEndDate);
+                        if (!endParsed) {
+                            setRepeatEndError("Invalid end date. Use MM/DD/YYYY.");
+                            return;
+                        }
+                        if (firstRelevant && endParsed < firstRelevant) {
+                            setRepeatEndError("End date must be on or after the start date.");
+                            return;
+                        }
+
+                        repeatRule = {
+                            frequency: { specifier, value: 1 },
+                            duration: {
+                                specifier: "until_date",
+                                value: endParsed,
+                            },
+                        };
+                    }   else {
+                        // Forever
+                        repeatRule = {
+                            frequency: { specifier, value: 1 },
+                            duration: {
+                                specifier: "forever",
+                                value: null,
+                            },
+                        };
+                    }
+                }
             }
 
             const payload = {
@@ -635,11 +708,7 @@ export default function TasksScreen() {
             const res = await tasksApi.create(payload);
             if (!res.ok || !res.data) {
                 console.log("Failed to create task:", res.status, res.message, res.detail);
-                setDateError(
-                    typeof res.message === "string"
-                        ? res.message
-                        : "Failed to create task"
-                );
+                setDateError(typeof res.message === "string" ? res.message : "Failed to create task");
                 return;
             }
 
@@ -647,7 +716,7 @@ export default function TasksScreen() {
 
             console.log(
                 `Task Created: Task ID: ${created.id}, Task name: ${created.name}, description: ${created.desc}, category: ${created.cat}, 
-                    repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, first_relevant_date: ${firstRelevantToDisplay(created.first_relevant_date)}`
+                repeat_rule: ${formatRepeatRule(created.repeat_rule) ?? "None"}, first_relevant_date: ${firstRelevantToDisplay(created.first_relevant_date)}`
             );
 
             if (created.id) {
@@ -657,7 +726,7 @@ export default function TasksScreen() {
                     completed: false,
                 });
             }
-
+            await loadTasks(userId);
             // reset + close
             setNewTask({
                 title: "",
@@ -665,8 +734,13 @@ export default function TasksScreen() {
                 category: "",
                 repeatLabel: "",
                 first_relevant_date: "",
+                repeatEnabled: false,
+                untilDate: "",
             });
-            fadeOut(() => setIsNewTaskModalVisible(false));
+            setRepeatEndMode("Forever");
+            setRepeatEndDate("");
+            setRepeatEndError("");
+            setIsNewTaskModalVisible(false);
         } finally {
             setLoading(false);
         }
@@ -674,19 +748,22 @@ export default function TasksScreen() {
 
     // Update tasks
     const updateExistingTask = async () => {
-        if (!editingTask || !editingTask.title.trim() || !editingTask.dueDate.trim()) return;
+        if (!editingTask || !editingTask.title.trim()) return;
         setLoading(true);
+        setRepeatEndError("");
+        setDateError("");
+
         try {
             let firstRelevant: Date | null | undefined;
             if (
-                !editingTask.dueDate ||
-                editingTask.dueDate === "No date" ||
-                editingTask.dueDate === "No due date"
+                !editingTask.first_relevant_date  ||
+                editingTask.first_relevant_date  === "No date" ||
+                editingTask.first_relevant_date  === "No due date"
             ) {
                 // Explicitly clear date
                 firstRelevant = null;
             } else {
-                const parsed = parseInputDate(editingTask.dueDate);
+                const parsed = parseInputDate(editingTask.first_relevant_date);
                 if (!parsed) {
                     setDateError("Invalid date. Use MM/DD/YYYY.");
                     return;
@@ -694,7 +771,47 @@ export default function TasksScreen() {
                 firstRelevant = parsed;
             }
 
-            const repeatRule = buildRepeatRuleFromLabel(editingTask.repeatLabel);
+            let repeatRule: RepeatRule | null = null;
+            if (editingTask.repeatLabel) {
+                const freqMap: Record<string, FrequencySpecifier> = {
+                    Daily: "daily",
+                    Weekly: "weekly",
+                    Monthly: "monthly",
+                    Yearly: "yearly",
+                };
+
+                const specifier = freqMap[editingTask.repeatLabel];
+                if (specifier) {
+                    if (repeatEndMode === "Until") {
+                        const endParsed = parseInputDate(repeatEndDate);
+                        if (!endParsed) {
+                            setRepeatEndError("Invalid end date. Use MM/DD/YYYY.");
+                            return;
+                        }
+                        if (firstRelevant && endParsed < firstRelevant) {
+                            setRepeatEndError("End date must be on or after the start date.");
+                            return;
+                        }
+
+                        repeatRule = {
+                            frequency: { specifier, value: 1 },
+                            duration: {
+                                specifier: "until_date",
+                                value: endParsed,
+                            },
+                        };
+                    }   else {
+                        // Forever
+                        repeatRule = {
+                            frequency: { specifier, value: 1 },
+                            duration: {
+                                specifier: "forever",
+                                value: null,
+                            },
+                        };
+                    }
+                }
+            }
 
             const res = await tasksApi.update({
                 id: editingTask.id,
@@ -707,13 +824,18 @@ export default function TasksScreen() {
             if (res.ok && res.data) {
                 console.log("Task Updated");
                 updateTask(editingTask.id, res.data);
+                if (userId) {
+                    await loadTasks(userId);
+                }
 
             } else {
                 console.log("Update failed", res.message);
             }
-
-            fadeOut(() => setIsEditTaskModalVisible(false));
+            setIsEditTaskModalVisible(false);
             setEditingTask(null);
+            setRepeatEndMode("Forever");
+            setRepeatEndDate("");
+            setRepeatEndError("");
         } finally {
             setLoading(false);
         }
@@ -734,6 +856,7 @@ export default function TasksScreen() {
             {/* Content ScrollView */}
             <ScrollView
                 contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
             >
                 {/* 2. Date Selector */}
                 <View style={styles.dateSelectorSection}>
@@ -801,33 +924,25 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
-                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
                             onLongPress={(event: any) => handleCategoryLongPress(cat, event)}
                         />
                     ))}
                 </ScrollView>
 
-                {/* Edit Category Modal */}
-                <CategoryEditModal
-                    visible={isEditCategoryModalVisible}
-                    fadeAnim={fadeAnimEditCategory}
-                    theme={theme}
-                    value={editCategoryName}
-                    onChangeValue={setEditCategoryName}
-                    onClose={() => fadeOutEditCategory(() => setIsEditCategoryModalVisible(false))}
-                    onSubmit={handleSaveEditCategory}
-                    onDelete={handleDeleteCategory}
-                />
-
                 {/* Tasks List Header */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Tasks</Text>
                     <TouchableOpacity onPress={() => {
+                        setNewTask(makeEmptyNewTask());
                         setIsNewTaskModalVisible(true);
+                        setIsRepeatOpen(false);
                         setDateError("");
                         setTaskNameError("");
-                    }}
-                    >
+                        setRepeatEndMode("Forever");
+                        setRepeatEndDate("");
+                        setRepeatEndError("");
+                    }}>
                         <Ionicons name="add-circle-outline" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
@@ -836,7 +951,7 @@ export default function TasksScreen() {
                 <View style={styles.taskListContainer}>
                     {sorted.length === 0 ? (
                         <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
-                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
+                            <Text style={{ color: theme.secondaryText, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
                                 You currently have no tasks.
                             </Text>
                         </View>
@@ -865,7 +980,7 @@ export default function TasksScreen() {
                 onClose={() => fadeOutNewCategory(() => setIsNewCategoryModalVisible(false))}
                 onSubmit={handleSaveNewCategory}
             />
-            
+
             <CategoryEditModal
                 visible={isEditCategoryModalVisible}
                 fadeAnim={fadeAnimEditCategory}
@@ -889,9 +1004,19 @@ export default function TasksScreen() {
                 taskNameError={taskNameError}
                 loading={loading}
                 onClose={() => {
+                    setNewTask(makeEmptyNewTask());
                     setIsNewTaskModalVisible(false);
+                    setIsRepeatOpen(false);
+                    setRepeatEndMode("Forever");
+                    setRepeatEndDate("");
+                    setRepeatEndError("");
                 }}
                 onSubmit={createTask}
+                repeatEndMode={repeatEndMode}
+                setRepeatEndMode={setRepeatEndMode}
+                repeatEndDate={repeatEndDate}
+                setRepeatEndDate={setRepeatEndDate}
+                repeatEndError={repeatEndError}
             />
 
             <EditTaskModal
@@ -909,7 +1034,16 @@ export default function TasksScreen() {
                 onRequestClose={() => {
                     setIsEditTaskModalVisible(false);
                     setEditingTask(null);
+                    setRepeatEndMode("Forever");
+                    setRepeatEndDate("");
+                    setRepeatEndError("");
+                    setIsRepeatOpen(false);
                 }}
+                repeatEndMode={repeatEndMode}
+                setRepeatEndMode={setRepeatEndMode}
+                repeatEndDate={repeatEndDate}
+                setRepeatEndDate={setRepeatEndDate}
+                repeatEndError={repeatEndError}
             />
         </View>
     );

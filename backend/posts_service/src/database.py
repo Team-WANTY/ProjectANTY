@@ -32,6 +32,7 @@ class PostsDB:
             logger.debug(f"Trying to validate created item returned from DB: {item}")
             created_post = Post.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created post: {created_post.model_dump()}")
+            return created_post.id
         except exceptions.CosmosResourceExistsError:
             logger.warning(
                 f"Error while creating post: {post.model_dump()}, already exists"

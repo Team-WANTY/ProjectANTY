@@ -34,6 +34,7 @@ class ProfileDB:
             logger.debug(
                 f"Successfully created profile: {created_profile.model_dump()}"
             )
+            return created_profile.id
         except exceptions.CosmosResourceExistsError:
             logger.warning(
                 f"Error while creating profile: {new_profile.model_dump()}, already exists"

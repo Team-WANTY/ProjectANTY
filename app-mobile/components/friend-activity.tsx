@@ -1,43 +1,42 @@
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { AvatarBubble } from "@/components/avatar-bubble";
+import { formatRelativeTime } from "@/hooks/time";
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const wp = (pct: number) => screenWidth * (pct / 100);
 const hp = (pct: number) => screenHeight * (pct / 100);
 
-interface FriendActivityItemProps {
-    activity: {
-        id: string;
-        name: string;
-        message: string;
-        time: string;
-        img: any;
-        onEdit?: () => void;
-    };
-    theme: any;
-    isLiked: boolean;
-    onToggleLike: (id: string) => void;
-    onCommentPress?: (id: string) => void;
-    commentsCount?: number;
-    themeName: string;
-    commentCountColor?: string;
-    postTextColor?: string;
-}
-
-const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount, themeName, commentCountColor, postTextColor }) => {
-    const { id, name, message, time, img, onEdit } = activity;
+const FriendActivityItem = ({
+    activity,
+    theme,
+    isLiked,
+    onToggleLike,
+    onCommentPress,
+    commentsCount,
+}) => {
     const heartIconName = isLiked ? "heart" : "heart-outline";
     const heartIconColor = theme.background;
-    const textColor = theme.onPrimary;
-    const editIconColor = theme.background;
-    return (
-        <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}> 
-            <Image source={img} style={styles.friendAvatar} />
 
-            <View style={styles.friendTextContent}> 
-                <Text style={[styles.friendMessage, { color: textColor }]}> 
-                    <Text style={[styles.friendName, { color: theme.onPrimary }]}>{name}</Text>
+    const displayName = activity.name || "Unknown user";
+
+    return (
+        <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}>
+            {/* Avatar */}
+            <AvatarBubble
+                size={wp(12)}
+                avatarUrl={activity.avatarUrl}
+                name={activity.name}
+                bgColor={theme.primary}
+                initialColor={theme.background}
+                style={styles.friendAvatar}
+            />
+
+            <View className="friendTextContent" style={styles.friendTextContent}>
+                <Text style={[styles.friendMessage, { color: theme.background }]}>
+                    <Text style={styles.friendName}>{displayName}</Text>
                     {"\n"}
                     {message}
                 </Text>
@@ -48,7 +47,11 @@ const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme
                     onPress={() => onToggleLike(id)}
                     style={styles.actionButton}
                 >
-                    <Ionicons name={heartIconName} size={wp(5)} color={heartIconColor} />
+                    <Ionicons
+                        name={heartIconName}
+                        size={wp(5)}
+                        color={heartIconColor}
+                    />
                 </TouchableOpacity>
                 {onCommentPress && (
                     <TouchableOpacity
@@ -69,19 +72,41 @@ const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme
                   <TouchableOpacity
                     onPress={onEdit}
                     style={styles.actionButton}
-                  >
-                    <Ionicons name="create-outline" size={wp(5)} color={editIconColor} />
-                  </TouchableOpacity>
-                )}
-                <Text style={[styles.friendTime, { color: postTextColor ?? theme.onBackground }]}> 
-                <Text style={[styles.friendTime, { color: theme.onPrimary }]}>
-                    {activity.time}
+                >
+                    <Ionicons
+                        name="chatbubble-outline"
+                        size={wp(5)}
+                        color={heartIconColor}
+                    />
+                    {commentsCount > 0 && (
+                        <View
+                            style={[
+                                styles.commentBadge,
+                                { backgroundColor: theme.primary },
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.commentBadgeText,
+                                    { color: theme.background },
+                                ]}
+                            >
+                                {commentsCount}
+                            </Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+                <Text
+                    style={[styles.friendTime, { color: theme.background }]}
+                >
+                    {formatRelativeTime(activity.createdAt)}
                 </Text>
                 </Text>
             </View>
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     friendCard: {
@@ -139,4 +164,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default FriendActivityItem;
+export default React.memo(FriendActivityItem);

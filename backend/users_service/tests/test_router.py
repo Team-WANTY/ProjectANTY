@@ -30,8 +30,7 @@ class TestRouterMe:
 class TestRouterCreateUser:
     @pytest.mark.asyncio
     async def test_create_user_success(self, client, mock_service, sample_user_create):
-        mock_service.create_user.return_value = None
-
+        mock_service.create_user.return_value = "user123"
         response = client.post("/", json=sample_user_create.model_dump(mode="json"))
 
         assert response.status_code == 201

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Pressable,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -20,6 +21,8 @@ export type EditingTask = {
   category: string | null;
   repeatLabel: string;
   first_relevant_date: string; // MM/DD/YYYY
+  repeatEnabled: boolean;
+  untilDate: string;
 };
 
 export type Theme = {
@@ -52,6 +55,12 @@ type EditTaskModalProps = {
   loading: boolean;
   onSave: () => void;
   onRequestClose: () => void;
+
+  repeatEndMode: "Forever" | "Until";
+  setRepeatEndMode: React.Dispatch<React.SetStateAction<"Forever" | "Until">>;
+  repeatEndDate: string;
+  setRepeatEndDate: React.Dispatch<React.SetStateAction<string>>;
+  repeatEndError: string;
 };
 
 export const EditTaskModal: React.FC<EditTaskModalProps> = ({
@@ -67,23 +76,20 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   loading,
   onSave,
   onRequestClose,
+  repeatEndMode,
+  setRepeatEndMode,
+  repeatEndDate,
+  setRepeatEndDate,
+  repeatEndError,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const fadeIn = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   };
 
   const fadeOut = (cb?: () => void) => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => cb && cb());
+    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => cb && cb());
   };
 
   useEffect(() => {
@@ -116,12 +122,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
             },
           ]}
         >
-          <Pressable
-            accessible
-            accessibilityLabel="Close edit task"
-            onPress={handleClose}
-            style={styles.modalCloseButton}
-          >
+          <Pressable accessible accessibilityLabel="Close edit task" onPress={handleClose} style={styles.modalCloseButton}>
             <Text style={[styles.modalCloseText, { color: theme.primary }]}>✕</Text>
           </Pressable>
 
@@ -131,14 +132,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
           <View style={styles.inputContainer}>
             <Text style={[styles.inputLabel, { color: theme.background }]}>Task Name</Text>
             <TextInput
-              style={[
-                styles.input,
-                { color: theme.background, borderColor: theme.background },
-              ]}
+              style={[styles.input, { color: theme.background, borderColor: theme.background }]}
               value={editingTask.title}
-              onChangeText={(text) =>
-                setEditingTask((prev) => (prev ? { ...prev, title: text } : prev))
-              }
+              onChangeText={(text) => setEditingTask((prev) => (prev ? { ...prev, title: text } : prev))}
               placeholder="Enter task name"
               placeholderTextColor={theme.background + "80"}
             />
@@ -148,14 +144,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
           <View style={styles.inputContainer}>
             <Text style={[styles.inputLabel, { color: theme.background }]}>Description</Text>
             <TextInput
-              style={[
-                styles.input,
-                { color: theme.background, borderColor: theme.background },
-              ]}
+              style={[styles.input, { color: theme.background, borderColor: theme.background }]}
               value={editingTask.description}
-              onChangeText={(text) =>
-                setEditingTask((prev) => (prev ? { ...prev, description: text } : prev))
-              }
+              onChangeText={(text) => setEditingTask((prev) => (prev ? { ...prev, description: text } : prev))}
               placeholder="What’s this task about?"
               placeholderTextColor={theme.background + "80"}
               multiline
@@ -182,65 +173,122 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                     )
                   }
                 >
-                  <Text
-                    style={[
-                      styles.categoryOptionText,
-                      {
-                        color: editingTask.category === cat ? theme.onPrimary : theme.background,
-                      },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
+                  <Text style={[styles.categoryOptionText, {color: editingTask.category === cat ? theme.onPrimary : theme.background}]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
-          {/* Repeat */}
+          {/* Repeat Simple -> Advanced*/}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
-            <Pressable style={[styles.dropdown, { borderColor: theme.background }]} onPress={() => setIsRepeatOpen((prev) => !prev)}>
-              <Text style={[styles.dropdownText, { color: theme.background }]}>{editingTask.repeatLabel || "None"}</Text>
-              <Ionicons name="chevron-down" size={18} color={theme.background} />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={[styles.inputLabel, { color: theme.background }]}>Repeat</Text>
+              <Switch
+                value={editingTask.repeatEnabled}
+                onValueChange={(value) => {
+                  setEditingTask((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          repeatEnabled: value,
+                          repeatLabel: value ? prev.repeatLabel || "Daily" : "",
+                          untilDate: value ? prev.untilDate : "",
+                        }
+                      : prev
+                  );
+                  setIsRepeatOpen(false);
+                  if (!value) {
+                    setRepeatEndMode("Forever");
+                    setRepeatEndDate("");
+                  }
+                }}
+                trackColor={{ false: theme.cardBackground, true: theme.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+            {editingTask.repeatEnabled && (
+              <>
+                {/* Frequency */}
+                <Pressable
+                  style={[styles.dropdown, { borderColor: theme.background, marginTop: 8 }]}
+                  onPress={() => setIsRepeatOpen((prev) => !prev)}
+                >
+                  <Text style={[styles.dropdownText, { color: theme.background }]}>
+                    {editingTask.repeatLabel || "Daily"}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={theme.background} />
+                </Pressable>
 
-            {isRepeatOpen && (
-              <View style={[
-                styles.dropdownMenu,
-                {
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.background,
-                },
-              ]}>
-                {["None", "Daily", "Weekly", "Monthly", "Yearly"].map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      const value = opt === "None" ? "" : opt;
-                      setEditingTask((prev) => (prev ? { ...prev, repeatLabel: value } : prev));
-                      setIsRepeatOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                {isRepeatOpen && (
+                  <View style={[styles.dropdownMenu, { backgroundColor: theme.cardBackground, borderColor: theme.background }]}>
+                    {["Daily", "Weekly", "Monthly", "Yearly"].map((opt) => (
+                      <TouchableOpacity
+                        key={opt}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setEditingTask((prev) => (prev ? { ...prev, repeatLabel: opt } : prev));
+                          setIsRepeatOpen(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownItemText, { color: theme.secondaryText }]}>{opt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Duration (Forever / Until) */}
+                <View style={[styles.inputContainer, { marginTop: 10 }]}>
+                  <Text style={[styles.inputLabel, { color: theme.background }]}>Duration</Text>
+                  <View style={{ flexDirection: "row", marginBottom: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.categoryOption, repeatEndMode === "Forever" && { backgroundColor: theme.primary }]}
+                      onPress={() => {
+                        setRepeatEndMode("Forever");
+                        setRepeatEndDate("");
+                        setEditingTask((p) => (p ? { ...p, untilDate: "" } : p));
+                      }}
+                    >
+                      <Text style={[styles.categoryOptionText, { color: repeatEndMode === "Forever" ? "#fff" : theme.background }]}>Forever</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.categoryOption,{ marginLeft: 8 },repeatEndMode === "Until" && { backgroundColor: theme.primary }]}
+                      onPress={() => setRepeatEndMode("Until")}
+                    >
+                      <Text style={[styles.categoryOptionText,{ color: repeatEndMode === "Until" ? "#fff" : theme.background }]}>Until</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {repeatEndMode === "Until" && (
+                    <View style={{ marginTop: 10 }}>
+                      <Text style={[styles.inputLabel, { color: theme.background }]}>Until Date</Text>
+                      <TextInput
+                        style={[styles.input, {color: theme.background, borderColor: repeatEndError ? theme.error ?? "#ff4d4f" : theme.background}]}
+                        value={editingTask.untilDate}
+                        onChangeText={(text) => {
+                          setRepeatEndDate(text);
+                          setEditingTask((p) => (p ? { ...p, untilDate: text } : p));
+                        }}
+                        placeholder="MM/DD/YYYY"
+                        placeholderTextColor={theme.background + "80"}
+                      />
+                    </View>
+                  )}
+                    {!!repeatEndError && (
+                      <Text style={[styles.errorText, { color: theme.error ?? "#ff4d4f" }]}>{repeatEndError}</Text>
+                    )}
+                </View>
+              </>
             )}
           </View>
 
           {/* Due Date */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>Due Date (MM/DD/YYYY)</Text>
+            <Text style={[styles.inputLabel, { color: theme.background }]}>
+              {editingTask.repeatEnabled ? "Start Date" : "Due Date"}
+            </Text>
             <TextInput
-              style={[
-                styles.input,
-                {
-                  color: theme.background,
-                  borderColor: dateError ? theme.error : theme.background,
-                },
-              ]}
+              style={[styles.input, {color: theme.background, borderColor: dateError ? theme.error : theme.background}]}
               value={editingTask.first_relevant_date}
               onChangeText={(text) => {
                 setEditingTask((prev) => (prev ? { ...prev, first_relevant_date: text } : prev));

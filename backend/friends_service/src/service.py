@@ -19,7 +19,7 @@ class FriendsService:
             raise RecordAlreadyExistsError()
         except RecordNotFoundError:
             pass
-        await self.db.request_friendship(me.id, requestee_id)
+        return await self.db.request_friendship(me.id, requestee_id)
 
     async def get_by_id(self, friendship_id: str, getter: UserInDB):
         friendship = await self.db.get_by_id(friendship_id)

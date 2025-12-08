@@ -1,14 +1,16 @@
-name: Users Backend Pipelines
+name: Users Service Validation
 
 on:
   push:
     branches: ["main"]
+    paths: ["backend/users_service/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/users_service/**"]
 
 jobs:
   # Make sure code abides by the ruff format.
-  users-backend:
+  users-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
     environment: "ANTY Backend Environment"

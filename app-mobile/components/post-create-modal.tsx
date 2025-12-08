@@ -15,14 +15,22 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 export type Theme = {
-  background: string;
-  border: string;
-  primary: string;
-  text: string;
-  secondaryText: string;
-  cardBackground: string;
-  onPrimary: string;
-  onBackground: string;
+  text: string,
+  background: string,
+  primary: string,
+  secondary: string,
+  border: string,
+  inputBackground: string,
+  cardBackground: string,
+  secondaryText: string,
+  tint: string,
+  icon: string,
+  tabIconDefault: string,
+  tabIconSelected: string,
+  onPrimary: string,
+  error: string,
+  onError: string,
+  shadow: string,
 };
 
 type Props = {
@@ -48,6 +56,30 @@ export const PostCreateModal: React.FC<Props> = ({
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // --- Toggle Animation ---
+  const toggleProgress = useRef(
+    new Animated.Value(commentsEnabled ? 1 : 0)
+  ).current;
+
+  useEffect(() => {
+    Animated.timing(toggleProgress, {
+      toValue: commentsEnabled ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [commentsEnabled]);
+
+  // Slide distance computed dynamically
+  const TRACK_WIDTH = 48;
+  const CIRCLE_SIZE = 20;
+  const PADDING = 3;
+
+  const slideX = toggleProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, TRACK_WIDTH - CIRCLE_SIZE - PADDING * 2],
+  });
+
+  // --- Fade animation ---
   const fadeIn = () => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -65,16 +97,11 @@ export const PostCreateModal: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    if (visible) {
-      fadeIn();
-    } else {
-      fadeAnim.setValue(0);
-    }
-  }, [visible, fadeAnim]);
+    if (visible) fadeIn();
+    else fadeAnim.setValue(0);
+  }, [visible]);
 
-  const handleClose = () => {
-    fadeOut(onClose);
-  };
+  const handleClose = () => fadeOut(onClose);
 
   const canSubmit = text.trim().length > 0;
 
@@ -104,7 +131,7 @@ export const PostCreateModal: React.FC<Props> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: theme.cardBackground,
+              backgroundColor: theme.inputBackground,
               opacity: fadeAnim,
               transform: [
                 {
@@ -119,11 +146,11 @@ export const PostCreateModal: React.FC<Props> = ({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.onBackground }]}>
+            <Text style={[styles.title, { color: theme.text }]}>
               Create Post
             </Text>
             <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={theme.onBackground} />
+              <Ionicons name="close" size={24} color={theme.primary} />
             </TouchableOpacity>
           </View>
 
@@ -136,10 +163,7 @@ export const PostCreateModal: React.FC<Props> = ({
             <TextInput
               style={[
                 styles.input,
-                {
-                  borderColor: theme.border,
-                  color: theme.text,
-                },
+                { borderColor: theme.border, color: theme.text },
               ]}
               placeholder="What's on your mind?"
               placeholderTextColor={theme.secondaryText}
@@ -149,30 +173,33 @@ export const PostCreateModal: React.FC<Props> = ({
               textAlignVertical="top"
             />
 
+            {/* Toggle Row */}
             <View style={styles.toggleRow}>
               <Text style={[styles.toggleLabel, { color: theme.text }]}>
                 Allow comments
               </Text>
+
               <TouchableOpacity
                 style={[
                   styles.toggleSwitch,
                   {
-                    borderColor: theme.text,
+                    borderColor: theme.border,
                     backgroundColor: commentsEnabled
-                      ? theme.commentsToggleOn
-                      : theme.commentsToggleOff,
+                      ? theme.primary
+                      : "transparent",
                   },
                 ]}
                 onPress={onToggleComments}
+                activeOpacity={0.7}
               >
                 <Animated.View
                   style={[
                     styles.toggleCircle,
                     {
                       backgroundColor: commentsEnabled
-                        ? theme.commentsToggleOn
-                        : theme.commentsToggleOff,
-                      alignSelf: commentsEnabled ? "flex-end" : "flex-start",
+                        ? theme.onPrimary
+                        : theme.border,
+                      transform: [{ translateX: slideX }],
                     },
                   ]}
                 />
@@ -184,9 +211,7 @@ export const PostCreateModal: React.FC<Props> = ({
           <TouchableOpacity
             style={[
               styles.saveButton,
-              {
-                backgroundColor: canSubmit ? theme.primary : theme.border,
-              },
+              { backgroundColor: canSubmit ? theme.border : theme.secondary },
             ]}
             onPress={onSubmit}
             disabled={!canSubmit}
@@ -253,8 +278,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 3,
-    paddingVertical: 3,
+    padding: 3,
     flexDirection: "row",
     alignItems: "center",
   },

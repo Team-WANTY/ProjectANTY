@@ -1,14 +1,16 @@
-name: Redirect Backend Pipelines
+name: Shared Validation
 
 on:
   push:
     branches: ["main"]
+    paths: ["backend/shared/**"]
   pull_request:
     branches: ["main"]
+    paths: ["backend/shared/**"]
 
 jobs:
   # Make sure code abides by the ruff format.
-  redirect-backend:
+  shared-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
 
@@ -19,9 +21,9 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Redirect checks.
+      - name: Shared checks.
         run: |
-          cd backend/redirect_service
+          cd backend/shared
           uv sync --dev
           uv run ruff check
           uv run ty check

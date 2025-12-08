@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
     View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Animated as RNAnimated,
-    Dimensions, Modal, TextInput, Pressable, ActivityIndicator,
+    Dimensions, Modal, TextInput, Pressable, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +16,7 @@ import { profileApi } from "@/services/api/profiles-api";
 import { imagesApi } from "@/services/api/image-api";
 import { useFriendsStore, type DisplayFriend, type FriendUserInfo } from "@/services/stores/friends-store";
 import { useUserStore } from "@/services/stores/users-store";
+import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -106,7 +107,7 @@ const FriendItem: React.FC<FriendItemProps> = ({
     onViewProfile,
 }) => {
     const displayName = friend.user.username || "Unknown user";
-    const initial = displayName[0]?.toUpperCase() ?? "?";
+
 
     const handleUnfriendPress = () => { onUnfriend(friend.friendUserId) };
 
@@ -115,22 +116,14 @@ const FriendItem: React.FC<FriendItemProps> = ({
             style={[styles.friendCard, { backgroundColor: theme.cardBackground, shadowColor: theme.shadow }]}
         >
             <View style={styles.friendBanner}>
-                {friend.user.avatarUrl ? (
-                    <Image source={{ uri: friend.user.avatarUrl }} style={styles.friendImage} />
-                ) : (
-                    <View
-                        style={[
-                            styles.friendImage,
-                            {
-                                backgroundColor: theme.primary,
-                                justifyContent: "center",
-                                alignItems: "center",
-                            },
-                        ]}
-                    >
-                        <Text style={[styles.friendInitial, { color: theme.onPrimary }]}>{initial}</Text>
-                    </View>
-                )}
+                <AvatarBubble
+                    size={52}
+                    avatarUrl={friend.user.avatarUrl}
+                    name={displayName}
+                    bgColor={theme.primary}
+                    initialColor={theme.onPrimary}
+                    style={styles.friendImage}
+                />
 
                 <View style={styles.friendInfo}>
                     <TouchableOpacity
@@ -172,6 +165,7 @@ function FriendsScreen() {
     const [friendUsername, setFriendUsername] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Load friends in the background
     // friendsApi.listFriends returns friendship IDs
@@ -207,6 +201,14 @@ function FriendsScreen() {
         }, [loadFriends])
     );
 
+    const handleRefresh = React.useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await loadFriends();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [loadFriends]);
 
     const handleUnfriend = (friendUserId: string) => {
         // Find the friend to re-add to the store incase the API fail
@@ -394,6 +396,13 @@ function FriendsScreen() {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={theme.primary}
+                    />
+                }
             >
                 {friends.length === 0 ? (
                     <View style={styles.emptyState}>

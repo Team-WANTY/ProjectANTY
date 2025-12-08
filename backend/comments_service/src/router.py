@@ -20,14 +20,16 @@ from src.service import CommentsService
 comments_router = APIRouter()
 
 
-@comments_router.post("/", status_code=status.HTTP_201_CREATED, tags=["comments"])
+@comments_router.post(
+    "/", status_code=status.HTTP_201_CREATED, response_model=str, tags=["comments"]
+)
 async def create_comment(
     new_comment: CommentCreate,
     comments_service: CommentsService = Depends(get_comments_service),
     current_user: UserInDB = Depends(get_current_user),
 ):
     try:
-        await comments_service.create_comment(new_comment, current_user)
+        return await comments_service.create_comment(new_comment, current_user)
     except AuthError:
         logger.warning(
             f"Error creating comment: {new_comment.model_dump()}: authorization error"
