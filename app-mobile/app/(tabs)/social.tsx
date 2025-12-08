@@ -86,7 +86,10 @@ export default function SocialPage() {
     const [isEditPostModalVisible, setIsEditPostModalVisible] = useState(false);
     const [editPostId, setEditPostId] = useState<string | null>(null);
     const [editPostText, setEditPostText] = useState("");
-    const { theme, themeName } = useTheme();
+        const { theme, themeName } = useTheme();
+        // Use white for lilac, black for dark, otherwise theme color
+        const postTextColor = themeName === 'dark' ? '#000' : theme.text;
+        const commentCountColor = themeName === 'lilac' ? '#fff' : (themeName === 'dark' ? '#000' : theme.onBackground);
     const [data, setData] = useState<FeedItem[]>(initialData);
     const [likedItems, setLikedItems] = useState<string[]>([]);
     const [isAddPostModalVisible, setIsAddPostModalVisible] = useState(false);
@@ -206,6 +209,8 @@ export default function SocialPage() {
                             onToggleLike={handleToggleLike}
                             onCommentPress={() => openCommentsModal(item.id)}
                             commentsCount={item.comments.length}
+                            commentCountColor={commentCountColor}
+                            postTextColor={postTextColor}
                         />
                     </View>
                 )}
@@ -245,10 +250,10 @@ export default function SocialPage() {
                             <View style={styles.toggleContainer}> 
                                 <Text style={[styles.toggleLabel, { color: theme.primary }]}>Allow Comments</Text> 
                                 <TouchableOpacity 
-                                    style={[styles.toggleButton, { backgroundColor: commentsEnabled ? theme.primary : theme.border }]} 
+                                    style={[styles.toggleButton, { backgroundColor: commentsEnabled ? theme.commentsToggleBackgroundOn : theme.commentsToggleBackgroundOff }]} 
                                     onPress={() => setCommentsEnabled(!commentsEnabled)} 
                                 > 
-                                    <View style={[styles.toggleCircle, { backgroundColor: theme.background }, commentsEnabled && styles.toggleCircleActive]} /> 
+                                    <View style={[styles.toggleCircle, { backgroundColor: '#fff' }, commentsEnabled && styles.toggleCircleActive]} /> 
                                 </TouchableOpacity> 
                             </View> 
                         </ScrollView>

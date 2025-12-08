@@ -68,7 +68,7 @@ export default function ChangePassword() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.background}
+            color={theme.onBackground}
             onPress={() => router.back()}
             style={[
               styles.backButton,

@@ -24,14 +24,15 @@ type CircularProgressProps = {
     percent: number;
     theme: any;
     colorKey: string;
+    textColor?: string;
 };
-const CircularProgress = ({ percent, theme, colorKey }: CircularProgressProps) => {
+const CircularProgress = ({ percent, theme, colorKey, textColor }: CircularProgressProps) => {
     const size = 80;
     const strokeWidth = 8;
     const purple = '#6c63a2';
     const isLilac = theme.themeName === 'lilac';
-    const activeColor = isLilac ? purple : (theme[colorKey] || theme.background);
-    const percentColor = isLilac ? purple : activeColor;
+    const activeColor = isLilac ? purple : (theme[colorKey] || theme.onBackground);
+    const percentColor = textColor ?? (isLilac ? purple : theme.onBackground);
     return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
             <View style={[styles.circularProgressRing, { borderColor: theme.border }]} />
@@ -51,29 +52,39 @@ type DashboardCardProps = {
         colorKey: string;
     };
     theme: any;
+    textColor?: string;
 };
 const DashboardCard = ({ item, theme }: DashboardCardProps) => {
     // Determine text based on the card data
     const tasksText = `${item.tasksDone}/${item.tasksTotal} Tasks`;
     const progressText = item.tasksTotal === 100 ? `${item.label}` : 'Done';
     const purple = '#6c63a2';
-    const textColor = theme.themeName === 'lilac' ? purple : theme.background;
+    const isDark = theme.themeName === 'dark';
+    const computedTextColor = isDark ? '#000' : (theme.themeName === 'lilac' ? purple : theme.background);
     return (
         <View style={[styles.dashboardCard, { backgroundColor: theme.border }]}> 
             <View style={styles.dashboardText}> 
-                <Text style={[styles.dashboardProgressText, { color: textColor, fontSize: 16, fontWeight: 'bold' }]}>{item.label}</Text> 
-                <Text style={[styles.dashboardProgressText, { color: textColor, marginTop: 5 }]}>{tasksText}</Text> 
-                <Text style={[styles.dashboardProgressText, { color: textColor }]}>{progressText}</Text> 
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor, fontSize: 16, fontWeight: 'bold' }]}>{item.label}</Text> 
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor, marginTop: 5 }]}>{tasksText}</Text> 
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor }]}>{progressText}</Text> 
             </View> 
-            <CircularProgress percent={item.percent} theme={theme} colorKey={item.colorKey} /> 
+            <CircularProgress percent={item.percent} theme={theme} colorKey={item.colorKey} textColor={computedTextColor} /> 
         </View> 
     );
 };
 
 export default function Home() {
-    // TODO: Replace with real friend activity data from your backend or store
-    const friendActivities: any[] = [];
+    // MOCK DATA for theme testing
+    const friendActivities = [
+        { id: 1, name: "tinnguyen", message: "Has completed tasks 10 days in a row!", time: "2 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 2 },
+        { id: 2, name: "nickfan", message: "Has logged in 20 days in a row!", time: "just now", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+        { id: 3, name: "yunis", message: "Finished the group project!", time: "4 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+        { id: 4, name: "samantha_k", message: "Reached a new productivity score of 85!", time: "Yesterday", img: require("@/assets/images/default-avatar.png"), commentsCount: 3 },
+        { id: 5, name: "david_a", message: "Completed a focus session of 60 minutes!", time: "1 day ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+        { id: 6, name: "emily_c", message: "Set a new goal for fitness tracking.", time: "2 days ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+    ];
     const { theme, themeName } = useTheme();
+    const percentTextColor = themeName === 'dark' ? '#000' : theme.onBackground;
     const insets = useSafeAreaInsets();
     const containerBackgroundColor = theme.background;
     const router = useRouter();
@@ -116,6 +127,7 @@ export default function Home() {
                             colorKey: 'background',
                         }}
                         theme={theme}
+                        textColor={percentTextColor}
                     />
                 </View>
                 {/* Friend Activity Section Title */}
@@ -137,8 +149,6 @@ export default function Home() {
                                 themeName={themeName}
                                 isLiked={false}
                                 onToggleLike={() => { }}
-                                onCommentPress={() => { }}
-                                commentsCount={activity.commentsCount || 0}
                             />
                         ))
                     )}

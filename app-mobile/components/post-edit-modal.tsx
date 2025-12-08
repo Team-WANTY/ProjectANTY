@@ -22,6 +22,9 @@ export type Theme = {
   secondaryText: string;
   cardBackground: string;
   onPrimary: string;
+  modalBorder: string;
+  error: string;
+  buttonText: string;
 };
 
 type Props = {
@@ -91,7 +94,7 @@ export const PostEditModal: React.FC<Props> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: isBlueTheme ? lightBlue : theme.cardBackground,
+              backgroundColor: theme.border,
               opacity: fadeAnim,
               transform: [
                 {
@@ -105,9 +108,9 @@ export const PostEditModal: React.FC<Props> = ({
           ]}
         >
           <View style={styles.header}>
-            <Text style={[styles.title, { color: isBlueTheme ? theme.primary : theme.text }]}>Edit Post</Text>
+            <Text style={[styles.title, { color: theme.background }]}>Edit Post</Text>
             <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={theme.primary} />
+              <Ionicons name="close" size={24} color={theme.modalBorder} />
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -119,9 +122,9 @@ export const PostEditModal: React.FC<Props> = ({
               style={[
                 styles.input,
                 {
-                  borderColor: theme.border,
-                  backgroundColor: isBlueTheme ? '#1D3B53' : '#fff',
-                  color: themeName === 'dark' ? '#000' : (isBlueTheme ? '#fff' : theme.text),
+                  borderColor: theme.modalBorder,
+                  backgroundColor: theme.border,
+                  color: theme.background,
                 },
               ]}
               placeholder="Edit your post..."
@@ -142,10 +145,10 @@ export const PostEditModal: React.FC<Props> = ({
                 onPress={onSave}
                 disabled={!canSave}
               >
-                <Text style={[styles.saveButtonText, { color: theme.onPrimary || theme.background }]}>Save Changes</Text>
+                <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Save Changes</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.deleteButton, { backgroundColor: themeName === 'lilac' ? '#6c63a2' : '#ff4d4f' }]}
+                style={[styles.deleteButton, { backgroundColor: theme.error }]}
                 onPress={onDelete}
               >
                 <Ionicons name="trash" size={20} color="#fff" />

@@ -128,7 +128,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             onPress={handleClose}
             style={styles.modalCloseButton}
           >
-            <Text style={[styles.modalCloseText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.background }]}>✕</Text>
           </Pressable>
 
           <Text style={[styles.modalTitle, { color: theme.background }]}>
@@ -192,38 +192,35 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               style={styles.categoryScroll}
             >
               {categoriesList.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryOption,
-                    {
-                      backgroundColor:
-                        newTask.category === cat ? theme.primary : "transparent",
-                      borderColor: theme.background,
-                    },
-                  ]}
-                  onPress={() =>
-                    setNewTask((prev) =>
-                      prev
-                        ? { ...prev, category: prev.category === cat ? "" : cat }
-                        : prev
-                    )
-                  }
-                >
-                  <Text
+                  <TouchableOpacity
+                    key={cat}
                     style={[
-                      styles.categoryOptionText,
+                      styles.categoryOption,
                       {
-                        color:
-                          newTask.category === cat
-                            ? "#fff"
-                            : theme.background,
+                        backgroundColor:
+                          newTask.category === cat ? theme.text : theme.background,
+                        borderColor: theme.text,
                       },
                     ]}
+                    onPress={() =>
+                      setNewTask((prev) =>
+                        prev
+                          ? { ...prev, category: prev.category === cat ? "" : cat }
+                          : prev
+                      )
+                    }
                   >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.categoryOptionText,
+                        {
+                          color: newTask.category === cat ? theme.background : theme.text,
+                        },
+                      ]}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
               ))}
             </ScrollView>
           </View>

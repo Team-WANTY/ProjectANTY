@@ -273,16 +273,15 @@ export default function ProfileScreen() {
                             <Text style={styles.displayUsername}>{username}</Text> 
                             <View style={styles.socialStats}> 
                                 <TouchableOpacity onPress={() => router.push("../friends" as any)}> 
-                                    <Text style={[styles.socialText, { color: themeName === 'light' ? '#fff' : (isDark ? '#000' : theme.secondaryText) }]}> 
+                                    <Text style={[styles.socialText, { color: theme.modalBorder }]}> 
                                         {friendsCount} <Text style={styles.friendsLink}>Friends</Text> 
                                     </Text> 
                                 </TouchableOpacity> 
-                                <Text style={[styles.socialText, { color: themeName === 'light' ? '#fff' : (isDark ? '#000' : theme.secondaryText) }]}>{0} Likes</Text> 
                             </View> 
                         </View> 
 
                     <TouchableOpacity style={[styles.editProfileButton, { backgroundColor: themeName === 'lilac' ? '#fff' : (themeName === 'dark' ? '#000' : theme.text) }]} onPress={openEditModal}>
-                        <Text style={[styles.editProfileButtonText, { color: themeName === 'lilac' ? '#6c63a2' : (themeName === 'light' ? '#fff' : (themeName === 'dark' ? '#000000ff' : theme.secondaryText)) }]}>Edit Profile</Text>
+                        <Text style={[styles.editProfileButtonText, { color: theme.primary }]}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
 

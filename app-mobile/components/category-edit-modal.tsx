@@ -18,6 +18,7 @@ export type Theme = {
   primary: string;
   text: string;
   secondaryText: string;
+  buttonText: string;
 };
 
 type Props = {
@@ -93,7 +94,7 @@ export const CategoryEditModal: React.FC<Props> = ({
               style={[styles.saveButton, { backgroundColor: theme.primary, flex: 1 }]}
               onPress={onSubmit}
             >
-              <Text style={[styles.saveButtonText, { color: theme.onPrimary }]}>Save Changes</Text>
+              <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Save Changes</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

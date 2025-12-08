@@ -21,22 +21,23 @@ interface FriendActivityItemProps {
     onCommentPress?: (id: string) => void;
     commentsCount?: number;
     themeName: string;
+    commentCountColor?: string;
+    postTextColor?: string;
 }
 
-const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount, themeName }) => {
+const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme, isLiked, onToggleLike, onCommentPress, commentsCount, themeName, commentCountColor, postTextColor }) => {
     const { id, name, message, time, img, onEdit } = activity;
     const heartIconName = isLiked ? "heart" : "heart-outline";
     const heartIconColor = theme.background;
-    const purple = '#6c63a2';
-    const textColor = themeName === 'lilac' ? purple : theme.background;
-    const editIconColor = themeName === 'dark' ? '#000' : (themeName === 'light' || themeName === 'lilac') ? '#fff' : theme.primary;
+    const textColor = theme.onPrimary;
+    const editIconColor = theme.background;
     return (
         <View style={[styles.friendCard, { backgroundColor: theme.border, shadowColor: theme.shadow }]}> 
             <Image source={img} style={styles.friendAvatar} />
 
             <View style={styles.friendTextContent}> 
                 <Text style={[styles.friendMessage, { color: textColor }]}> 
-                    <Text style={styles.friendName}>{name}</Text>
+                    <Text style={[styles.friendName, { color: theme.onPrimary }]}>{name}</Text>
                     {"\n"}
                     {message}
                 </Text>
@@ -49,19 +50,21 @@ const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme
                 >
                     <Ionicons name={heartIconName} size={wp(5)} color={heartIconColor} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => onCommentPress(activity.id)}
-                    style={styles.actionButton}
-                >
-                    <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
-                    {commentsCount > 0 && (
-                        <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
-                            <Text style={[styles.commentBadgeText, { color: themeName === 'blue' ? '#fff' : theme.background }]}> 
-                                {commentsCount}
-                            </Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
+                {onCommentPress && (
+                    <TouchableOpacity
+                        onPress={() => onCommentPress(activity.id)}
+                        style={styles.actionButton}
+                    >
+                        <Ionicons name="chatbubble-outline" size={wp(5)} color={heartIconColor} />
+                        {(commentsCount ?? 0) > 0 && (
+                            <View style={[styles.commentBadge, { backgroundColor: theme.primary }]}> 
+                                <Text style={[styles.commentBadgeText, { color: commentCountColor ?? theme.onBackground }]}> 
+                                    {commentsCount ?? 0}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                )}
                 {onEdit && (
                   <TouchableOpacity
                     onPress={onEdit}
@@ -70,8 +73,10 @@ const FriendActivityItem: React.FC<FriendActivityItemProps> = ({ activity, theme
                     <Ionicons name="create-outline" size={wp(5)} color={editIconColor} />
                   </TouchableOpacity>
                 )}
-                <Text style={[styles.friendTime, { color: theme.background }]}> 
+                <Text style={[styles.friendTime, { color: postTextColor ?? theme.onBackground }]}> 
+                <Text style={[styles.friendTime, { color: theme.onPrimary }]}>
                     {activity.time}
+                </Text>
                 </Text>
             </View>
         </View>
@@ -85,7 +90,6 @@ const styles = StyleSheet.create({
         borderRadius: wp(2),
         padding: wp(3),
         marginVertical: hp(1),
-        shadowColor: "#000",
         shadowOpacity: 0.2,
         shadowRadius: 3,
         elevation: 2,

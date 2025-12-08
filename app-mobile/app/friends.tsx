@@ -386,7 +386,7 @@ function FriendsScreen() {
 
             {/* Friend Count */}
             <View style={styles.header}>
-                <Text style={[styles.friendCount, { color: theme.text }]}>
+                <Text style={[styles.friendCount, { color: theme.secondaryText }]}> 
                     {friendCount} {friendCount === 1 ? "Friend" : "Friends"}
                 </Text>
             </View>

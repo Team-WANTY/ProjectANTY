@@ -46,24 +46,21 @@ export const CategoryCreateModal: React.FC<Props> = ({
       onRequestClose={onClose}
       animationType="none"
     >
-      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim, backgroundColor: theme.background + 'CC' }]}> 
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
         <Animated.View
-          style={[
-            styles.modalContent,
-            {
-              backgroundColor: theme.border,
-              transform: [
-                {
-                  scale: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.95, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
+          style={[styles.modalContent, {
+            backgroundColor: theme.border,
+            transform: [
+              {
+                scale: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.95, 1],
+                }),
+              },
+            ],
+          }]}
         >
           <Pressable
             accessible
@@ -71,22 +68,19 @@ export const CategoryCreateModal: React.FC<Props> = ({
             onPress={onClose}
             style={styles.modalCloseButton}
           >
-            <Text style={[styles.modalCloseText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
+            <Text style={[styles.modalCloseText, { color: theme.background }]}>✕</Text>
           </Pressable>
 
-          <Text style={[styles.modalTitle, { color: theme.background }]}>
+          <Text style={[styles.modalTitle, { color: theme.background }]}> 
             New Category
           </Text>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.background }]}>
+            <Text style={[styles.inputLabel, { color: theme.background }]}> 
               Category Name
             </Text>
             <TextInput
-              style={[
-                styles.input,
-                { color: theme.background, borderColor: theme.background },
-              ]}
+              style={[styles.input, { color: theme.background, borderColor: theme.background }]}
               value={value}
               onChangeText={onChangeValue}
               placeholder="Enter category name"
@@ -95,10 +89,10 @@ export const CategoryCreateModal: React.FC<Props> = ({
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, theme.name === 'dark' ? { backgroundColor: '#000' } : { backgroundColor: theme.primary }]}
+            style={[styles.saveButton, { backgroundColor: theme.primary }]}
             onPress={onSubmit}
           >
-            <Text style={[styles.saveButtonText, theme.name === 'dark' ? { color: '#fff' } : { color: theme.onPrimary }]}>Add Category</Text>
+            <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Add Category</Text>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

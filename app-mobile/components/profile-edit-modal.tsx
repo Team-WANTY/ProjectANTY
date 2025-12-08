@@ -91,7 +91,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         >
           {/* Close button */}
           <Pressable style={styles.closeButton} onPress={handleClose}>
-            <Text style={[styles.closeText, { color: (theme.background === '#151718') ? '#000' : theme.primary }]}>✕</Text>
+            <Text style={[styles.closeText, { color: theme.background }]}>✕</Text>
           </Pressable>
 
           {/* Avatar */}
@@ -122,14 +122,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 ]}
                 onPress={onChangePhoto}
               >
-                <Ionicons name="pencil" size={20} color={theme.onPrimary} />
+                <Ionicons name="pencil" size={20} color={theme.buttonText} />
               </TouchableOpacity>
             </View>
           </View>
 
-          <Text style={[styles.title, { color: theme.background }]}>
-            Edit Profile
-          </Text>
+          <Text style={[styles.title, { color: theme.onPrimary }]}>Edit Profile</Text>
 
           {/* Username */}
           <View style={styles.inputBlock}>
@@ -189,7 +187,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               { backgroundColor: theme.primary, opacity: saving ? 0.6 : 1 },
             ]}
           >
-            <Text style={[styles.saveText, { color: theme.onPrimary }]}>
+            <Text style={[styles.saveText, { color: theme.buttonText }]}> 
               {saving ? "Saving..." : "Save Changes"}
             </Text>
           </TouchableOpacity>

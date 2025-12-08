@@ -220,7 +220,7 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
                                 ]}
                             >
                                 {task.completed && (
-                                    <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
+                                    <Ionicons name="checkmark-sharp" size={16} color={theme.buttonText} />
                                 )}
                             </View>
                         </TouchableOpacity>
@@ -234,11 +234,11 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
 // --- Category Tag Component ---
 const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) => {
     const tagStyle = {
-        backgroundColor: isActive ? theme.primary : theme.border,
-        borderColor: theme.primary,
+        backgroundColor: isActive ? theme.text : theme.background,
+        borderColor: theme.text,
     };
     const textStyle = {
-        color: isActive ? theme.text : theme.secondaryText,
+        color: isActive ? theme.background : theme.text,
     };
 
     return (
@@ -254,12 +254,19 @@ const CategoryTag = ({ category, theme, isActive, onPress, onLongPress }: any) =
 };
 
 export default function TasksScreen() {
-    // pull tasks from Zustand
-    const userId = useUserStore((s) => s.userId);
-    const tasks = useTasksStore((s) => s.tasks);
-    const insertTask = useTasksStore((s) => s.insertTask);
-    const updateTask = useTasksStore((s) => s.updateTask);
-    const removeTask = useTasksStore((s) => s.removeTask);
+        // pull tasks from Zustand
+        const userId = useUserStore((s) => s.userId);
+        // MOCK DATA FOR THEME TESTING
+        const mockTasks = [
+            { id: '1', name: 'Buy groceries', first_relevant_date: new Date(), repeat_rule: null, completed: false },
+            { id: '2', name: 'Finish homework', first_relevant_date: new Date(), repeat_rule: null, completed: true },
+            { id: '3', name: 'Call friend', first_relevant_date: new Date(), repeat_rule: null, completed: false },
+        ];
+        const tasks = mockTasks; // Replace with mock data for testing
+        // const tasks = useTasksStore((s) => s.tasks); // Restore for real data
+        const insertTask = useTasksStore((s) => s.insertTask);
+        const updateTask = useTasksStore((s) => s.updateTask);
+        const removeTask = useTasksStore((s) => s.removeTask);
 
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
@@ -322,10 +329,14 @@ export default function TasksScreen() {
             )
         ).sort();
 
-        // merge with any ad-hoc UI categories (e.g. just added, no tasks yet)
         setCategoriesList((prev) => {
             const merged = new Set([...prev, ...fromTasks]);
-            return Array.from(merged).sort();
+            const mergedArr = Array.from(merged).sort();
+            // Only update if changed
+            if (JSON.stringify(prev) !== JSON.stringify(mergedArr)) {
+                return mergedArr;
+            }
+            return prev;
         });
     }, [tasks]);
 
