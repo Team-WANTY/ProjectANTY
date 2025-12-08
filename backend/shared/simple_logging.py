@@ -25,7 +25,7 @@ COLORS = {
 
 class SimpleLogger:
     def __init__(self):
-        current = getattr(settings, "MINIMUM_LOGGING_LEVEL", "INFO")
+        current = settings.MINIMUM_LOGGING_LEVEL
         self.min_level = LEVELS.get(current.upper(), 20)
 
     def _should_log(self, level: str) -> bool:

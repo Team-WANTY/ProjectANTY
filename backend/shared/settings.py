@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     FRIENDS_SERVICE_URL: str
 
     INTERSERVICE_KEY: str
-    MINIMUM_LOGGING_LEVEL: str | None
+    MINIMUM_LOGGING_LEVEL: str = "INFO"
 
     COSMOSDB_ENDPOINT: str
     COSMOSDB_KEY: str
