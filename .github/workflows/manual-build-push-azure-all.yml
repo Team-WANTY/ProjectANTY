@@ -36,7 +36,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
 
@@ -55,7 +58,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
 
@@ -70,7 +76,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
           azPSVersion: "latest"
 
@@ -89,7 +98,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
           azPSVersion: "latest"
 
@@ -105,7 +117,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
 
@@ -124,7 +139,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
 
@@ -139,7 +157,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
           azPSVersion: "latest"
 
@@ -158,7 +179,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
           azPSVersion: "latest"
 
@@ -173,7 +197,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
           azPSVersion: "latest"
 
@@ -192,7 +219,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
           azPSVersion: "latest"
 
@@ -207,7 +237,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
           azPSVersion: "latest"
 
@@ -226,7 +259,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
           azPSVersion: "latest"
 
@@ -241,7 +277,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
           azPSVersion: "latest"
 
@@ -260,7 +299,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
           azPSVersion: "latest"
 
@@ -275,7 +317,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
 
@@ -294,7 +339,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
           
@@ -309,7 +357,10 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
           azPSVersion: "latest"
 
@@ -328,6 +379,9 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Credential ${{ secrets.CLIENT_SECRET }} -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
+            $securePassword = ConvertTo-SecureString ${{ secrets.CLIENT_SECRET }} -AsPlainText -Force
+            $cred = New-Object System.Management.Automation.PSCredential(${{ secrets.CLIENT_ID }}, $securePassword)
+
+            Connect-AzAccount -Credential $cred -Tenant ${{secrets.TENANT_ID}} -Subscription ${{ secrets.SUBSCRIPTION_ID }}
             Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
           azPSVersion: "latest"
