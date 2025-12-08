@@ -59,9 +59,7 @@ class TasksService:
             f"Starting task update on task with ID '{task_update.id}', starting with authorization"
         )
         await authorize_operation(updater, task.user_id)
-        updated_task = await self.task_db.update_task(task_update)
-        logger.debug(f"Returning updated task: {updated_task.model_dump()}")
-        return updated_task  # updates could be empty
+        await self.task_db.update_task(task_update)
 
     async def delete_task(self, task_id: str, deleter: UserInDB):
         task = await self.get_task_by_id(task_id, deleter)
