@@ -20,7 +20,7 @@ import { AvatarBubble } from "@/components/avatar-bubble";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-
+const meId = useUserStore.getState().userId;
 // Helpers for resolving user info from a user id
 async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo> {
     let username = "Unknown user";
@@ -56,7 +56,6 @@ async function enrichFriend(friendshipId: string): Promise<DisplayFriend | null>
     }
 
     const friendship: Friendship = friendshipRes.data;
-    const meId = useUserStore.getState().userId;
     if (!meId) {
         console.warn("[enrichFriendship] missing current user id");
         return null;
@@ -157,7 +156,7 @@ export default function FriendsScreen() {
     const setFriends = useFriendsStore((s) => s.setFriends);
     const removeFriend = useFriendsStore((s) => s.removeFriend);
     const addFriend = useFriendsStore((s) => s.addFriend);
-
+    
     const [loading, setLoading] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -166,6 +165,108 @@ export default function FriendsScreen() {
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    
+    // Typeahead States
+    const [searchResults, setSearchResults] = useState<FriendUserInfo[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<FriendUserInfo | null>(null);
+
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastQueryRef = useRef("");
+    const latestSearchIdRef = useRef(0);
+
+        const runUserSearch = async (query: string) => {
+        const trimmed = query.trim();
+        if (!trimmed || trimmed.length < 2) {
+            lastQueryRef.current = trimmed;
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        // Avoid repeating same query
+        if (trimmed === lastQueryRef.current) {
+            return;
+        }
+        lastQueryRef.current = trimmed;
+
+        const searchId = ++latestSearchIdRef.current;
+        setSearchLoading(true);
+
+        try {
+            const res = await usersApi.searchByUsernamePart(trimmed);
+            if (latestSearchIdRef.current !== searchId) {
+                // stale response, ignore
+                return;
+            }
+
+            if (!res.ok || !res.data) {
+                setSearchResults([]);
+                return;
+            }
+
+            const { ids } = res.data;
+            if (!ids || ids.length === 0) {
+                setSearchResults([]);
+                return;
+            }
+
+            // Hydrate each user id into FriendUserInfo (username + avatarUrl)
+            const hydrated = await Promise.all(
+                ids.map((id) => resolveUserInfoForUserId(id))
+            );
+
+            const friendIds = new Set(
+                friends.flatMap((f) => [f.friendUserId, f.user.id])
+            );
+
+            const filtered = hydrated.filter((u) => {
+                if (!u || !u.id) return false;
+                if (meId && u.id === meId) return false;          // don't show "you"
+                if (friendIds.has(u.id)) return false;            // already friends
+                return true;
+            });
+
+            setSearchResults(filtered);
+        } catch (err) {
+            console.log("[AddFriend search] error:", err);
+            if (latestSearchIdRef.current === searchId) {
+                setSearchResults([]);
+            }
+        } finally {
+            if (latestSearchIdRef.current === searchId) {
+                setSearchLoading(false);
+            }
+        }
+    };
+
+    const handleUsernameChange = (text: string) => {
+        setFriendUsername(text);
+        if (addFriendError) setAddFriendError(null);
+        setSelectedUser(null);
+
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        const trimmed = text.trim();
+        if (!trimmed || trimmed.length < 2) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        // Debounce search ~300ms
+        searchTimeoutRef.current = setTimeout(() => {
+            runUserSearch(trimmed);
+        }, 300);
+    };
+
+    const handleSelectSuggestion = (user: FriendUserInfo) => {
+        setSelectedUser(user);
+        setFriendUsername(user.username);
+        if (addFriendError) setAddFriendError(null);
+    };
 
     // Load friends in the background
     // friendsApi.listFriends returns friendship IDs
@@ -200,6 +301,14 @@ export default function FriendsScreen() {
             loadFriends(); // background refresh whenever the screen is focused
         }, [loadFriends])
     );
+
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleRefresh = React.useCallback(async () => {
         setRefreshing(true);
@@ -273,8 +382,18 @@ export default function FriendsScreen() {
         }).start(() => {
             setAddFriendModalVisible(false);
             setFriendUsername("");
+            setAddFriendError(null);
+            setSelectedUser(null);
+            setSearchResults([]);
+            setSearchLoading(false);
+            lastQueryRef.current = "";
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+                searchTimeoutRef.current = null;
+            }
         });
     };
+
 
     const handleAddFriend = async () => {
         if (isSending) return;
@@ -287,18 +406,30 @@ export default function FriendsScreen() {
         setAddFriendError(null);
 
         try {
-            // GET other_user_id by looking up username
-            const res = await usersApi.getByUsername(friendUsername.trim());
-            if (!res.ok || !res.data) {
-                console.log("[handleAddFriend] looking up username failed:", res.message);
-                setAddFriendError(res.message || "User not found");
-                return;
+            let friend_id: string | null = null;
+
+            // if user picked a suggestion, use that id directly
+            if (selectedUser && selectedUser.id) {
+                friend_id = selectedUser.id;
+            } else {
+                // Fallback: use existing lookup by username (first match)
+                const res = await usersApi.getByUsername(trimmed);
+                if (!res.ok || !res.data) {
+                    console.log("[handleAddFriend] looking up username failed:", res.message);
+                    setAddFriendError(res.message || "User not found");
+                    return;
+                }
+                friend_id = res.data as string;
             }
-            const friend_id = res.data;
 
             if (!friend_id || typeof friend_id !== "string") {
-                console.error("[handleAddFriend] Invalid friend_id from getByUsername:",friend_id);
+                console.error("[handleAddFriend] Invalid friend_id:", friend_id);
                 setAddFriendError("Could not resolve that user's ID. Please try again.");
+                return;
+            }
+
+            if (meId && friend_id === meId) {
+                setAddFriendError("You can't add yourself as a friend.");
                 return;
             }
 
@@ -306,36 +437,33 @@ export default function FriendsScreen() {
 
             const friendRes = await friendsApi.create(friend_id);
 
-
             if (!friendRes.ok) {
                 const status = friendRes.status;
                 if (status === 403) {
                     if (friendRes.message.includes("Pending friend request already exist")) {
                         setAddFriendError("Pending friend request already exist");
-                    }
-                    else {
+                    } else {
                         setAddFriendError("Cannot send friend request.");
                         console.log("Failed to send friend request: ", friendRes.message);
                     }
-                }
-                else if (status === 404) {
+                } else if (status === 404) {
                     setAddFriendError("User not found.");
-                }
-                else {
-                    setAddFriendError(friendRes.message || "Failed to send friend request.");
+                } else {
+                    setAddFriendError("Failed to send friend request. Please try again.");
                 }
                 return;
             }
+
             console.log("[handleAddFriend]: Request Sent Successfully");
             setAddFriendError(null);
             setFriendUsername("");
+            setSelectedUser(null);
+            setSearchResults([]);
             closeAddFriendModal();
-        }
-        catch (err) {
-            console.log("Error sending friend request");
+        } catch (err) {
+            console.log("Error sending friend request", err);
             setAddFriendError("Network error. Please try again.");
-        }
-        finally {
+        } finally {
             setIsSending(false);
         }
     };
@@ -471,10 +599,7 @@ export default function FriendsScreen() {
                                     },
                                 ]}
                                 value={friendUsername}
-                                onChangeText={(text) => {
-                                    setFriendUsername(text);
-                                    if (addFriendError) setAddFriendError(null); // clear error while typing
-                                }}
+                                onChangeText={handleUsernameChange}
                                 placeholder="Enter username"
                                 placeholderTextColor={theme.background + "80"}
                             />
@@ -483,6 +608,42 @@ export default function FriendsScreen() {
                                 <Text style={styles.errorText}>{addFriendError}</Text>
                             )}
                         </View>
+
+                        {/* Typeahead suggestions */}
+                        {friendUsername.trim().length >= 2 && (
+                            <View style={styles.suggestionList}>
+                                {searchLoading && searchResults.length === 0 ? (
+                                    <View style={styles.suggestionLoadingRow}>
+                                        <ActivityIndicator />
+                                        <Text style={[styles.suggestionLoadingText, { color: theme.secondaryText }]}>Searching users...</Text>
+                                    </View>
+                                ) : searchResults.length > 0 ? (
+                                    searchResults.map((u) => {
+                                        const isSelected = selectedUser?.id === u.id;
+                                        return (
+                                            <Pressable
+                                                key={u.id} 
+                                                style={[styles.suggestionItem, isSelected && {backgroundColor: theme.cardBackground}]}
+                                                onPress={() => handleSelectSuggestion(u)}
+                                            >
+                                                <AvatarBubble
+                                                    size={40}
+                                                    avatarUrl={u.avatarUrl}
+                                                    name={u.username}
+                                                    bgColor={theme.primary}
+                                                    initialColor={theme.onPrimary}
+                                                />
+                                                <View style={styles.suggestionTextContainer}>
+                                                    <Text style={[ styles.suggestionName, { color: theme.text }]}>{u.username}</Text>
+                                                </View>
+                                            </Pressable>
+                                        );
+                                    })
+                                ) : !searchLoading ? (
+                                    <Text style={[styles.suggestionEmptyText, { color: theme.secondaryText }]}>No users found.</Text>
+                                ) : null}
+                            </View>
+                        )}
 
                         {/* Add Button */}
                         <Pressable
@@ -666,6 +827,39 @@ const styles = StyleSheet.create({
         color: "red",
         marginTop: 4,
         fontSize: 14,
+    },
+    suggestionList: {
+        borderRadius: 8,
+        paddingVertical: 4,
+        marginBottom: 14,
+    },
+    suggestionItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        paddingHorizontal: 4,
+        borderRadius: 8,
+    },
+    suggestionTextContainer: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    suggestionName: {
+        fontSize: 18,
+        fontWeight: "600",
+    },
+    suggestionEmptyText: {
+        fontSize: 13,
+        marginTop: 4,
+    },
+    suggestionLoadingRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        columnGap: 8,
+        paddingVertical: 4,
+    },
+    suggestionLoadingText: {
+        fontSize: 13,
     },
 
 });
