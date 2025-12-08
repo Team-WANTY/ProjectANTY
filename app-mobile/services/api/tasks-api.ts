@@ -73,7 +73,7 @@ export type TaskUpdateBody = {
   desc?: string | null;
   cat?: string | null;
   first_relevant_date?: Date | string | null;
-  repeat_rule?: RepeatRule | null | "UNCHANGED";
+  repeat_rule?: RepeatRule | null;
 };
 
 export type NewTask = Omit<Task, "id"> & { id?: string | null };
@@ -103,7 +103,17 @@ export const tasksApi = {
             value: null,
           };
         }
-
+        
+        if (
+          rr.duration?.specifier === "until_date" &&
+          rr.duration.value != null
+        ) {
+          rr.duration = {
+            ...rr.duration,
+            value: toDateOnly(rr.duration.value as any),
+          };
+        }
+        
         payload.repeat_rule = rr;
       }
 

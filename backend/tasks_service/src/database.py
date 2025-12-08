@@ -74,7 +74,7 @@ class TaskDB:
             SELECT * FROM c
             WHERE c.user_id = @user_id
             AND c.first_relevant_date <= @reference_end
-            AND c.last_relevant_date >= @reference_start
+            AND (IS_NULL(c.last_relevant_date) OR c.last_relevant_date >= @reference_start)
         """
         parameters = [
             {"name": "@user_id", "value": user_id},
