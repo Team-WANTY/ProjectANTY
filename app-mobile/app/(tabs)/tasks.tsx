@@ -300,8 +300,8 @@ export default function TasksScreen() {
 
     // Sort Logic
     const sorted = [...filtered].sort((a, b) => {
-        const aCompleted = !!a.completed;
-        const bCompleted = !!b.completed;
+        const aCompleted = completedIdsForDay.includes(a.id);
+        const bCompleted = completedIdsForDay.includes(b.id);
 
         if (aCompleted !== bCompleted) {
             return aCompleted ? 1 : -1;
