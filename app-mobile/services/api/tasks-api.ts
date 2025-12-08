@@ -223,36 +223,43 @@ export const tasksApi = {
 
           if (value === null) {
             // Explicitly clear repeat_rule in backend
-            payload[key] = {
-              frequency: { specifier: null, value: null },
-              duration: { specifier: null, value: null },
+            payload[key] = null;
+            return;
+          } 
+
+          // If we got an actual rule, normalize it safely
+          const repeatRule: RepeatRule = { ...(value as RepeatRule) };
+
+          // If frequency is missing or "none", just don't send it
+          if (!repeatRule.frequency || repeatRule.frequency.specifier === "none") {
+            delete repeatRule.frequency;
+          }
+
+          // If duration is missing or "none", just don't send it
+          if (!repeatRule.duration || repeatRule.duration.specifier === "none") {
+            delete repeatRule.duration;
+          }
+
+          // If we do have an until_date, serialize its value to YYYY-MM-DD
+          if (
+            repeatRule.duration?.specifier === "until_date" &&
+            repeatRule.duration.value != null
+          ) {
+            repeatRule.duration = {
+              ...repeatRule.duration,
+              value: toDateOnly(repeatRule.duration.value as any),
             };
-          } else {
-            const repeatRule: RepeatRule = { ...(value as RepeatRule) };
+          }
 
-            // Strip "none" on frequency
-            if (repeatRule.frequency?.specifier === "none") {
-              repeatRule.frequency = { specifier: null, value: null };
-            }
-
-            // Strip "none" on duration
-            if (repeatRule.duration?.specifier === "none") {
-              repeatRule.duration = { specifier: null, value: null };
-            }
-
-            // Serialize UNTIL_DATE value as YYYY-MM-DD
-            if (
-              repeatRule.duration?.specifier === "until_date" &&
-              repeatRule.duration.value != null
-            ) {
-              repeatRule.duration = {
-                ...repeatRule.duration,
-                value: toDateOnly(repeatRule.duration.value as any),
-              };
-            }
-
+          // Only attach repeat_rule if there's something meaningful left
+          if (
+            repeatRule.frequency !== undefined ||
+            repeatRule.duration !== undefined
+          ) {
             payload[key] = repeatRule;
           }
+
+          return;
         } else if (key === "first_relevant_date") {
           // Always normalize first_relevant_date to date-only string
           if (value !== undefined) {
@@ -265,7 +272,8 @@ export const tasksApi = {
           }
         }
       });
-
+      
+      console.log("[TasksApi.update] PATCH /tasks payload =", payload);
       const res = await api.patch<Task>(paths.root, payload);
       return {
         ok: true,
