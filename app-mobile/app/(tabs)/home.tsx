@@ -3,36 +3,87 @@ import { View, Text, Image, ScrollView, StyleSheet, Dimensions } from "react-nat
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import Svg, { Circle } from "react-native-svg";
 
 import { HeaderBar } from "@/components/header-bar";
-import FriendActivityItem from "@/components/friend-activity";
+import { useTasksStore } from "@/services/stores/tasks-store";
+import { Ionicons } from "@expo/vector-icons";
+import { useFriendsStore } from "@/services/stores/friends-store";
+import { usePostsStore } from "@/services/stores/posts-store";
+import { useCreatorsStore } from "@/services/stores/creators-store";
 
 const { width } = Dimensions.get("window");
 
 
-import { useTasksStore } from "@/services/stores/tasks-store";
 
-// --- CircularProgress Component (Updated to accept dynamic color) ---
-type CircularProgressProps = {
-    percent: number;
-    theme: any;
-    colorKey: string;
+
+
+// Local Date -> "YYYY-MM-DD" 
+const toDateKey = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  return `${y}-${pad(m)}-${pad(day)}`;
 };
+
+// --- CircularProgress Component (real progress ring) ---
+type CircularProgressProps = {
+    percent: number;      // 0–100
+    theme: any;
+    colorKey: string;     // e.g. "background"
+};
+
 const CircularProgress = ({ percent, theme, colorKey }: CircularProgressProps) => {
     const size = 80;
     const strokeWidth = 8;
-    // Use the theme property for the circle color (e.g., theme.background, theme.primary, etc.)
-    const activeColor = theme[colorKey] || theme.background;
+    const radius = size / 2;
+    const r = radius - strokeWidth / 2;
 
-    // The inner ring and text will use the active color
+    const activeColor = theme[colorKey] || theme.background;
+    const trackColor = theme.border;
+
+    // Clamp percent between 0 and 100
+    const clamped = Math.max(0, Math.min(100, percent));
+    const progress = clamped / 100;
+
+    const circumference = 2 * Math.PI * r;
+    const strokeDashoffset = circumference * (1 - progress);
+
     return (
-        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-            <View style={[styles.circularProgressRing, { borderColor: theme.border }]} />
-            <View style={[styles.circularProgressRingInner, { borderColor: activeColor, transform: [{ rotateZ: '-90deg' }] }]} />
-            <Text style={[styles.progressText, { color: activeColor }]}>{percent}%</Text>
+        <View style={{ width: size, height: size, justifyContent: "center", alignItems: "center" }}>
+            <Svg width={size} height={size}>
+                {/* Background ring */}
+                <Circle
+                    cx={radius}
+                    cy={radius}
+                    r={r}
+                    stroke={trackColor}
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                />
+                {/* Progress ring */}
+                <Circle
+                    cx={radius}
+                    cy={radius}
+                    r={r}
+                    stroke={activeColor}
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                    strokeDasharray={`${circumference} ${circumference}`}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    // Start at top (12 o’clock)
+                    transform={`rotate(-90 ${radius} ${radius})`}
+                />
+            </Svg>
+            <Text style={[styles.progressText, { color: activeColor }]}>
+                {Math.round(clamped)}%
+            </Text>
         </View>
     );
 };
+
 
 // --- Dashboard Card Component (New component for carousel item) ---
 type DashboardCardProps = {
@@ -70,21 +121,79 @@ export default function Home() {
     const containerBackgroundColor = theme.background;
     const router = useRouter();
     const tasks = useTasksStore((s) => s.tasks);
+    const occurrencesByDate = useTasksStore((s) => s.occurrencesByDate);
+    const completedByDate = useTasksStore((s) => s.completedByDate);
 
-    // Calculate today's completion rate
+    const friends = useFriendsStore((s) => s.friends);
+    const posts = usePostsStore((s) => s.posts);
+    const creatorsById = useCreatorsStore((s) => s.byId);
+
+    // Calculate today's completion rate based on occurrences (same logic as Tasks page)
     const today = new Date();
-    const todayTasks = tasks.filter((t) => {
-        if (!t.due_date) return false;
-        const d = new Date(t.due_date * 1000);
-        return (
-            d.getFullYear() === today.getFullYear() &&
-            d.getMonth() === today.getMonth() &&
-            d.getDate() === today.getDate()
-        );
-    });
-    const completedCount = todayTasks.filter((t) => t.completed).length;
-    const totalCount = todayTasks.length;
+    const todayKey = toDateKey(today);
+
+    const idsForToday = occurrencesByDate[todayKey] ?? [];
+    const completedIdsForToday = new Set(completedByDate[todayKey] ?? []);
+
+    const completedCount = idsForToday.filter((id) => completedIdsForToday.has(id)).length;
+    const totalCount = idsForToday.length;
     const percent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+
+    // Find the 5 most recent posts from friends
+    const friendIds = React.useMemo(
+        () => friends.map((f) => f.friendUserId),
+        [friends]
+    );
+
+    const recentFriendPosts = React.useMemo(() => {
+        if (!friendIds.length) return [];
+
+        const friendSet = new Set(friendIds);
+
+        return posts
+            .filter((p) => friendSet.has(p.creator_id))
+            .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+            .slice(0, 5)
+            .map((p) => {
+                const creator = creatorsById[p.creator_id];
+                const username = creator?.username ?? "Friend";
+                const avatarUrl = creator?.avatarUrl ?? null;
+
+                return {
+                    id: p.id,
+                    username,
+                    avatarUrl,
+                    text: p.text,
+                };
+            });
+    }, [posts, friendIds, creatorsById]);
+
+    // Build quick lookup map: taskId -> task
+    const taskById = React.useMemo(() => {
+        const map = new Map<string, (typeof tasks)[number]>();
+        for (const t of tasks) map.set(t.id, t);
+        return map;
+    }, [tasks]);
+
+    // Look up 5 tasks 
+    const todayTasksForActivity = React.useMemo(() => {
+        const ids = idsForToday;
+        const completedSet = completedIdsForToday;
+
+        return ids
+            .map((id) => {
+            const t = taskById.get(id);
+            if (!t) return null;
+            return {
+                id: t.id,
+                name: t.name,
+                completed: completedSet.has(t.id),
+            };
+        })  
+        .filter((x): x is { id: string; name: string; completed: boolean } => !!x)
+        .slice(0, 5);
+    }, [idsForToday, completedIdsForToday, taskById]);
+
 
     return (
         <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
@@ -114,29 +223,66 @@ export default function Home() {
                     />
                 </View>
                 {/* Friend Activity Section Title */}
-                <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Friend Activity</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Activity</Text>
                 {/* Friend Activity Feed or Empty State */}
                 <View style={styles.friendActivityList}>
-                    {friendActivities.length === 0 ? (
-                        <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
-                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
-                                There are no friends activity. Add friends to see what they've been up to!
-                            </Text>
+                    {recentFriendPosts.length === 0 && todayTasksForActivity.length === 0 ? (
+                        <View style={{alignItems: "center", justifyContent: "center", width: "100%", paddingVertical: 20}}>
+                            <Text style={{color: theme.text, fontSize: 12, opacity: 0.6, textAlign: "center", fontWeight: "400"}}>No activity yet. Add friends and complete tasks to see activity here! </Text>
                         </View>
                     ) : (
-                        friendActivities.map((activity: any) => (
-                            <FriendActivityItem
-                                key={activity.id}
-                                activity={activity}
-                                theme={theme}
-                                isLiked={false}
-                                onToggleLike={() => { }}
-                                onCommentPress={() => { }}
-                                commentsCount={activity.commentsCount || 0}
-                            />
-                        ))
+                        <>
+                            {/* Friend posts (up to 5) */}
+                            {recentFriendPosts.map((p) => (
+                                <View key={`post-${p.id}`} style={[styles.activityCard, { backgroundColor: theme.border }]}>
+                                    <View style={styles.activityAvatarCircle}>
+                                    {p.avatarUrl ? (
+                                        <Image source={{ uri: p.avatarUrl }} style={styles.activityAvatarImage} />
+                                    ) : (
+                                        <Text style={styles.activityAvatarInitials}>
+                                        {p.username.charAt(0).toUpperCase()}
+                                        </Text>
+                                    )}
+                                    </View>
+
+                                    <View style={styles.activityText}>
+                                    <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
+                                        {p.username} Posted
+                                    </Text>
+                                    <Text style={[styles.activitySubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
+                                        {p.text}
+                                    </Text>
+                                    </View>
+                                </View>
+                            ))}
+
+
+                            {/* Today's tasks (up to 5) */}
+                            {todayTasksForActivity.map((t) => (
+                                <View key={`task-${t.id}`} style={[styles.activityCard, { backgroundColor: theme.border }]}>
+                                    <View style={{ marginRight: 10 }}>
+                                        <Ionicons
+                                            name={t.completed ? "checkmark-circle" : "ellipse-outline"}
+                                            size={22}
+                                            color={t.completed ? theme.primary : theme.secondaryText}
+                                        />
+                                    </View>
+
+                                    <View style={styles.activityText}>
+                                    <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
+                                        {t.name}
+                                    </Text>
+                                    <Text style={[styles.activitySubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
+                                        {t.completed ? "Completed today" : "Pending today"}
+                                    </Text>
+                                    </View>
+                                </View>
+                            ))}
+
+                        </>
                     )}
                 </View>
+
             </ScrollView>
         </View>
     );
@@ -271,4 +417,55 @@ const styles = StyleSheet.create({
         fontWeight: '300',
         alignSelf: 'flex-end',
     },
+    activityRow: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    activityAvatarCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 10,
+        backgroundColor: "#555",
+        overflow: "hidden",
+    },
+    activityAvatarImage: {
+        width: "100%",
+        height: "100%",
+    },
+    activityAvatarInitials: {
+        color: "#fff",
+        fontWeight: "600",
+        fontSize: 14,
+    },
+    activityIconBubble: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 10,
+    },
+    activityText: {
+        flex: 1,
+    },
+    activityTitle: {
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    activitySubtitle: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    activityCard: {
+        width: "100%",
+        borderRadius: 15,
+        padding: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 12,
+    },
+
 });
