@@ -11,23 +11,9 @@ jobs:
       id-token: write
       contents: read
 
-    strategy:
-      matrix:
-        service: [
-          "auth-service",
-          "comments-service",
-          "friends-service",
-          "image-service",
-          "posts-service",
-          "profiles-service",
-          "redirect-service",
-          "tasks-service",
-          "users-service"
-        ]
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Azure Login via OIDC
         uses: azure/login@v2
@@ -39,34 +25,237 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
 
-      - name: Scale Down Service to Zero Replicas
+      - name: Build and Push Auth Service
+        run: |
+          docker build -f backend/auth_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/auth-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/auth-service:latest
+
+      - name: Scale down running app
         run: |
           az containerapp scale \
-            --name ${{ matrix.service }} \
+            --name auth-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 0 --max-replicas 0
+            --min-replicas 0 \
+            --max-replicas 0
 
-      - name: Build and Push ${{ matrix.service }} Service
-        run: |
-          docker build -f backend/${{ matrix.service }}/Dockerfile \
-            -t ${{ vars.ACR_URL }}/${{ matrix.service }}:latest \
-            backend
-          docker push ${{ vars.ACR_URL }}/${{ matrix.service }}:latest
-
-      - name: Deploy ${{ matrix.service }} Container App
+      - name: Deploy Auth Service Container App
         run: |
           az containerapp update \
-            --name ${{ matrix.service }} \
+            --name auth-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --image ${{ vars.ACR_URL }}/${{ matrix.service }}:latest \
+            --image ${{ vars.ACR_URL }}/auth-service:latest \
             --cpu 0.25 \
             --memory 0.5Gi \
             --min-replicas 1 \
             --max-replicas 3
 
-      - name: Scale Up ${{ matrix.service }} to 1 Replica
+      - name: Build and Push Comments Service
+        run: |
+          docker build -f backend/comments_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/comments-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/comments-service:latest
+
+      - name: Scale down running app
         run: |
           az containerapp scale \
-            --name ${{ matrix.service }} \
+            --name comments-service \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --min-replicas 1 --max-replicas 3
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Comments Service Container App
+        run: |
+          az containerapp update \
+            --name comments-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/comments-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Friends Service
+        run: |
+          run: |
+          docker build -f backend/friends_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/friends-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/friends-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name friends-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Friends Service Container App
+        run: |
+          az containerapp update \
+            --name friends-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/friends-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Image Service
+        run: |
+          docker build -f backend/image_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/image-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/image-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name image-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Image Service Container App
+        run: |
+          az containerapp update \
+            --name image-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/image-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Posts Service
+        run: |
+          docker build -f backend/posts_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/posts-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/posts-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name posts-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Posts Service Container App
+        run: |
+          az containerapp update \
+            --name posts-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/posts-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Profiles Service
+        run: |
+          docker build -f backend/profiles_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/profiles-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/profiles-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name profiles-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Profiles Service Container App
+        run: |
+          az containerapp update \
+            --name profiles-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/profiles-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Redirect Service
+        run: |
+          docker build -f backend/redirect_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/redirect-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/redirect-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name redirect-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Redirect Service Container App
+        run: |
+          az containerapp update \
+            --name redirect-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/redirect-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+
+      - name: Build and Push Tasks Service
+        run: |
+          docker build -f backend/tasks_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/tasks-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/tasks-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name tasks-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Tasks Service Container App
+        run: |
+          az containerapp update \
+            --name tasks-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/tasks-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+          
+      - name: Build and Push Users Service
+        run: |
+          docker build -f backend/users_service/Dockerfile \
+            -t ${{ vars.ACR_URL }}/users-service:latest \
+            backend
+          docker push ${{ vars.ACR_URL }}/users-service:latest
+
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name users-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
+      - name: Deploy Users Service Container App
+        run: |
+          az containerapp update \
+            --name users-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_URL }}/users-service:latest \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
