@@ -27,6 +27,8 @@ type TasksState = {
   updateTask: (id: string, changes: TaskUpdate) => void;
 
   removeTask: (id: string) => void;
+  
+  toggleOccurrenceCompletion: (dateKey: string, taskId: string) => void;
 
   clear: () => void;
 }
