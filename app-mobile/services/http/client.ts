@@ -2,10 +2,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-const BASE_URL =
-	Platform.OS === "android"
-		? "http://10.0.2.2:80"   // Android emulator
-		: "http://localhost:8000"; // iOS simulator
+const BASE_URL = "https://projectanty-backend-api.azure-api.net";
 
 export const api = axios.create({
 	baseURL: BASE_URL,
@@ -30,7 +27,37 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+api.interceptors.request.use(
+  (config) => {
+    console.log(
+      "[HTTP] →",
+      config.method?.toUpperCase(),
+      config.baseURL,
+      config.url
+    );
+    return config;
+  },
+  (error) => {
+    console.log("[HTTP] request error:", error);
+    return Promise.reject(error);
+  }
+);
 
+// Log responses
+api.interceptors.response.use(
+  (response) => {
+    console.log("[HTTP] ←", response.status, response.config.url);
+    return response;
+  },
+  (error) => {
+    console.log(
+      "[HTTP] response error:",
+      error?.response?.status,
+      error?.response?.data ?? error.message
+    );
+    return Promise.reject(error);
+  }
+);
 // Response interceptor
 let isRefreshing = false;
 type QueueItem = { resolve: (v: any) => void; reject: (e: any) => void; originalRequest: any };
