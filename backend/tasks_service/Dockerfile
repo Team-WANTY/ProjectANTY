@@ -17,10 +17,4 @@ WORKDIR /app/tasks_service
 
 RUN uv sync && uv lock
 
-# EXPOSE 8000
-
-RUN groupadd -r anty && useradd -r -m -g anty anty
-
-USER anty
-
 CMD ["uv", "run", "fastapi", "run", "src/main.py", "--host", "0.0.0.0","--port", "8000"]

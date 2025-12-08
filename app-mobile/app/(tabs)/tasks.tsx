@@ -349,7 +349,7 @@ export default function TasksScreen() {
     const [isEditCategoryModalVisible, setIsEditCategoryModalVisible] = useState(false);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-    
+
     const [isEditTaskModalVisible, setIsEditTaskModalVisible] = useState(false);
     const [editingTask, setEditingTask] = useState<EditingTask  | null>(null);
 
@@ -422,7 +422,7 @@ export default function TasksScreen() {
         }).start(onComplete);
     };
 
-    
+
 
     // CATEGORY AND TASKS CATEGORY HELPERS
 
@@ -503,7 +503,7 @@ export default function TasksScreen() {
         setNewCategoryName("");
         fadeOutNewCategory(() => setIsNewCategoryModalVisible(false));
     };
-   
+
     const handleDeleteCategory = () => {
         if (!selectedCategoryForMenu) return;
         const toDelete = selectedCategoryForMenu;
@@ -547,7 +547,7 @@ export default function TasksScreen() {
         fadeOutEditCategory(() => setIsEditCategoryModalVisible(false));
     };
 
-    
+
     // TASKS handlers
 
     const handleEditTask = (id: string) => {
@@ -917,7 +917,7 @@ export default function TasksScreen() {
                             category={cat}
                             theme={theme}
                             isActive={cat === selectedCategory}
-                            onPress={() =>setSelectedCategory(cat === selectedCategory ? null : cat)}
+                            onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
                             onLongPress={(event: any) => handleCategoryLongPress(cat, event)}
                         />
                     ))}
@@ -944,7 +944,7 @@ export default function TasksScreen() {
                 <View style={styles.taskListContainer}>
                     {sorted.length === 0 ? (
                         <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: 20 }}>
-                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
+                            <Text style={{ color: theme.secondaryText, fontSize: 12, opacity: 0.6, textAlign: 'center', fontWeight: '400' }}>
                                 You currently have no tasks.
                             </Text>
                         </View>
@@ -973,7 +973,7 @@ export default function TasksScreen() {
                 onClose={() => fadeOutNewCategory(() => setIsNewCategoryModalVisible(false))}
                 onSubmit={handleSaveNewCategory}
             />
-            
+
             <CategoryEditModal
                 visible={isEditCategoryModalVisible}
                 fadeAnim={fadeAnimEditCategory}
