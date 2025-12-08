@@ -36,6 +36,14 @@ jobs:
             backend
           docker push ${{ vars.ACR_URL }}/profiles-service:latest
 
+      - name: Scale down running app
+        run: |
+          az containerapp scale \
+            --name profiles-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --min-replicas 0 \
+            --max-replicas 0
+
       - name: Deploy to Azure Container App
         run: |
           az containerapp update \
@@ -44,5 +52,13 @@ jobs:
             --image ${{ vars.ACR_URL }}/profiles-service:latest \
             --cpu 0.25 \
             --memory 0.5Gi \
+            --min-replicas 1 \
+            --max-replicas 3
+      
+      - name: Scale back up  
+        run: |
+          az containerapp scale \
+            --name profiles-service \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --min-replicas 1 \
             --max-replicas 3
