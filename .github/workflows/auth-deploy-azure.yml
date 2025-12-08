@@ -42,7 +42,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
 
       - name: Deploy to Auth Container App
@@ -60,5 +60,5 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"

@@ -36,7 +36,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
 
       - name: Deploy to Auth Container App
@@ -54,7 +54,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
 
       - name: Build and Push Comments Service
@@ -68,7 +68,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
           azPSVersion: "latest"
 
       - name: Deploy to Comments Container App
@@ -86,7 +86,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
           azPSVersion: "latest"
 
       - name: Build and Push Friends Service
@@ -101,7 +101,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
 
       - name: Deploy to Friends Container App
@@ -119,7 +119,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
 
       - name: Build and Push Image Service
@@ -133,7 +133,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
           azPSVersion: "latest"
 
       - name: Deploy to Image Container App
@@ -151,7 +151,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
           azPSVersion: "latest"
 
       - name: Build and Push Posts Service
@@ -165,7 +165,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
           azPSVersion: "latest"
 
       - name: Deploy to Posts Container App
@@ -183,7 +183,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
           azPSVersion: "latest"
 
       - name: Build and Push Profiles Service
@@ -197,7 +197,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
           azPSVersion: "latest"
 
       - name: Deploy to Profiles Container App
@@ -215,7 +215,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
           azPSVersion: "latest"
 
       - name: Build and Push Redirect Service
@@ -229,7 +229,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
           azPSVersion: "latest"
 
       - name: Deploy to Redirect Container App
@@ -247,7 +247,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
           azPSVersion: "latest"
 
       - name: Build and Push Tasks Service
@@ -261,7 +261,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
 
       - name: Deploy to Tasks Container App
@@ -279,7 +279,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
           
       - name: Build and Push Users Service
@@ -293,7 +293,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
           azPSVersion: "latest"
 
       - name: Deploy to Users Container App
@@ -311,5 +311,5 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
           azPSVersion: "latest"

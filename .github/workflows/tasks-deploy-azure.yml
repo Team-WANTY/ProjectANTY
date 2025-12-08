@@ -43,7 +43,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
 
       - name: Deploy to Tasks Container App
@@ -61,5 +61,5 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"

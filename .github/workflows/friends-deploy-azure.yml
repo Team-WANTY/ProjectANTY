@@ -44,7 +44,7 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+            Stop-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
 
       - name: Deploy to Friends Container App
@@ -62,5 +62,5 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+            Start-AzContainerApp -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }} -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
