@@ -79,10 +79,10 @@ export async function loadTasks(userId?: string){
   // Build date range: yesterday -> tmr
   const today = new Date();
   const startDate = new Date(today);
-  startDate.setDate(today.getDate() - 1);
+  startDate.setDate(today.getDate() - 10);
 
   const endDate = new Date(today);
-  endDate.setDate(today.getDate() + 1);
+  endDate.setDate(today.getDate() + 10);
 
   const result = await tasksApi.getByUserID(id, startDate, endDate);
   if (!result.ok) {

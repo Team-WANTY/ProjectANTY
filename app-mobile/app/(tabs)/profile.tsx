@@ -321,26 +321,26 @@ export default function ProfileScreen() {
                     >
                         <View style={styles.analyticItem}>
                             <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
-                                {analyticsData.tasksCompleted}
+                                
                             </Text>
                             <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
-                                Tasks completed
+                                
                             </Text>
                         </View>
                         <View style={styles.analyticItem}>
                             <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
-                                {analyticsData.longestStreak}
+                                
                             </Text>
                             <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
-                                Longest task streak
+                                
                             </Text>
                         </View>
                         <View style={styles.analyticItem}>
                             <Text style={[styles.analyticValue, { color: textDarkOnLight }]}>
-                                {analyticsData.badgesEarned}
+                                
                             </Text>
                             <Text style={[styles.analyticLabel, { color: textDarkOnLight }]}>
-                                Badges earned
+                                
                             </Text>
                         </View>
                     </View>
@@ -349,20 +349,6 @@ export default function ProfileScreen() {
                 {/* Badges Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: textLightOnDark }]}>Badges</Text>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.badgesContainer}
-                    >
-                        {badges.map((badge) => (
-                            <View key={badge.id} style={styles.badgeItem}>
-                                <Image source={{ uri: badge.image }} style={styles.badgeImage} />
-                                <Text style={[styles.badgeText, { color: textDarkOnLight }]}>
-                                    {badge.name}
-                                </Text>
-                            </View>
-                        ))}
-                    </ScrollView>
                 </View>
             </ScrollView>
 
