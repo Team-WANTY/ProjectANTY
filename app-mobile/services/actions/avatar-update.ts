@@ -9,7 +9,7 @@ import { Alert } from "react-native";
 
 type AvatarSource = "camera" | "library";
 
-const AVATAR_CONTAINER_NAME = "images"; 
+const AVATAR_CONTAINER_NAME = "avatars"; 
 
 export async function changeAvatar(
   userId: string,

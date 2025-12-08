@@ -22,6 +22,11 @@ function fillUsername(tpl: string, username: string) {
 // Keep the returned user type generic
 export type SimpleUser = { id: string; username: string; email: string };
 
+export type SearchUsersResult = {
+    ids: string[];
+    continuationToken: string | null;
+};
+
 export const usersApi = {
   // /me
   async me(): Promise<ApiResult<SimpleUser>> {
@@ -60,7 +65,8 @@ export const usersApi = {
       return { ok: false, status, message: msg, detail: data };
     }
   },
-  // GET /users/username/{username} implemented by assuming client will always do exact match username
+
+  // GET /users/username/{username}
   async getByUsername(username: string): Promise<ApiResult<string>> {
     try {
       const searchUrl = `/users/search/${encodeURIComponent(username)}`;
@@ -108,6 +114,37 @@ export const usersApi = {
       const data = error?.response?.data;
       const msg = status === 404 ? "User not found" : toMessage(data, "Failed to load user");
       return {ok: false, status, message: msg, detail:data };
+    }
+  },
+
+  async searchByUsernamePart(partial: string): Promise<ApiResult<SearchUsersResult>> {
+    try {
+      const searchUrl = `/users/search/${encodeURIComponent(partial)}`;
+      const res = await api.get<[string[], string | null]>(searchUrl, {
+        params: {
+          max_items: 10,            
+          continuation_token: "",   // first page only for now
+        },
+      });
+
+      const raw = res.data ?? [[], null];
+      const ids = Array.isArray(raw[0]) ? raw[0] : [];
+      const token = raw[1] ?? null;
+
+      return {
+        ok: true,
+        status: res.status,
+        message: res.statusText || "Request successful",
+        data: {
+          ids,
+          continuationToken: token,
+        },
+      };
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const msg = toMessage(data, "Failed to search users");
+      return { ok: false, status, message: msg, detail: data };
     }
   },
 
