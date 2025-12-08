@@ -143,7 +143,7 @@ function TaskItemWrapper({ children }: { children: React.ReactNode }) {
 };
 
 // --- Task Item Component ---
-const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
+const TaskItem = ({ task, theme, isCompleted, onToggle, onDelete, onPress }: any) => {
     const anim = useRef(new RNAnimated.Value(1)).current; // 1 => visible, 0 => hidden
 
     const handleDeletePress = () => {
@@ -218,11 +218,11 @@ const TaskItem = ({ task, theme, onToggle, onDelete, onPress }: any) => {
                                     styles.checkboxBox,
                                     {
                                         borderColor: theme.secondaryText,
-                                        backgroundColor: task.completed ? theme.primary : "transparent",
+                                        backgroundColor: isCompleted  ? theme.primary : "transparent",
                                     },
                                 ]}
                             >
-                                {task.completed && (
+                                {isCompleted  && (
                                     <Ionicons name="checkmark-sharp" size={16} color={theme.text} />
                                 )}
                             </View>
@@ -264,6 +264,8 @@ export default function TasksScreen() {
     const updateTask = useTasksStore((s) => s.updateTask);
     const removeTask = useTasksStore((s) => s.removeTask);
     const occurrencesByDate = useTasksStore((s) => s.occurrencesByDate);
+    const completedByDate = useTasksStore((s) => s.completedByDate);
+    const toggleOccurrenceCompletion = useTasksStore((s) => s.toggleOccurrenceCompletion);
 
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
@@ -276,6 +278,7 @@ export default function TasksScreen() {
 
     // Filter Tasks for selected Date
     const dateKey = toDateKey(date);
+    const completedIdsForDay = completedByDate[dateKey] ?? [];
 
     // Build a quick lookup map: taskId -> task
     const taskById = useMemo(() => {
@@ -576,9 +579,7 @@ export default function TasksScreen() {
 
     // Toggle completion using the store
     const handleToggleTask = (id: string) => {
-        const t = tasks.find((task) => task.id === id);
-        if (!t) return;
-        updateTask(id, { completed: !t.completed });
+        toggleOccurrenceCompletion(dateKey, id);
     };
 
     // Delete Task
@@ -605,7 +606,7 @@ export default function TasksScreen() {
     };
 
     // Calculate tasks completed (for the header)
-    const completedCount = filtered.filter((t) => t.completed).length;
+    const completedCount = filtered.filter((t) => completedIdsForDay.includes(t.id)).length;
 
     // Create tasks
     const createTask = async () => {
@@ -954,6 +955,7 @@ export default function TasksScreen() {
                                 <TaskItem
                                     task={task}
                                     theme={theme}
+                                    isCompleted={completedIdsForDay.includes(task.id)}
                                     onPress={handleEditTask}
                                     onToggle={handleToggleTask}
                                     onDelete={handleDeleteTask}
