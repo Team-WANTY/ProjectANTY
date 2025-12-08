@@ -36,7 +36,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
           azPSVersion: "latest"
@@ -70,7 +69,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
           azPSVersion: "latest"
@@ -105,7 +103,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
           azPSVersion: "latest"
@@ -139,7 +136,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
           azPSVersion: "latest"
@@ -173,7 +169,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
           azPSVersion: "latest"
@@ -207,7 +202,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
           azPSVersion: "latest"
@@ -241,7 +235,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
           azPSVersion: "latest"
@@ -275,7 +268,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
           azPSVersion: "latest"
@@ -309,7 +301,6 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Connect-AzAccount -Identity
             Set-AzContext -SubscriptionId ${{ secrets.SUBSCRIPTION_ID }}
             Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
           azPSVersion: "latest"
