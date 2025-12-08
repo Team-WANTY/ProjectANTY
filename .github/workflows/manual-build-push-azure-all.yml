@@ -22,9 +22,6 @@ jobs:
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
-      - name: Set up Azure PowerShell
-        uses: azure/powershell@v2
-
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
 
@@ -36,8 +33,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/auth-service:latest
       
       - name: Stop Auth Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+        azPSVersion: "latest"
 
       - name: Deploy to Auth Container App
         run: |
@@ -51,8 +51,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Auth Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+        azPSVersion: "latest"
 
       - name: Build and Push Comments Service
         run: |
@@ -62,8 +65,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/comments-service:latest
 
       - name: Stop Comments Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+        azPSVersion: "latest"
 
       - name: Deploy to Comments Container App
         run: |
@@ -77,8 +83,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Comments Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+        azPSVersion: "latest"
 
       - name: Build and Push Friends Service
         run: |
@@ -89,8 +98,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/friends-service:latest
 
       - name: Stop Friends Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+        azPSVersion: "latest"
 
       - name: Deploy to Friends Container App
         run: |
@@ -104,8 +116,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Friends Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+        azPSVersion: "latest"
 
       - name: Build and Push Image Service
         run: |
@@ -115,8 +130,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/image-service:latest
 
       - name: Stop Image Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+        azPSVersion: "latest"
 
       - name: Deploy to Image Container App
         run: |
@@ -130,8 +148,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Image Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+        azPSVersion: "latest"
 
       - name: Build and Push Posts Service
         run: |
@@ -141,8 +162,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/posts-service:latest
 
       - name: Stop Posts Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+        azPSVersion: "latest"
 
       - name: Deploy to Posts Container App
         run: |
@@ -156,8 +180,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Posts Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+        azPSVersion: "latest"
 
       - name: Build and Push Profiles Service
         run: |
@@ -167,8 +194,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/profiles-service:latest
 
       - name: Stop Profiles Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+        azPSVersion: "latest"
 
       - name: Deploy to Profiles Container App
         run: |
@@ -182,8 +212,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Profiles Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+        azPSVersion: "latest"
 
       - name: Build and Push Redirect Service
         run: |
@@ -193,8 +226,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/redirect-service:latest
 
       - name: Stop Redirect Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+        azPSVersion: "latest"
 
       - name: Deploy to Redirect Container App
         run: |
@@ -208,8 +244,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Redirect Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+        azPSVersion: "latest"
 
       - name: Build and Push Tasks Service
         run: |
@@ -219,8 +258,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/tasks-service:latest
 
       - name: Stop Tasks Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+        azPSVersion: "latest"
 
       - name: Deploy to Tasks Container App
         run: |
@@ -234,8 +276,11 @@ jobs:
             --max-replicas 3
 
       - name: Start Tasks Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+        azPSVersion: "latest"
           
       - name: Build and Push Users Service
         run: |
@@ -245,8 +290,11 @@ jobs:
           docker push ${{ vars.ACR_URL }}/users-service:latest
 
       - name: Stop Users Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+        azPSVersion: "latest"
 
       - name: Deploy to Users Container App
         run: |
@@ -260,5 +308,8 @@ jobs:
             --max-replicas 3
 
       - name: Start Users Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+        azPSVersion: "latest"

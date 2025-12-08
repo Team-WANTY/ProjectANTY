@@ -32,18 +32,21 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
 
-      - name: Build and Push
+      - name: Build and Push Users Service
         run: |
           docker build -f backend/users_service/Dockerfile \
             -t ${{ vars.ACR_URL }}/users-service:latest \
             backend
           docker push ${{ vars.ACR_URL }}/users-service:latest
 
-      - name: Stop Azure Container App (PowerShell)
-        run: |
-          pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"
+      - name: Stop Users Container App (PowerShell)
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+        azPSVersion: "latest"
 
-      - name: Deploy to Azure Container App
+      - name: Deploy to Users Container App
         run: |
           az containerapp update \
             --name users-service \
@@ -54,6 +57,9 @@ jobs:
             --min-replicas 1 \
             --max-replicas 3
 
-      - name: Start Azure Container App (PowerShell)
-        run: |
-          pwsh -Command "Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service"
+      - name: Start Users Container App (PowerShell)
+        uses: azure/powershell@v2
+        with:
+        inlineScript: |
+          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+        azPSVersion: "latest"
