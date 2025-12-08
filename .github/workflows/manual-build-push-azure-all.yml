@@ -22,6 +22,9 @@ jobs:
           tenant-id: ${{ secrets.TENANT_ID }}
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
+      - name: Set up Azure PowerShell
+        uses: azure/setup-powershell@v2
+
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
 
@@ -31,7 +34,7 @@ jobs:
             -t ${{ vars.ACR_URL }}/auth-service:latest \
             backend
           docker push ${{ vars.ACR_URL }}/auth-service:latest
-
+      
       - name: Stop Auth Container App (PowerShell)
         run: |
           pwsh -Command "Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service"
