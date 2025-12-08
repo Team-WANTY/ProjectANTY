@@ -42,9 +42,9 @@ jobs:
       - name: Stop Profiles Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+          azPSVersion: "latest"
 
       - name: Deploy to Profiles Container App
         run: |
@@ -60,6 +60,6 @@ jobs:
       - name: Start Profiles Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+          azPSVersion: "latest"

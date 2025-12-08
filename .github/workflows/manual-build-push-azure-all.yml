@@ -35,9 +35,9 @@ jobs:
       - name: Stop Auth Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+          azPSVersion: "latest"
 
       - name: Deploy to Auth Container App
         run: |
@@ -53,9 +53,9 @@ jobs:
       - name: Start Auth Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+          azPSVersion: "latest"
 
       - name: Build and Push Comments Service
         run: |
@@ -67,9 +67,9 @@ jobs:
       - name: Stop Comments Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+          azPSVersion: "latest"
 
       - name: Deploy to Comments Container App
         run: |
@@ -85,9 +85,9 @@ jobs:
       - name: Start Comments Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name comments-service
+          azPSVersion: "latest"
 
       - name: Build and Push Friends Service
         run: |
@@ -100,9 +100,9 @@ jobs:
       - name: Stop Friends Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+          azPSVersion: "latest"
 
       - name: Deploy to Friends Container App
         run: |
@@ -118,9 +118,9 @@ jobs:
       - name: Start Friends Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name friends-service
+          azPSVersion: "latest"
 
       - name: Build and Push Image Service
         run: |
@@ -132,9 +132,9 @@ jobs:
       - name: Stop Image Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+          azPSVersion: "latest"
 
       - name: Deploy to Image Container App
         run: |
@@ -150,9 +150,9 @@ jobs:
       - name: Start Image Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name image-service
+          azPSVersion: "latest"
 
       - name: Build and Push Posts Service
         run: |
@@ -164,9 +164,9 @@ jobs:
       - name: Stop Posts Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+          azPSVersion: "latest"
 
       - name: Deploy to Posts Container App
         run: |
@@ -182,9 +182,9 @@ jobs:
       - name: Start Posts Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name posts-service
+          azPSVersion: "latest"
 
       - name: Build and Push Profiles Service
         run: |
@@ -196,9 +196,9 @@ jobs:
       - name: Stop Profiles Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+          azPSVersion: "latest"
 
       - name: Deploy to Profiles Container App
         run: |
@@ -214,9 +214,9 @@ jobs:
       - name: Start Profiles Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name profiles-service
+          azPSVersion: "latest"
 
       - name: Build and Push Redirect Service
         run: |
@@ -228,9 +228,9 @@ jobs:
       - name: Stop Redirect Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+          azPSVersion: "latest"
 
       - name: Deploy to Redirect Container App
         run: |
@@ -246,9 +246,9 @@ jobs:
       - name: Start Redirect Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name redirect-service
+          azPSVersion: "latest"
 
       - name: Build and Push Tasks Service
         run: |
@@ -260,9 +260,9 @@ jobs:
       - name: Stop Tasks Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+          azPSVersion: "latest"
 
       - name: Deploy to Tasks Container App
         run: |
@@ -278,9 +278,9 @@ jobs:
       - name: Start Tasks Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name tasks-service
+          azPSVersion: "latest"
           
       - name: Build and Push Users Service
         run: |
@@ -292,9 +292,9 @@ jobs:
       - name: Stop Users Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+          azPSVersion: "latest"
 
       - name: Deploy to Users Container App
         run: |
@@ -310,6 +310,6 @@ jobs:
       - name: Start Users Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name users-service
+          azPSVersion: "latest"

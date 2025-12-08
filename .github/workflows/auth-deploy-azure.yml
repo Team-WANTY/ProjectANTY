@@ -41,9 +41,9 @@ jobs:
       - name: Stop Auth Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Stop-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+          azPSVersion: "latest"
 
       - name: Deploy to Auth Container App
         run: |
@@ -59,6 +59,6 @@ jobs:
       - name: Start Auth Container App (PowerShell)
         uses: azure/powershell@v2
         with:
-        inlineScript: |
-          Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
-        azPSVersion: "latest"
+          inlineScript: |
+            Start-AzContainerApp -ResourceGroupName ${{ vars.AZURE_RESOURCE_GROUP }} -Name auth-service
+          azPSVersion: "latest"
