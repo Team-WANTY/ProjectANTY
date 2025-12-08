@@ -93,12 +93,12 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
           >
             <View style={styles.notificationItem}>
               <Image source={item.avatar} style={styles.avatar} />
-              <Text style={[styles.notificationText, { color: theme.text, textAlign: 'left' }]}>
+              <Text style={[styles.notificationText, { color: theme.secondaryText, textAlign: 'left' }]}>
                 <Text style={{ fontWeight: 'bold' }}>{item.username}</Text> {item.text}
               </Text>
             </View>
           </ReanimatedSwipeable>
-        </Animated.View>
+        </Animated.View >
       )
     );
   };
@@ -122,8 +122,8 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
           <TouchableOpacity style={styles.archiveBtn} onPress={handleArchiveAll}>
-            <Ionicons name="archive-outline" size={22} color="#fff" />
-            <Text style={styles.archiveText}>Archive All</Text>
+            <Ionicons name="archive-outline" size={22} color={theme.text} />
+            <Text style={[styles.archiveText, { color: theme.text }]}>Archive All</Text>
           </TouchableOpacity>
         </View>
         {notifications.length === 0 ? (
@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
   },
   notificationItem: {
     flexDirection: "row",
