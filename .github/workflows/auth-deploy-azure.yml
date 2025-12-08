@@ -26,7 +26,7 @@ jobs:
           subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
 
       - name: Set up Azure PowerShell
-        uses: azure/setup-powershell@v2
+        uses: azure/powershell@v2
 
       - name: Login to ACR
         run: az acr login --name ${{ vars.ACR_NAME }}
