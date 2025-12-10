@@ -1,24 +1,37 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Switch } from "react-native";
+import {
+    View,
+    Text,
+    ScrollView,
+    StyleSheet,
+    Dimensions,
+    TouchableOpacity,
+    Switch,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {authApi} from '@/services/api/auth-api'
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
-
 import DecorativeSwoosh from "@/components/decorative-swoosh";
+import ConfirmModal from "@/components/confirm-modal";
+
+import { authApi } from "@/services/api/auth-api";
+import { usersApi } from "@/services/api/users-api";
+import { useUserStore } from "@/services/stores/users-store";
 
 const { width } = Dimensions.get("window");
 
-// --- Helper Components (omitted for brevity) ---
-// ... SettingItem, ToggleSubSetting, NavSubSetting ...
+// -------------------------------------------------------------
+// Helper Components
+// -------------------------------------------------------------
 
-// Renders the main setting items like "Account" or "Notifications"
 const SettingItem = ({ theme, iconName, label, isExpanded, hasSubSettings, onPress }) => {
     const iconColor = theme.text;
     const arrowIcon = hasSubSettings
-        ? (isExpanded ? "chevron-down" : "chevron-forward")
-        : "chevron-forward"; // Use chevron-forward for non-expandable items (like About)
+        ? isExpanded
+            ? "chevron-down"
+            : "chevron-forward"
+        : "chevron-forward";
 
     return (
         <TouchableOpacity style={styles.settingItem} onPress={onPress}>
@@ -26,16 +39,11 @@ const SettingItem = ({ theme, iconName, label, isExpanded, hasSubSettings, onPre
                 <Ionicons name={iconName} size={20} color={iconColor} style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: theme.text }]}>{label}</Text>
             </View>
-            <Ionicons
-                name={arrowIcon}
-                size={20}
-                color={iconColor}
-            />
+            <Ionicons name={arrowIcon} size={20} color={iconColor} />
         </TouchableOpacity>
     );
 };
 
-// Renders sub-settings with a toggle switch (e.g., Notifications, Privacy)
 const ToggleSubSetting = ({ theme, label, value, onToggle }) => (
     <View style={styles.subSetting}>
         <Text style={[styles.subSettingLabel, { color: theme.text }]}>{label}</Text>
@@ -49,27 +57,32 @@ const ToggleSubSetting = ({ theme, label, value, onToggle }) => (
     </View>
 );
 
-// Renders a simple navigation sub-item (e.g., Change email, Theme list)
-const NavSubSetting = ({ theme, label, iconName, onPress, isSelected }: any) => (
+const NavSubSetting = ({ theme, label, iconName, onPress, isSelected }) => (
     <TouchableOpacity style={styles.subSetting} onPress={onPress}>
         <View style={styles.settingItemLeft}>
-            {iconName && <Ionicons name={iconName} size={18} color={theme.text} style={styles.itemIcon} />}
+            {iconName && (
+                <Ionicons name={iconName} size={18} color={theme.text} style={styles.itemIcon} />
+            )}
             <Text style={[styles.subSettingLabel, { color: theme.text }]}>{label}</Text>
         </View>
         {isSelected ? <Ionicons name="checkmark" size={18} color={theme.primary} /> : null}
     </TouchableOpacity>
 );
 
+// -------------------------------------------------------------
+// Main Screen Component
+// -------------------------------------------------------------
 
-// --- Main Screen Component ---
 export default function SettingsScreen() {
     const { theme, setTheme, themeName } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { width: screenWidth } = Dimensions.get("window");
+    const userId = useUserStore(s => s.userId);
+
     const APP_VERSION = "Version 0.1.0";
 
-    // State management for expandable sections (omitted for brevity)
+    // Expandable menu state
     const [expandedSections, setExpandedSections] = useState({
         account: false,
         colorTheme: false,
@@ -78,7 +91,7 @@ export default function SettingsScreen() {
         about: false,
     });
 
-    // State management for toggles (mocked)
+    // Toggle states
     const [toggles, setToggles] = useState({
         popups: true,
         muteFriends: false,
@@ -87,39 +100,81 @@ export default function SettingsScreen() {
         shareActivity: true,
     });
 
-    // Function to handle expansion/collapse of sections
+    // Delete account confirmation
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const toggleSection = (section) => {
-        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+        setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
     };
 
-    // Function to handle toggle switches
     const toggleSwitch = (name) => {
-        setToggles(prev => ({ ...prev, [name]: !prev[name] }));
+        setToggles((prev) => ({ ...prev, [name]: !prev[name] }));
     };
 
+    // -------------------------------------------------------------
+    // Delete Account Handler
+    // -------------------------------------------------------------
+    const handleDeleteAccount = async () => {
+        if (!userId) {
+            alert("Failed to delete account");
+            return;
+        }
+
+        try {
+            setIsDeleting(true);
+
+            const result = await usersApi.remove(userId);
+
+            if (!result.ok) {
+                setIsDeleting(false);
+                alert(result.message || "Failed to delete account");
+                return;
+            }
+
+            await authApi.logout();
+            setShowDeleteConfirm(false);
+            router.replace("/login");
+        }
+        catch (error: any) {
+            console.error(error.response?.data || error.message);
+            alert(error?.message || "Unexpected error");
+        }
+        finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Header sizing
     const headerTextColor = theme.background;
     const bodyBackground = theme.background;
-
-    // Define the height of the custom header area
-    const HEADER_CONTENT_HEIGHT = 50; // Height of the Title/Back area
-    const SWOOSH_COMPONENT_HEIGHT = screenWidth * 0.495; // Height of the SVG component
+    const HEADER_CONTENT_HEIGHT = 50;
+    const SWOOSH_HEIGHT = screenWidth * 0.495;
 
     return (
         <View style={[styles.container, { backgroundColor: bodyBackground }]}>
+            {/* DELETE CONFIRMATION MODAL */}
+            <ConfirmModal
+                visible={showDeleteConfirm}
+                title="Delete Account?"
+                message="This action is permanent. Are you sure you want to delete your account?"
+                confirmLabel="Delete"
+                cancelLabel="Cancel"
+                loading={isDeleting}
+                onCancel={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDeleteAccount}
+                theme={theme}
+            />
 
-            {/* 1. Header Area: Swoosh and Controls */}
-            {/* This View now dictates the space the header takes up in the vertical flow */}
-            <View style={{ height: SWOOSH_COMPONENT_HEIGHT }}>
+            {/* Header */}
+            <View style={{ height: SWOOSH_HEIGHT }}>
                 <DecorativeSwoosh
-                    color={theme.border} // Use theme.border for the light color
+                    color={theme.border}
                     width={screenWidth}
-                    height={SWOOSH_COMPONENT_HEIGHT}
+                    height={SWOOSH_HEIGHT}
                 />
 
-                {/* Controls (Absolute position relative to the parent View) */}
                 <View style={[StyleSheet.absoluteFill, { paddingTop: insets.top }]}>
-
-                    {/* Back Arrow */}
                     <TouchableOpacity
                         style={[styles.backButton, { top: insets.top + 15 }]}
                         onPress={() => router.back()}
@@ -127,141 +182,164 @@ export default function SettingsScreen() {
                         <Ionicons name="arrow-back" size={24} color={headerTextColor} />
                     </TouchableOpacity>
 
-                    {/* Settings Title */}
-                    <Text style={[styles.headerTitle, { color: headerTextColor, top: insets.top + HEADER_CONTENT_HEIGHT }]}>
+                    <Text
+                        style={[
+                            styles.headerTitle,
+                            { color: headerTextColor, top: insets.top + HEADER_CONTENT_HEIGHT },
+                        ]}
+                    >
                         Settings
                     </Text>
                 </View>
             </View>
 
-            {/* 2. Settings Menu Items ScrollView */}
-            <ScrollView
-                // The scroll view starts right after the fixed-height View above
-                contentContainerStyle={styles.settingsContent}
-                style={styles.scrollView}
-            >
-
-                {/* 1. Account Section */}
+            {/* Scrollable Settings */}
+            <ScrollView contentContainerStyle={styles.settingsContent} style={styles.scrollView}>
+                {/* Account */}
                 <SettingItem
                     theme={theme}
                     iconName="person-outline"
                     label="Account"
                     isExpanded={expandedSections.account}
-                    hasSubSettings={true}
-                    onPress={() => toggleSection('account')}
+                    hasSubSettings
+                    onPress={() => toggleSection("account")}
                 />
                 {expandedSections.account && (
                     <View style={styles.subSettingsContainer}>
-                        <NavSubSetting theme={theme} label="Change email" onPress={() => router.push("./change-email")} />
-                        <NavSubSetting theme={theme} label="Change password" onPress={() => router.push("./change-password")} />
-                        <NavSubSetting theme={theme} label="Delete Account" onPress={() => {}} />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Change email"
+                            onPress={() => router.push("./change-email")}
+                        />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Change password"
+                            onPress={() => router.push("./change-password")}
+                        />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Delete Account"
+                            onPress={() => setShowDeleteConfirm(true)}
+                        />
                     </View>
                 )}
 
-                {/* 2. Color Theme Section */}
+                {/* Theme */}
                 <SettingItem
                     theme={theme}
                     iconName="color-palette-outline"
                     label="Color Theme"
                     isExpanded={expandedSections.colorTheme}
-                    hasSubSettings={true}
-                    onPress={() => toggleSection('colorTheme')}
+                    hasSubSettings
+                    onPress={() => toggleSection("colorTheme")}
                 />
                 {expandedSections.colorTheme && (
                     <View style={styles.subSettingsContainer}>
-                        <NavSubSetting theme={theme} label="Blue" iconName="color-palette-outline" onPress={() => { setTheme('blue'); }} isSelected={themeName === 'blue'} />
-                        <NavSubSetting theme={theme} label="Dark" iconName="color-palette-outline" onPress={() => { setTheme('dark'); }} isSelected={themeName === 'dark'} />
-                        <NavSubSetting theme={theme} label="Light" iconName="color-palette-outline" onPress={() => { setTheme('light'); }} isSelected={themeName === 'light'} />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Blue"
+                            iconName="color-palette-outline"
+                            onPress={() => setTheme("blue")}
+                            isSelected={themeName === "blue"}
+                        />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Dark"
+                            iconName="color-palette-outline"
+                            onPress={() => setTheme("dark")}
+                            isSelected={themeName === "dark"}
+                        />
+                        <NavSubSetting
+                            theme={theme}
+                            label="Light"
+                            iconName="color-palette-outline"
+                            onPress={() => setTheme("light")}
+                            isSelected={themeName === "light"}
+                        />
                     </View>
                 )}
 
-                {/* 3. Notifications Section (Fully Implemented) */}
+                {/* Notifications */}
                 <SettingItem
                     theme={theme}
                     iconName="notifications-outline"
                     label="Notifications"
                     isExpanded={expandedSections.notifications}
-                    hasSubSettings={true}
-                    onPress={() => toggleSection('notifications')}
+                    hasSubSettings
+                    onPress={() => toggleSection("notifications")}
                 />
                 {expandedSections.notifications && (
                     <View style={styles.subSettingsContainer}>
-                        {/* Allow pop-up notifications */}
                         <ToggleSubSetting
                             theme={theme}
                             label="Allow pop-up notifications"
                             value={toggles.popups}
-                            onToggle={() => toggleSwitch('popups')}
+                            onToggle={() => toggleSwitch("popups")}
                         />
-                        {/* Mute friend activities */}
                         <ToggleSubSetting
                             theme={theme}
                             label="Mute friend activities"
                             value={toggles.muteFriends}
-                            onToggle={() => toggleSwitch('muteFriends')}
+                            onToggle={() => toggleSwitch("muteFriends")}
                         />
-                        {/* Allow task notifications */}
                         <ToggleSubSetting
                             theme={theme}
                             label="Allow task notifications"
                             value={toggles.taskNotifs}
-                            onToggle={() => toggleSwitch('taskNotifs')}
+                            onToggle={() => toggleSwitch("taskNotifs")}
                         />
                     </View>
                 )}
 
-                {/* 4. Privacy and Security Section (Fully Implemented) */}
+                {/* Privacy */}
                 <SettingItem
                     theme={theme}
                     iconName="lock-closed-outline"
                     label="Privacy and Security"
                     isExpanded={expandedSections.privacy}
-                    hasSubSettings={true}
-                    onPress={() => toggleSection('privacy')}
+                    hasSubSettings
+                    onPress={() => toggleSection("privacy")}
                 />
                 {expandedSections.privacy && (
                     <View style={styles.subSettingsContainer}>
-                        {/* Public Profile */}
                         <ToggleSubSetting
                             theme={theme}
                             label="Public Profile"
                             value={toggles.publicProfile}
-                            onToggle={() => toggleSwitch('publicProfile')}
+                            onToggle={() => toggleSwitch("publicProfile")}
                         />
-                        {/* Share activity with friends */}
                         <ToggleSubSetting
                             theme={theme}
                             label="Share activity with friends"
                             value={toggles.shareActivity}
-                            onToggle={() => toggleSwitch('shareActivity')}
+                            onToggle={() => toggleSwitch("shareActivity")}
                         />
                     </View>
                 )}
 
-                {/* 5. About Section */}
+                {/* About */}
                 <SettingItem
                     theme={theme}
                     iconName="information-circle-outline"
                     label="About"
-                    isExpanded={false}
-                    hasSubSettings={true}
-                    onPress={() => toggleSection('about')}
+                    isExpanded={expandedSections.about}
+                    hasSubSettings
+                    onPress={() => toggleSection("about")}
                 />
                 {expandedSections.about && (
                     <View style={styles.subSettingsContainer}>
-                        {/* Render the version number */}
                         <Text style={[styles.aboutVersionText, { color: theme.text }]}>
                             {APP_VERSION}
                         </Text>
                     </View>
                 )}
 
-                {/* 6. Log Out Button */}
+                {/* Log Out */}
                 <TouchableOpacity
                     style={styles.logoutButton}
                     onPress={async () => {
-                        await authApi.logout();        
-                        router.replace("/login");      
+                        await authApi.logout();
+                        router.replace("/login");
                     }}
                 >
                     <Text style={[styles.logoutText, { color: theme.text }]}>Log Out</Text>
@@ -271,98 +349,94 @@ export default function SettingsScreen() {
     );
 }
 
-// -------------------------------------------------------------------
-// --- STYLES ---
-// -------------------------------------------------------------------
+// -------------------------------------------------------------
+// Styles
+// -------------------------------------------------------------
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    // The main scroll view now takes the remaining space
-    scrollView: {
-        flex: 1,
-    },
+    container: { flex: 1 },
+    scrollView: { flex: 1 },
 
-    // --- Header Control Styles (Absolute positioning relative to parent) ---
     backButton: {
-        position: 'absolute',
+        position: "absolute",
         left: 15,
         zIndex: 2,
         padding: 5,
     },
     headerTitle: {
-        position: 'absolute',
+        position: "absolute",
         left: 0,
         right: 0,
-        textAlign: 'center',
+        textAlign: "center",
         fontSize: 24,
-        fontWeight: '700',
+        fontWeight: "700",
         zIndex: 2,
     },
 
-    // --- Settings Menu Styles ---
     settingsContent: {
         paddingHorizontal: width * 0.05,
-        paddingTop: 10, // Small padding from the curve edge
-        paddingBottom: 50, // Allow space for the bottom menu
+        paddingTop: 10,
+        paddingBottom: 50,
         gap: 15,
     },
+
     settingItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         paddingVertical: 10,
         paddingHorizontal: 5,
         minHeight: 30,
-        backgroundColor: 'transparent',
     },
+
     settingItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
-    itemIcon: {
-        width: 30,
-    },
+
+    itemIcon: { width: 30 },
+
     itemLabel: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: "600",
     },
-    // --- Sub-Settings Styles (omitted for brevity) ---
+
     subSettingsContainer: {
         paddingLeft: 40,
         gap: 10,
         marginBottom: 5,
     },
+
     subSetting: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         paddingVertical: 5,
         paddingRight: 5,
     },
+
     subSettingLabel: {
         fontSize: 14,
-        fontWeight: '400',
+        fontWeight: "400",
         flex: 1,
     },
-    subSettingSwitch: {
-        transform: [{ scale: 0.8 }],
-    },
+
+    subSettingSwitch: { transform: [{ scale: 0.8 }] },
+
     aboutVersionText: {
         fontSize: 14,
-        fontWeight: '400',
+        fontWeight: "400",
         paddingVertical: 5,
     },
 
-    // --- Logout Button ---
     logoutButton: {
-        alignSelf: 'center',
+        alignSelf: "center",
         paddingVertical: 20,
         marginTop: 20,
     },
+
     logoutText: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: "700",
     },
 });
