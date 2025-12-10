@@ -57,7 +57,7 @@ const badges = [
 
 // --- Main Profile Screen Component ---
 export default function ProfileScreen() {
-    const { theme } = useTheme();
+    const { theme, themeName } = useTheme();
     const router = useRouter();
     const styles = getStyles(theme);
     const { showNotifications } = useNotificationModal();
@@ -229,13 +229,14 @@ export default function ProfileScreen() {
     const textDarkOnLight = theme.background;
     const textLightOnDark = theme.text;
 
+    const isDark = theme.background === '#151718';
     return (
-        <View style={[styles.container, { backgroundColor: backgroundPrimary }]}>
+        <View style={[styles.container, { backgroundColor: backgroundPrimary }]}> 
             {/* 1. TOP HEADER SECTION */}
             <View style={[styles.headerSection, { height: HEADER_BACKGROUND_HEIGHT }]}>
                 <HeaderBar
-                    title="Home"
-                    showTitle={false}
+                    title="Profile"
+                    showTitle={true}
                     onNotificationPress={showNotifications}
                     onSettingsPress={() => router.push("../settings")}
                 />
@@ -273,20 +274,19 @@ export default function ProfileScreen() {
                     </View>
 
 
-                    <View style={styles.userInfo}>
-                        <Text style={styles.displayUsername}>{username}</Text>
-                        <View style={styles.socialStats}>
-                            <TouchableOpacity onPress={() => router.push("../friends" as any)}>
-                                <Text style={styles.socialText}>
-                                    {friendsCount} <Text style={styles.friendsLink}>Friends</Text>
-                                </Text>
-                            </TouchableOpacity>
-                            <Text style={styles.socialText}>{0} Likes</Text>
-                        </View>
-                    </View>
+                        <View style={styles.userInfo}> 
+                            <Text style={styles.displayUsername}>{username}</Text> 
+                            <View style={styles.socialStats}> 
+                                <TouchableOpacity onPress={() => router.push("../friends" as any)}> 
+                                    <Text style={[styles.socialText, { color: theme.modalBorder }]}> 
+                                        {friendsCount} <Text style={styles.friendsLink}>Friends</Text> 
+                                    </Text> 
+                                </TouchableOpacity> 
+                            </View> 
+                        </View> 
 
-                    <TouchableOpacity style={styles.editProfileButton} onPress={openEditModal}>
-                        <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                    <TouchableOpacity style={[styles.editProfileButton, { backgroundColor: themeName === 'lilac' ? '#fff' : (themeName === 'dark' ? '#000' : theme.text) }]} onPress={openEditModal}>
+                        <Text style={[styles.editProfileButtonText, { color: theme.primary }]}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -504,12 +504,12 @@ function getStyles(theme: any) {
             paddingVertical: screenHeight * 0.007,
             paddingHorizontal: screenWidth * 0.04,
             borderRadius: screenWidth * 0.02,
-            backgroundColor: theme.text,
+            backgroundColor: theme.name === 'dark' ? '#000' : theme.text,
         },
         editProfileButtonText: {
             fontSize: screenWidth * 0.03,
             fontWeight: "600",
-            color: theme.secondaryText,
+            color: theme.name === 'dark' ? '#000000ff' : theme.secondaryText,
         },
         scrollContentContainer: {
             paddingHorizontal: 20,

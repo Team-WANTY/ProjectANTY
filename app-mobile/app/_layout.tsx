@@ -41,6 +41,7 @@ export default function RootLayout() {
         <NotificationContext.Provider value={{ showNotifications }}>
           <>
             <ThemedStack />
+            {/* <DevMenu /> */}
             {/* Render Notifications last so it is always on top */}
             <Notifications visible={notifVisible} onClose={hideNotifications} />
           </>

@@ -63,7 +63,7 @@ type FeedItem = {
     id: string; // post id
     creator: CreatorInfo;
     message: string;
-    createdAt: string;   
+    createdAt: string;
     commentsEnabled: boolean;
     comments: CommentUI[];
 };
@@ -196,13 +196,13 @@ export default function SocialScreen() {
             } finally {
                 setLoadingFeed(false);
             }
-        }, 
+        },
         [userId]
     );
 
     const sortedPosts = useMemo(() => [...posts].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)), [posts]);
     const likedItems = useMemo(
-        () => !userId ? [] : sortedPosts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id),[sortedPosts, userId]);
+        () => !userId ? [] : sortedPosts.filter((p) => p.liker_ids.includes(userId)).map((p) => p.id), [sortedPosts, userId]);
 
 
     useEffect(() => {
@@ -376,7 +376,7 @@ export default function SocialScreen() {
             console.log("[DeletePost] Success");
             removePost(editingPostId);
             closeEditPostModal();
-            
+
         } else {
             console.log("[DeletePost] Failed:", res.message);
         }
@@ -407,7 +407,7 @@ export default function SocialScreen() {
         setEditingCommentId(null);
     };
 
-    
+
     const startEditComment = (comment: Comment) => {
         setEditingCommentId(comment.id);
         setCommentText(comment.text);
@@ -476,7 +476,7 @@ export default function SocialScreen() {
         ({ item }: { item: InternalFeedItem }) => {
             const canEdit = item.creator.id === userId;
             const commentsCount = commentsByParent[item.id]?.length ?? 0;
-            
+
             const card = (
                 <FriendActivityItem
                     activity={{
@@ -525,7 +525,7 @@ export default function SocialScreen() {
             {/* Create Post Button */}
             <TouchableOpacity style={[styles.addPostButton, { backgroundColor: theme.primary }]} onPress={() => setIsAddPostModalVisible(true)}>
                 <Ionicons name="add" size={22} color={theme.background} />
-                <Text style={[ styles.addPostButtonText, { color: theme.background }]} > Create Post </Text>
+                <Text style={[styles.addPostButtonText, { color: theme.background }]} > Create Post </Text>
             </TouchableOpacity>
 
             {/* Feed */}
@@ -533,7 +533,7 @@ export default function SocialScreen() {
                 style={{ flex: 1 }}
                 data={feed}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={[styles.feedList, {paddingBottom: insets.bottom + hp(10)}]}
+                contentContainerStyle={[styles.feedList, { paddingBottom: insets.bottom + hp(10) }]}
                 refreshing={refreshing}
                 onRefresh={async () => {
                     setRefreshing(true);
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: wp(1),
         paddingVertical: hp(0.5),
     },
-        commentActionsRow: {
+    commentActionsRow: {
         flexDirection: "row",
         alignItems: "center",
     },

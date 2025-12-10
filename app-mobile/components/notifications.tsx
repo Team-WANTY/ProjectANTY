@@ -28,7 +28,7 @@ const demoNotifications: NotificationItem[] = [
 ];
 
 export default function Notifications({ visible, onClose }: NotificationsProps) {
-  const { theme } = useTheme();
+  const { theme, themeName } = useTheme();
   const [notifications, setNotifications] = useState<NotificationItem[]>(demoNotifications);
   const sheetAnim = useRef(new Animated.Value(0)).current;
 
@@ -73,8 +73,9 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
     };
 
     const renderRightActions = () => {
+      const deleteColor = themeName === 'lilac' ? theme.primary : theme.error;
       return (
-        <RectButton style={styles.rightAction} onPress={handleDelete}>
+        <RectButton style={[styles.rightAction, { backgroundColor: deleteColor }]} onPress={handleDelete}>
           <View style={styles.trashIconContainer}>
             <Ionicons name="trash-outline" size={20} color="#fff" />
           </View>
@@ -91,9 +92,11 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
             rightThreshold={40}
             friction={2}
           >
-            <View style={styles.notificationItem}>
+            <View style={[styles.notificationItem,
+            { backgroundColor: theme.cardBackground, borderColor: theme.cardBackground }
+            ]}>
               <Image source={item.avatar} style={styles.avatar} />
-              <Text style={[styles.notificationText, { color: theme.secondaryText, textAlign: 'left' }]}>
+              <Text style={[styles.notificationText, { color: theme.onBackground, textAlign: 'left' }]}>
                 <Text style={{ fontWeight: 'bold' }}>{item.username}</Text> {item.text}
               </Text>
             </View>
@@ -122,8 +125,8 @@ export default function Notifications({ visible, onClose }: NotificationsProps) 
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
           <TouchableOpacity style={styles.archiveBtn} onPress={handleArchiveAll}>
-            <Ionicons name="archive-outline" size={22} color={theme.text} />
-            <Text style={[styles.archiveText, { color: theme.text }]}>Archive All</Text>
+            <Ionicons name="archive-outline" size={22} color={theme.archiveAllText} />
+            <Text style={[styles.archiveText, { color: theme.archiveAllText }]}>Archive All</Text>
           </TouchableOpacity>
         </View>
         {notifications.length === 0 ? (

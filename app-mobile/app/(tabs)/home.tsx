@@ -1,4 +1,14 @@
+// --- Mock Data for Friend Activity (Restored) ---
+const friendActivities = [
+    { id: 1, name: "tinnguyen", message: "Has completed tasks 10 days in a row!", time: "2 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 2 },
+    { id: 2, name: "nickfan", message: "Has logged in 20 days in a row!", time: "just now", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+    { id: 3, name: "yunis", message: "Finished the group project!", time: "4 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+    { id: 4, name: "samantha_k", message: "Reached a new productivity score of 85!", time: "Yesterday", img: require("@/assets/images/default-avatar.png"), commentsCount: 3 },
+    { id: 5, name: "david_a", message: "Completed a focus session of 60 minutes!", time: "1 day ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+    { id: 6, name: "emily_c", message: "Set a new goal for fitness tracking.", time: "2 days ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+];
 import React, { useState } from "react";
+import { useTasksStore } from "@/services/stores/tasks-store";
 import { View, Text, Image, ScrollView, StyleSheet, Dimensions } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,41 +16,40 @@ import { useRouter } from "expo-router";
 import Svg, { Circle } from "react-native-svg";
 
 import { HeaderBar } from "@/components/header-bar";
-import { useTasksStore } from "@/services/stores/tasks-store";
 import { Ionicons } from "@expo/vector-icons";
 import { useFriendsStore } from "@/services/stores/friends-store";
 import { usePostsStore } from "@/services/stores/posts-store";
 import { useCreatorsStore } from "@/services/stores/creators-store";
+import FriendActivityItem from "@/components/friend-activity"
 
 const { width } = Dimensions.get("window");
 
-
-
-
-
 // Local Date -> "YYYY-MM-DD" 
 const toDateKey = (d: Date): string => {
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
-  return `${y}-${pad(m)}-${pad(day)}`;
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+    return `${y}-${pad(m)}-${pad(day)}`;
 };
 
-// --- CircularProgress Component (real progress ring) ---
+// --- CircularProgress Component (Updated to accept dynamic color) ---
 type CircularProgressProps = {
-    percent: number;      // 0–100
+    percent: number;
     theme: any;
-    colorKey: string;     // e.g. "background"
+    colorKey: string;
+    textColor?: string;
 };
-
-const CircularProgress = ({ percent, theme, colorKey }: CircularProgressProps) => {
+const CircularProgress = ({ percent, theme, colorKey, textColor }: CircularProgressProps) => {
     const size = 80;
     const strokeWidth = 8;
+    const purple = '#6c63a2';
+    const isLilac = theme.themeName === 'lilac';
+    const activeColor = isLilac ? purple : (theme[colorKey] || theme.onBackground);
+    const percentColor = textColor ?? (isLilac ? purple : theme.onBackground);
     const radius = size / 2;
     const r = radius - strokeWidth / 2;
 
-    const activeColor = theme[colorKey] || theme.background;
     const trackColor = theme.border;
 
     // Clamp percent between 0 and 100
@@ -77,7 +86,7 @@ const CircularProgress = ({ percent, theme, colorKey }: CircularProgressProps) =
                     transform={`rotate(-90 ${radius} ${radius})`}
                 />
             </Svg>
-            <Text style={[styles.progressText, { color: activeColor }]}>
+            <Text style={[styles.progressText, { color: percentColor }]}>
                 {Math.round(clamped)}%
             </Text>
         </View>
@@ -95,28 +104,39 @@ type DashboardCardProps = {
         colorKey: string;
     };
     theme: any;
+    textColor?: string;
 };
 const DashboardCard = ({ item, theme }: DashboardCardProps) => {
     // Determine text based on the card data
     const tasksText = `${item.tasksDone}/${item.tasksTotal} Tasks`;
     const progressText = item.tasksTotal === 100 ? `${item.label}` : 'Done';
-
+    const purple = '#6c63a2';
+    const isDark = theme.themeName === 'dark';
+    const computedTextColor = isDark ? '#000' : (theme.themeName === 'lilac' ? purple : theme.background);
     return (
         <View style={[styles.dashboardCard, { backgroundColor: theme.border }]}>
             <View style={styles.dashboardText}>
-                <Text style={[styles.dashboardProgressText, { color: theme.background, fontSize: 16, fontWeight: 'bold' }]}>{item.label}</Text>
-                <Text style={[styles.dashboardProgressText, { color: theme.background, marginTop: 5 }]}>{tasksText}</Text>
-                <Text style={[styles.dashboardProgressText, { color: theme.background }]}>{progressText}</Text>
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor, fontSize: 16, fontWeight: 'bold' }]}>{item.label}</Text>
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor, marginTop: 5 }]}>{tasksText}</Text>
+                <Text style={[styles.dashboardProgressText, { color: computedTextColor }]}>{progressText}</Text>
             </View>
-            <CircularProgress percent={item.percent} theme={theme} colorKey={item.colorKey} />
+            <CircularProgress percent={item.percent} theme={theme} colorKey={item.colorKey} textColor={computedTextColor} />
         </View>
     );
 };
 
 export default function Home() {
-    // TODO: Replace with real friend activity data from your backend or store
-    const friendActivities: any[] = [];
-    const { theme } = useTheme();
+    // MOCK DATA for theme testing
+    const friendActivities = [
+        { id: 1, name: "tinnguyen", message: "Has completed tasks 10 days in a row!", time: "2 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 2 },
+        { id: 2, name: "nickfan", message: "Has logged in 20 days in a row!", time: "just now", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+        { id: 3, name: "yunis", message: "Finished the group project!", time: "4 hrs. ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+        { id: 4, name: "samantha_k", message: "Reached a new productivity score of 85!", time: "Yesterday", img: require("@/assets/images/default-avatar.png"), commentsCount: 3 },
+        { id: 5, name: "david_a", message: "Completed a focus session of 60 minutes!", time: "1 day ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 0 },
+        { id: 6, name: "emily_c", message: "Set a new goal for fitness tracking.", time: "2 days ago", img: require("@/assets/images/default-avatar.png"), commentsCount: 1 },
+    ];
+    const { theme, themeName } = useTheme();
+    const percentTextColor = themeName === 'dark' ? '#000' : theme.onBackground;
     const insets = useSafeAreaInsets();
     const containerBackgroundColor = theme.background;
     const router = useRouter();
@@ -182,32 +202,29 @@ export default function Home() {
 
         return ids
             .map((id) => {
-            const t = taskById.get(id);
-            if (!t) return null;
-            return {
-                id: t.id,
-                name: t.name,
-                completed: completedSet.has(t.id),
-            };
-        })  
-        .filter((x): x is { id: string; name: string; completed: boolean } => !!x)
-        .slice(0, 5);
+                const t = taskById.get(id);
+                if (!t) return null;
+                return {
+                    id: t.id,
+                    name: t.name,
+                    completed: completedSet.has(t.id),
+                };
+            })
+            .filter((x): x is { id: string; name: string; completed: boolean } => !!x)
+            .slice(0, 5);
     }, [idsForToday, completedIdsForToday, taskById]);
 
 
     return (
         <View style={[styles.container, { backgroundColor: containerBackgroundColor }]}>
-            {/* Header Bar */}
             <HeaderBar
                 title="Home"
-                showTitle={false}
+                showTitle={true}
                 onSettingsPress={() => { router.push("../settings") }}
             />
-            {/* Content ScrollView (main vertical scroll) */}
             <ScrollView
                 contentContainerStyle={[styles.contentScrollView, { paddingBottom: 100 }]}
             >
-                {/* Dashboard Section Title */}
                 <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: width * 0.05 }]}>Dashboard</Text>
                 {/* Only show today's completion rate card */}
                 <View style={styles.carouselContainer}>
@@ -220,6 +237,7 @@ export default function Home() {
                             colorKey: 'background',
                         }}
                         theme={theme}
+                        textColor={percentTextColor}
                     />
                 </View>
                 {/* Friend Activity Section Title */}
@@ -227,33 +245,21 @@ export default function Home() {
                 {/* Friend Activity Feed or Empty State */}
                 <View style={styles.friendActivityList}>
                     {recentFriendPosts.length === 0 && todayTasksForActivity.length === 0 ? (
-                        <View style={{alignItems: "center", justifyContent: "center", width: "100%", paddingVertical: 20}}>
-                            <Text style={{color: theme.text, fontSize: 12, opacity: 0.6, textAlign: "center", fontWeight: "400"}}>No activity yet. Add friends and complete tasks to see activity here! </Text>
+                        <View style={{ alignItems: "center", justifyContent: "center", width: "100%", paddingVertical: 20 }}>
+                            <Text style={{ color: theme.text, fontSize: 12, opacity: 0.6, textAlign: "center", fontWeight: "400" }}>No activity yet. Add friends and complete tasks to see activity here! </Text>
                         </View>
                     ) : (
                         <>
                             {/* Friend posts (up to 5) */}
-                            {recentFriendPosts.map((p) => (
-                                <View key={`post-${p.id}`} style={[styles.activityCard, { backgroundColor: theme.border }]}>
-                                    <View style={styles.activityAvatarCircle}>
-                                    {p.avatarUrl ? (
-                                        <Image source={{ uri: p.avatarUrl }} style={styles.activityAvatarImage} />
-                                    ) : (
-                                        <Text style={styles.activityAvatarInitials}>
-                                        {p.username.charAt(0).toUpperCase()}
-                                        </Text>
-                                    )}
-                                    </View>
-
-                                    <View style={styles.activityText}>
-                                    <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
-                                        {p.username} Posted
-                                    </Text>
-                                    <Text style={[styles.activitySubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
-                                        {p.text}
-                                    </Text>
-                                    </View>
-                                </View>
+                            {friendActivities.map((activity: any) => (
+                                <FriendActivityItem
+                                    key={activity.id}
+                                    activity={activity}
+                                    theme={theme}
+                                    themeName={themeName}
+                                    isLiked={false}
+                                    onToggleLike={() => { }}
+                                />
                             ))}
 
 
@@ -269,12 +275,12 @@ export default function Home() {
                                     </View>
 
                                     <View style={styles.activityText}>
-                                    <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
-                                        {t.name}
-                                    </Text>
-                                    <Text style={[styles.activitySubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
-                                        {t.completed ? "Completed today" : "Pending today"}
-                                    </Text>
+                                        <Text style={[styles.activityTitle, { color: theme.text }]} numberOfLines={1}>
+                                            {t.name}
+                                        </Text>
+                                        <Text style={[styles.activitySubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
+                                            {t.completed ? "Completed today" : "Pending today"}
+                                        </Text>
                                     </View>
                                 </View>
                             ))}

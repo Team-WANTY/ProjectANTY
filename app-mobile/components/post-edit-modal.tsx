@@ -15,22 +15,17 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 export type Theme = {
-  text: string,
-  background: string,
-  primary: string,
-  secondary: string,
-  border: string,
-  inputBackground: string,
-  cardBackground: string,
-  secondaryText: string,
-  tint: string,
-  icon: string,
-  tabIconDefault: string,
-  tabIconSelected: string,
-  onPrimary: string,
-  error: string,
-  onError: string,
-  shadow: string,
+  background: string;
+  border: string;
+  primary: string;
+  secondary: string;
+  text: string;
+  secondaryText: string;
+  cardBackground: string;
+  onPrimary: string;
+  modalBorder: string;
+  error: string;
+  buttonText: string;
 };
 
 type Props = {
@@ -104,7 +99,7 @@ export const PostEditModal: React.FC<Props> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: theme.inputBackground,
+              backgroundColor: theme.border,
               opacity: fadeAnim,
               transform: [
                 {
@@ -119,11 +114,9 @@ export const PostEditModal: React.FC<Props> = ({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>
-              Edit Post
-            </Text>
+            <Text style={[styles.title, { color: theme.background }]}>Edit Post</Text>
             <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={theme.primary} />
+              <Ionicons name="close" size={24} color={theme.modalBorder} />
             </TouchableOpacity>
           </View>
 
@@ -137,8 +130,9 @@ export const PostEditModal: React.FC<Props> = ({
               style={[
                 styles.input,
                 {
-                  borderColor: theme.border,
-                  color: theme.text,
+                  borderColor: theme.modalBorder,
+                  backgroundColor: theme.border,
+                  color: theme.background,
                 },
               ]}
               placeholder="Edit your post..."
@@ -162,25 +156,17 @@ export const PostEditModal: React.FC<Props> = ({
               onPress={onSave}
               disabled={!canSave}
             >
-              <Text
-                style={[styles.saveButtonText, { color: theme.background }]}
-              >
-                Save Changes
-              </Text>
-            </TouchableOpacity>
 
+              <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Save Changes</Text>
+            </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.deleteButton,
-                { borderColor: "#ff4d4f" },
-              ]}
+              style={[styles.deleteButton, { backgroundColor: theme.error }]}
               onPress={onDelete}
             >
-              <Text style={[styles.deleteText, { color: "#ff4d4f" }]}>
-                Delete Post
-              </Text>
+              <Ionicons name="trash" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
+
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>

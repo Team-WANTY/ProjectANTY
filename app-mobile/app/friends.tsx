@@ -49,7 +49,7 @@ async function resolveUserInfoForUserId(userId: string): Promise<FriendUserInfo>
 
 // Build a DisplayFriend from a friendship_id
 async function enrichFriend(friendshipId: string): Promise<DisplayFriend | null> {
-    const friendshipRes = await friendsApi.getById(friendshipId);    
+    const friendshipRes = await friendsApi.getById(friendshipId);
     if (!friendshipRes.ok || !friendshipRes.data) {
         console.log("[enrichFriendship] failed for", friendshipId, friendshipRes.message);
         return null;
@@ -63,11 +63,11 @@ async function enrichFriend(friendshipId: string): Promise<DisplayFriend | null>
 
     // Figure out who the other user is
     const friendUserId =
-    friendship.from_user_id === meId
-      ? friendship.to_user_id
-      : friendship.to_user_id === meId
-      ? friendship.from_user_id
-      : friendship.to_user_id; // fallback
+        friendship.from_user_id === meId
+            ? friendship.to_user_id
+            : friendship.to_user_id === meId
+                ? friendship.from_user_id
+                : friendship.to_user_id; // fallback
 
     const user = await resolveUserInfoForUserId(friendUserId);
 
@@ -145,8 +145,8 @@ const FriendItem: React.FC<FriendItemProps> = ({
 };
 
 
-export default function FriendsScreen() {
-    const { theme } = useTheme();
+function FriendsScreen() {
+    const { theme, themeName } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new RNAnimated.Value(0)).current;
@@ -156,7 +156,7 @@ export default function FriendsScreen() {
     const setFriends = useFriendsStore((s) => s.setFriends);
     const removeFriend = useFriendsStore((s) => s.removeFriend);
     const addFriend = useFriendsStore((s) => s.addFriend);
-    
+
     const [loading, setLoading] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -165,7 +165,7 @@ export default function FriendsScreen() {
     const [isSending, setIsSending] = useState(false);
     const [addFriendError, setAddFriendError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-    
+
     // Typeahead States
     const [searchResults, setSearchResults] = useState<FriendUserInfo[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
@@ -175,7 +175,7 @@ export default function FriendsScreen() {
     const lastQueryRef = useRef("");
     const latestSearchIdRef = useRef(0);
 
-        const runUserSearch = async (query: string) => {
+    const runUserSearch = async (query: string) => {
         const trimmed = query.trim();
         if (!trimmed || trimmed.length < 2) {
             lastQueryRef.current = trimmed;
@@ -328,7 +328,6 @@ export default function FriendsScreen() {
         // Optimistically remove friend from the store
         removeFriend(friendUserId);
         setErrorText(null);
-
         (async () => {
             try {
                 // Call the API in the background
@@ -356,7 +355,7 @@ export default function FriendsScreen() {
         console.log("View profile:", userId);
         router.push({
             pathname: "/profile/[userId]",
-            params: {userId},
+            params: { userId },
         });
     };
 
@@ -366,7 +365,7 @@ export default function FriendsScreen() {
     };
 
     const openAddFriendModal = () => {
-        setAddFriendModalVisible(true); 
+        setAddFriendModalVisible(true);
         RNAnimated.timing(fadeAnim, {
             toValue: 1,
             duration: 200,
@@ -517,7 +516,7 @@ export default function FriendsScreen() {
 
             {/* Friend Count */}
             <View style={styles.header}>
-                <Text style={[styles.friendCount, { color: theme.text }]}>
+                <Text style={[styles.friendCount, { color: theme.secondaryText }]}> 
                     {friendCount} {friendCount === 1 ? "Friend" : "Friends"}
                 </Text>
             </View>
@@ -582,7 +581,10 @@ export default function FriendsScreen() {
                             style={styles.modalCloseButton}
                             onPress={closeAddFriendModal}
                         >
-                            <Text style={styles.modalCloseText}>✕</Text>
+                            <Text style={[
+                                styles.modalCloseText,
+                                themeName === "dark" && { color: "#000" }
+                            ]}>✕</Text>
                         </Pressable>
 
                         <Text style={[styles.modalTitle, { color: theme.background }]}>Add Friend</Text>
@@ -622,8 +624,8 @@ export default function FriendsScreen() {
                                         const isSelected = selectedUser?.id === u.id;
                                         return (
                                             <Pressable
-                                                key={u.id} 
-                                                style={[styles.suggestionItem, isSelected && {backgroundColor: theme.cardBackground}]}
+                                                key={u.id}
+                                                style={[styles.suggestionItem, isSelected && { backgroundColor: theme.cardBackground }]}
                                                 onPress={() => handleSelectSuggestion(u)}
                                             >
                                                 <AvatarBubble
@@ -634,7 +636,7 @@ export default function FriendsScreen() {
                                                     initialColor={theme.onPrimary}
                                                 />
                                                 <View style={styles.suggestionTextContainer}>
-                                                    <Text style={[ styles.suggestionName, { color: theme.text }]}>{u.username}</Text>
+                                                    <Text style={[styles.suggestionName, { color: theme.text }]}>{u.username}</Text>
                                                 </View>
                                             </Pressable>
                                         );
@@ -649,9 +651,10 @@ export default function FriendsScreen() {
                         <Pressable
                             style={[
                                 styles.addButton,
-                                { backgroundColor: theme.primary },
+                                theme.background === '#151718'
+                                    ? { backgroundColor: '#000' }
+                                    : { backgroundColor: theme.primary },
                                 (isSending || !friendUsername.trim()) && { opacity: 0.6 }
-
                             ]}
                             disabled={isSending || !friendUsername.trim()}
                             onPress={handleAddFriend}
@@ -659,7 +662,7 @@ export default function FriendsScreen() {
                             {isSending ? (
                                 <ActivityIndicator />
                             ) : (
-                                <Text style={styles.addButtonText}>Send Request</Text>
+                                <Text style={[styles.addButtonText, theme.background === '#151718' ? { color: '#fff' } : { color: '#fff' }]}>Send Request</Text>
                             )}
                         </Pressable>
                     </RNAnimated.View>
@@ -670,56 +673,26 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+    modalCloseText: {
+        fontSize: 24,
+        fontWeight: "300",
+        color: "#1e3a8a", // default for light theme
     },
-    backButton: {
-        position: "absolute",
-        left: 20,
-        zIndex: 10,
-    },
-    headerTitle: {
-        position: "absolute",
-        fontSize: 28,
-        fontWeight: "bold",
-    },
-    rightIcons: {
-        position: "absolute",
-        right: 20,
-        flexDirection: "row",
-        gap: 15,
-    },
-    iconButton: {
-        width: 40,
-        height: 40,
-        justifyContent: "center",
+    addButton: {
+        padding: 16,
+        borderRadius: 10,
         alignItems: "center",
+        marginTop: 10,
     },
-    header: {
-        padding: 20,
-        paddingTop: 10,
-    },
-    friendCount: {
-        fontSize: 18,
+    addButtonText: {
+        color: "#fff",
+        fontSize: 16,
         fontWeight: "600",
     },
-    scrollContent: {
-        padding: 20,
-        paddingTop: 10,
-        paddingBottom: 100,
-    },
-    friendCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 12,
-        borderRadius: 12,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+    errorText: {
+        color: "red",
+        marginTop: 4,
+        fontSize: 14,
     },
     friendBanner: {
         flexDirection: "row",
@@ -752,15 +725,21 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginLeft: 12,
     },
-    emptyState: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingTop: 100,
+    headerTitle: {
+        position: "absolute",
+        fontSize: 28,
+        fontWeight: "bold",
     },
-    emptyText: {
-        fontSize: 16,
-        marginTop: 16,
+    rightIcons: {
+        position: "absolute",
+        right: 20,
+        flexDirection: "row",
+        gap: 15,
+    },
+    iconButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: "transparent",
     },
     modalOverlay: {
         flex: 1,
@@ -777,6 +756,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
+        backgroundColor: "#fff",
     },
     modalCloseButton: {
         position: "absolute",
@@ -788,10 +768,47 @@ const styles = StyleSheet.create({
         alignItems: "center",
         zIndex: 1,
     },
-    modalCloseText: {
-        fontSize: 24,
-        fontWeight: "300",
-        color: "#1e3a8a",
+    emptyState: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingTop: 100,
+    },
+    emptyText: {
+        fontSize: 16,
+        marginTop: 16,
+    },
+    friendCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderRadius: 12,
+        padding: 12,
+        marginVertical: 8,
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 2,
+        backgroundColor: "#fff",
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+        paddingTop: 20,
+    },
+    friendCount: {
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+    scrollContent: {
+        paddingBottom: 40,
+    },
+    container: {
+        flex: 1,
+    },
+    backButton: {
+        position: "absolute",
     },
     modalTitle: {
         fontSize: 24,
@@ -804,29 +821,16 @@ const styles = StyleSheet.create({
     },
     inputLabel: {
         fontSize: 14,
-        fontWeight: "600",
-        marginBottom: 8,
+        fontWeight: "500",
+        marginBottom: 6,
     },
     input: {
         borderWidth: 1,
-        borderRadius: 10,
-        padding: 12,
+        borderRadius: 8,
+        padding: 10,
         fontSize: 16,
-    },
-    addButton: {
-        padding: 16,
-        borderRadius: 10,
-        alignItems: "center",
-    },
-    addButtonText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600",
-    },
-    errorText: {
-        color: "red",
-        marginTop: 4,
-        fontSize: 14,
+        marginBottom: 10,
+        backgroundColor: "#fff",
     },
     suggestionList: {
         borderRadius: 8,
@@ -863,3 +867,6 @@ const styles = StyleSheet.create({
     },
 
 });
+
+// Ensure default export for route
+export default FriendsScreen;
