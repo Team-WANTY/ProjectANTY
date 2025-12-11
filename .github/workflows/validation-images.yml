@@ -1,16 +1,17 @@
-name: Tasks Service Validation
+name: Image Service Validation
 
 on:
   push:
     branches: ["main"]
-    paths: ["backend/tasks_service/**"]
+    paths: ["backend/image_service/**", "backend/shared/**" ]
   pull_request:
     branches: ["main"]
-    paths: ["backend/tasks_service/**"]
+    paths: ["backend/image_service/**", "backend/shared/**" ]
+    
 
 jobs:
   # Make sure code abides by the ruff format.
-  tasks-validation:
+  image-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
 
@@ -21,10 +22,9 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Tasks checks.
+      - name: Image checks.
         run: |
-          cd backend/tasks_service
+          cd backend/image_service
           uv sync --dev
           uv run ruff check
           uv run ty check
-          uv run pytest

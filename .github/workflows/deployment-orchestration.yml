@@ -1,0 +1,40 @@
+name: Orchestrate Service Deployment
+
+on:
+  workflow_dispatch:
+      inputs:
+        service:
+          description: "Service name to deploy"
+          required: true
+          type: string
+
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service name to deploy"
+        required: true
+        type: string
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      service: ${{ inputs.service }}
+    secrets: inherit
+    
+
+  stop:
+    needs: build
+    uses: ./.github/workflows/stop.yml
+    with:
+      service: ${{ inputs.service }}
+    secrets: inherit
+    
+
+  start:
+    needs: stop
+    uses: ./.github/workflows/start.yml
+    with:
+      service: ${{ inputs.service }}
+    secrets: inherit
+    

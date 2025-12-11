@@ -1,0 +1,40 @@
+name: Stop Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service name to stop"
+        required: true
+        type: string
+
+  workflow_call:
+    inputs:
+      service:
+        description: "Service name to stop"
+        type: string
+        required: true
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    environment: "Azure Deployment Environment"
+    steps:
+      - name: Login
+        uses: azure/powershell@v2
+        with:
+          inlineScript:  |
+            $ClientSecret = "${{ secrets.CLIENT_SECRET }}"
+            $TenantId = "${{ secrets.TENANT_ID }}"
+            $ApplicationId = "${{ secrets.CLIENT_ID }}"
+
+            $SecurePassword = ConvertTo-SecureString $ClientSecret -AsPlainText -Force
+            $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ApplicationId, $SecurePassword
+
+            Connect-AzAccount -ServicePrincipal -TenantId $TenantId -Credential $Credential
+          azPSVersion: "latest"
+
+      - name: Stop Container App
+        uses: azure/powershell@v2
+        with:
+          inlineScript: 'Stop-AzContainerApp -Name "${{ inputs.service }}-service" -ResourceGroupName "${{ vars.AZURE_RESOURCE_GROUP }}"" -SubscriptionId "${{ secrets.SUBSCRIPTION_ID }}"'

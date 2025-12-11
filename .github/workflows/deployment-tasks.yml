@@ -1,0 +1,14 @@
+name: Tasks Service Deployment Orchestration
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/tasks_service/**", "backend/shared/**"]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment_orchestration.yml
+    with:
+      service: "tasks"
+    secrets: inherit
+    
