@@ -14,7 +14,7 @@ jobs:
     with:
       service: ${{ inputs.service }}
     secrets: inherit
-    vars: inherit
+    
 
   stop:
     needs: build
@@ -22,7 +22,7 @@ jobs:
     with:
       service: ${{ inputs.service }}
     secrets: inherit
-    vars: inherit
+    
 
   start:
     needs: stop
@@ -30,4 +30,4 @@ jobs:
     with:
       service: ${{ inputs.service }}
     secrets: inherit
-    vars: inherit
+    

@@ -11,4 +11,4 @@ jobs:
     with:
       service: "friends"
     secrets: inherit
-    vars: inherit
+    

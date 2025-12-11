@@ -11,4 +11,4 @@ jobs:
     with:
       service: "profiles"
     secrets: inherit
-    vars: inherit
+    

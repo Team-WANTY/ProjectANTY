@@ -11,4 +11,4 @@ jobs:
     with:
       service: "comments"
     secrets: inherit
-    vars: inherit
+    

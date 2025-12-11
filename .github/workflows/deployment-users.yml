@@ -11,4 +11,4 @@ jobs:
     with:
       service: "users"
     secrets: inherit
-    vars: inherit
+    
