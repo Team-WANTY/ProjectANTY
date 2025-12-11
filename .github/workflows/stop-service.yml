@@ -1,10 +1,17 @@
 name: Stop Service
 
 on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service name to stop"
+        required: true
+        type: string
+
   workflow_call:
     inputs:
       service:
-        description: "Service to stop"
+        description: "Service name to stop"
         type: string
         required: true
 

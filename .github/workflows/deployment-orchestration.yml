@@ -2,9 +2,16 @@ name: Orchestrate Service Deployment
 
 on:
   workflow_dispatch:
+      inputs:
+        service:
+          description: "Service name to deploy"
+          required: true
+          type: string
+
+  workflow_dispatch:
     inputs:
       service:
-        description: "Service to deploy"
+        description: "Service name to deploy"
         required: true
         type: string
 
