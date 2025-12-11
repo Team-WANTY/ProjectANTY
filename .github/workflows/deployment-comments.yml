@@ -1,0 +1,14 @@
+name: Comments Service Validation Pipelines
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/comments_service/**", "backend/shared/**"]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment_orchestration.yml
+    with:
+      service: "comments"
+    secrets: inherit
+    vars: inherit

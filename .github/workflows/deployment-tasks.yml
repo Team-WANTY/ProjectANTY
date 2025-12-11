@@ -1,0 +1,14 @@
+name: Tasks Service Validation Pipelines
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/tasks_service/**", "backend/shared/**"]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment_orchestration.yml
+    with:
+      service: "tasks"
+    secrets: inherit
+    vars: inherit

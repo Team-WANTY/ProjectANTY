@@ -1,0 +1,14 @@
+name: Redirect Service Validation Pipelines
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/redirect_service/**", "backend/shared/**"]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment_orchestration.yml
+    with:
+      service: "redirect"
+    secrets: inherit
+    vars: inherit

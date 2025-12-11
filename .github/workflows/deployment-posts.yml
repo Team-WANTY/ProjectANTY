@@ -1,0 +1,14 @@
+name: Posts Service Validation Pipelines
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/posts_service/**", "backend/shared/**"]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment_orchestration.yml
+    with:
+      service: "posts"
+    secrets: inherit
+    vars: inherit

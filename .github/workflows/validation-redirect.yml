@@ -1,17 +1,16 @@
-name: Image Service Validation
+name: Redirect Service Validation
 
 on:
   push:
     branches: ["main"]
-    paths: ["backend/image_service/**"]
+    paths: ["backend/redirect_service/**", "backend/shared/**" ]
   pull_request:
     branches: ["main"]
-    paths: ["backend/image_service/**"]
-    
+    paths: ["backend/redirect_service/**", "backend/shared/**" ]
 
 jobs:
   # Make sure code abides by the ruff format.
-  image-validation:
+  redirect-validation:
     name: Lint, Typecheck, Unit Test.
     runs-on: ubuntu-latest
 
@@ -22,9 +21,9 @@ jobs:
       - name: Install uv.
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Image checks.
+      - name: Redirect checks.
         run: |
-          cd backend/image_service
+          cd backend/redirect_service
           uv sync --dev
           uv run ruff check
           uv run ty check
