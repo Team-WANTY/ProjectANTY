@@ -1,4 +1,4 @@
-name: Image Service Validation Pipelines
+name: Image Service Deployment Orchestration
 
 on:
   push:

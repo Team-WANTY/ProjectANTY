@@ -1,4 +1,4 @@
-name: Users Service Validation Pipelines
+name: Users Service Deployment Orchestration
 
 on:
   push:

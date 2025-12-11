@@ -1,4 +1,4 @@
-name: Auth Service Validation Pipelines
+name: Auth Service Deployment Orchestration
 
 on:
   push:

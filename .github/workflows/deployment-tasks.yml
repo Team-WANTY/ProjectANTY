@@ -1,4 +1,4 @@
-name: Tasks Service Validation Pipelines
+name: Tasks Service Deployment Orchestration
 
 on:
   push:

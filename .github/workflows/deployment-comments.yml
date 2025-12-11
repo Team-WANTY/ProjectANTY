@@ -1,4 +1,4 @@
-name: Comments Service Validation Pipelines
+name: Comments Service Deployment Orchestration
 
 on:
   push:

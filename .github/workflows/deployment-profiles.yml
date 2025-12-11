@@ -1,4 +1,4 @@
-name: Profiles Service Validation Pipelines
+name: Profiles Service Deployment Orchestration
 
 on:
   push:

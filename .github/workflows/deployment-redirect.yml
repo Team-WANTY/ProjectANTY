@@ -1,4 +1,4 @@
-name: Redirect Service Validation Pipelines
+name: Redirect Service Deployment Orchestration
 
 on:
   push:

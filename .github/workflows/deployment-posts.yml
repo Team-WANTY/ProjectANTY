@@ -1,4 +1,4 @@
-name: Posts Service Validation Pipelines
+name: Posts Service Deployment Orchestration
 
 on:
   push:

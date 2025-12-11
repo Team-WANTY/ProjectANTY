@@ -1,4 +1,4 @@
-name: Friends Service Validation Pipelines
+name: Friends Service Deployment Orchestration
 
 on:
   push:
