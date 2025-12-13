@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from azure.cosmos import CosmosDict, exceptions
 from azure.cosmos.aio import ContainerProxy
@@ -84,6 +84,28 @@ class NotificationsDB:
             return items, new_cont
         except RecordNotFoundError:
             raise
+        except exceptions.CosmosResourceNotFoundError:
+            raise RecordNotFoundError()
+        except Exception as e:
+            logger.error(f"Error getting notification IDs of user with ID '{user_id}', unexpected: {e}")
+            raise GeneralQueryError()
+
+    async def get_expired_notification_ids(self):
+        query = """
+            SELECT c.id, c.created_at FROM c
+            WHERE c.created_at < @90days_ago
+        """
+        parameters = [{"name": "@90days_ago", "value": (now_timestamp() - timedelta(days=90)).isoformat()}]
+
+        try:
+            logger.debug(f"Trying to get all expired notificiation IDs")
+
+            async for item in self.container.query_items(
+                query=query,
+                parameters=parameters
+            ):
+                yield item
+            logger.debug(f"Successfully got expired notification IDs")
         except exceptions.CosmosResourceNotFoundError:
             raise RecordNotFoundError()
         except Exception as e:
