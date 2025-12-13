@@ -14,7 +14,7 @@ from shared.exceptions.db import (
 )
 from shared.simple_logging import logger
 
-from notification_service.src.models import Notification, NotificationCreate
+from notifications_service.src.models import Notification, NotificationCreate
 
 
 class NotificationsDB:

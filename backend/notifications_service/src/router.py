@@ -13,9 +13,9 @@ from shared.models.users import UserInDB
 from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
-from notification_service.src.dependencies import get_service
-from notification_service.src.models import Notification, NotificationCreate
-from notification_service.src.service import NotificationsService
+from notifications_service.src.dependencies import get_service
+from notifications_service.src.models import Notification, NotificationCreate
+from notifications_service.src.service import NotificationsService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 notifications_router = APIRouter()
