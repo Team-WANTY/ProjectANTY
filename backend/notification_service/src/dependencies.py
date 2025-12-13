@@ -21,6 +21,7 @@ logger.debug("Connected to Azure CosmosDB and got notifications container")
 def get_db() -> NotificationsDB:
     return NotificationsDB(notifications_container)
 
+
 @lru_cache
 def get_service() -> NotificationsService:
     return NotificationsService(get_db())

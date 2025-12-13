@@ -1,31 +1,34 @@
-from pydantic import BaseModel
 from datetime import datetime
-from shared.db import now_timestamp, generate_id
+
+from pydantic import BaseModel
+from shared.db import generate_id, now_timestamp
+
 
 class Notification(BaseModel):
-    id:str
+    id: str
 
-    recipient_user_id:str
-    actor_user_id:str|None #None if system notification
+    recipient_user_id: str
+    actor_user_id: str | None  # None if system notification
 
-    detail:str #post.liked, task.created, comment.replied
-    
-    entity_type:str #post, comment, task
-    entity_id:str
+    detail: str  # post.liked, task.created, comment.replied
 
-    created_at:datetime
-    updated_at:datetime
-    read:bool
+    entity_type: str  # post, comment, task
+    entity_id: str
+
+    created_at: datetime
+    updated_at: datetime
+    read: bool
+
 
 class NotificationCreate(BaseModel):
-    recipient_user_id:str
-    actor_user_id:str|None
+    recipient_user_id: str
+    actor_user_id: str | None
 
-    detail:str
-    entity_type:str
-    entity_id:str
+    detail: str
+    entity_type: str
+    entity_id: str
 
-    def to_notification(self) -> '''Notification''':
+    def to_notification(self) -> """Notification""":
         return Notification(
             id=generate_id(),
             recipient_user_id=self.recipient_user_id,
