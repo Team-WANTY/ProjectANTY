@@ -4,8 +4,8 @@ from azure.cosmos.aio import CosmosClient
 from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
-from src.database import NotificationsDB
-from src.service import NotificationsService
+from notification_service.src.database import NotificationsDB
+from notification_service.src.service import NotificationsService
 
 logger.debug("Connecting to Azure CosmosDB")
 client = CosmosClient(

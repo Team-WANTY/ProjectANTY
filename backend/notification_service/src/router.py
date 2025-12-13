@@ -13,9 +13,9 @@ from shared.models.users import UserInDB
 from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
-from src.dependencies import get_service
-from src.models import Notification, NotificationCreate
-from src.service import NotificationsService
+from notification_service.src.dependencies import get_service
+from notification_service.src.models import Notification, NotificationCreate
+from notification_service.src.service import NotificationsService
 
 interservice_scheme = APIKeyHeader(name="X-Interservice-Key")
 notifications_router = APIRouter()
@@ -35,28 +35,28 @@ async def create_notification(
         if x_interservice_key != shared_settings.INTERSERVICE_KEY:
             raise AuthError
         return await service.create_notification(new_notification)
-    except AuthError:
+    except AuthError as e:
         logger.warning(
             f"Error creating notification: {new_notification.model_dump()}: authorization error"
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordAlreadyExistsError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
+    except RecordAlreadyExistsError as e:
         logger.error(
             f"Error creating notification: {new_notification.model_dump()}: already exists"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Exists already"
-        )
-    except RecordCreationError:
+        ) from e
+    except RecordCreationError as e:
         logger.error(
             f"Error creating notification: {new_notification.model_dump()}: creation error"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     except Exception as e:
         logger.error(
             f"Error creating notification: {new_notification.model_dump()}, unexpected: {e}"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
 
 
 @notifications_router.get(
@@ -69,26 +69,26 @@ async def get_notification_by_id(
 ):
     try:
         return await service.get_notification(notification_id, current_user)
-    except AuthError:
+    except AuthError as e:
         logger.warning(
             f"Error getting notification with ID '{notification_id}': authorization error"
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
+    except RecordNotFoundError as e:
         logger.error(
             f"Error getting notification with ID '{notification_id}': not found"
         )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except GeneralQueryError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
+    except GeneralQueryError as e:
         logger.error(
             f"Error getting notification with ID '{notification_id}': query error"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     except Exception as e:
         logger.error(
             f"Error getting notification with ID '{notification_id}', unexpected: {e}"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
 
 
 @notifications_router.get(
@@ -107,20 +107,20 @@ async def get_users_unread_notification_ids(
         return await service.get_users_unread_notification_ids(
             user_id, current_user, max_items, continuation_token
         )
-    except AuthError:
+    except AuthError as e:
         logger.warning(
             f"Error getting post of user with ID '{user_id}': authorization error"
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
+    except RecordNotFoundError as e:
         logger.error(f"Error getting post of user with ID '{user_id}': not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except GeneralQueryError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
+    except GeneralQueryError as e:
         logger.error(f"Error getting post of user with ID '{user_id}': query error")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     except Exception as e:
         logger.error(f"Error getting post of user with ID '{user_id}', unexpected: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
 
 
 @notifications_router.patch("/{notification_id}", tags=["posts"])
@@ -131,23 +131,23 @@ async def read_notification(
 ):
     try:
         await service.update_notification(notification_id, current_user)
-    except AuthError:
+    except AuthError as e:
         logger.error(
             f"Error updating notification with ID '{notification_id}': not authorized"
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
+    except RecordNotFoundError as e:
         logger.error(
             f"Error updating notification with ID '{notification_id}': not found"
         )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except RecordUpdateError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
+    except RecordUpdateError as e:
         logger.error(
             f"Error updating notification with ID '{notification_id}': query error"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     except Exception as e:
         logger.error(
             f"Error updating notification with ID '{notification_id}', unexpected: {e}"
         )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e

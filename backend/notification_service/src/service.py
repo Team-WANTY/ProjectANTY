@@ -2,8 +2,8 @@ from shared.auth import authorize_operation
 from shared.models.users import UserInDB
 from shared.simple_logging import logger
 
-from src.database import NotificationsDB
-from src.models import Notification, NotificationCreate
+from notification_service.src.database import NotificationsDB
+from notification_service.src.models import Notification, NotificationCreate
 
 
 class NotificationsService:

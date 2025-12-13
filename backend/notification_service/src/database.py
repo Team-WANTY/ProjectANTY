@@ -14,7 +14,7 @@ from shared.exceptions.db import (
 )
 from shared.simple_logging import logger
 
-from src.models import Notification, NotificationCreate
+from notification_service.src.models import Notification, NotificationCreate
 
 
 class NotificationsDB:
@@ -33,16 +33,16 @@ class NotificationsDB:
             created_notif = Notification.model_validate(item, extra="ignore")
             logger.debug(f"Successfully created post: {created_notif.model_dump()}")
             return created_notif.id
-        except exceptions.CosmosResourceExistsError:
+        except exceptions.CosmosResourceExistsError as e:
             logger.warning(
                 f"Error while creating notification: {notification.model_dump()}, already exists"
             )
-            raise RecordAlreadyExistsError()
+            raise RecordAlreadyExistsError() from e
         except Exception as e:
             logger.error(
                 f"Error while creating notification: {notification.model_dump()}, unexpected: {e}"
             )
-            raise RecordCreationError()
+            raise RecordCreationError() from e
 
     async def get_notification(self, notification_id: str) -> Notification:
         try:
@@ -54,16 +54,16 @@ class NotificationsDB:
             notification = Notification.model_validate(item, extra="ignore")
             logger.debug(f"Successfully got notification: {notification.model_dump()}")
             return notification
-        except exceptions.CosmosResourceNotFoundError:
+        except exceptions.CosmosResourceNotFoundError as e:
             logger.warning(
                 f"Error while getting notification with ID '{notification_id}', not found"
             )
-            raise RecordNotFoundError()
+            raise RecordNotFoundError() from e
         except Exception as e:
             logger.error(
                 f"Error while getting notification with ID '{notification_id}', unexpected: {e}"
             )
-            raise GeneralQueryError()
+            raise GeneralQueryError() from e
 
     async def get_users_unread_notification_ids(
         self, user_id: str, max_items: int, continuation_token: str | None
@@ -73,7 +73,9 @@ class NotificationsDB:
             WHERE c.recipient_user_id = @user_id AND NOT c.read
             ORDER BY c.created_at ASC
         """
-        parameters = [{"name": "@user_id", "value": user_id}]
+        parameters: list[dict[str, object]] | None = [
+            {"name": "@user_id", "value": user_id}
+        ]
 
         try:
             logger.debug(
@@ -86,13 +88,18 @@ class NotificationsDB:
             )
 
             pager = result_iterable.by_page(continuation_token=continuation_token)
-            items = None
+            items: list[str] = []
             async for page in pager:
-                items: list[str] = [item["id"] async for item in page]
+                async for item in page:
+                    items.append(item["id"])
                 break
 
-            new_cont: str | None = pager.continuation_token
-            if items is None:
+            new_cont: str | None = (
+                pager.continuation_token
+                if hasattr(pager, "continuation_token")
+                else None
+            )
+            if len(items) == 0:
                 raise RecordNotFoundError()
             logger.debug(
                 f"Successfully got all notification IDs: {items}, and a new continuation token: {new_cont}"
@@ -100,13 +107,13 @@ class NotificationsDB:
             return items, new_cont
         except RecordNotFoundError:
             raise
-        except exceptions.CosmosResourceNotFoundError:
-            raise RecordNotFoundError()
+        except exceptions.CosmosResourceNotFoundError as e:
+            raise RecordNotFoundError() from e
         except Exception as e:
             logger.error(
                 f"Error getting notification IDs of user with ID '{user_id}', unexpected: {e}"
             )
-            raise GeneralQueryError()
+            raise GeneralQueryError() from e
 
     async def get_expired_notification_ids(self):
         query = """
@@ -128,11 +135,11 @@ class NotificationsDB:
             ):
                 yield item
             logger.debug("Successfully got expired notification IDs")
-        except exceptions.CosmosResourceNotFoundError:
-            raise RecordNotFoundError()
+        except exceptions.CosmosResourceNotFoundError as e:
+            raise RecordNotFoundError() from e
         except Exception as e:
             logger.error(f"Error getting expired notification IDs, unexpected: {e}")
-            raise GeneralQueryError()
+            raise GeneralQueryError() from e
 
     async def update_notification(self, notification_id: str):
         # only 'read' needs to be updated
@@ -161,18 +168,18 @@ class NotificationsDB:
             logger.debug(
                 f"Successfully updated notification '{notification_id}', new record: {notification.model_dump()}"
             )
-        except exceptions.CosmosResourceNotFoundError:
+        except exceptions.CosmosResourceNotFoundError as e:
             logger.warning(
                 f"Error while updating notification with ID '{notification_id}', not found"
             )
-            raise RecordNotFoundError()
+            raise RecordNotFoundError() from e
         except EmptyRecordUpdateError:
             raise
         except Exception as e:
             logger.error(
                 f"Error while updating notification with ID '{notification_id}', unexpected: {e}"
             )
-            raise RecordUpdateError()
+            raise RecordUpdateError() from e
 
     async def delete_notification(self, notification_id: str):
         try:
@@ -183,13 +190,13 @@ class NotificationsDB:
             logger.debug(
                 f"Successfully deleted notification with ID '{notification_id}'"
             )
-        except exceptions.CosmosResourceNotFoundError:
+        except exceptions.CosmosResourceNotFoundError as e:
             logger.warning(
                 f"Error while deleting notification '{notification_id}', not found"
             )
-            raise RecordNotFoundError()
+            raise RecordNotFoundError() from e
         except Exception as e:
             logger.error(
                 f"Error while deleting notification '{notification_id}', unexpected: {e}"
             )
-            raise RecordDeletionError()
+            raise RecordDeletionError() from e
