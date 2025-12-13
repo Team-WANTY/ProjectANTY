@@ -37,3 +37,6 @@ Installing mkcert:
 
 
 `python -m http.server 8080 --bind 127.0.0.1`
+
+### Mega Code Analysis
+`uv run ty check; uv run ruff check --fix; uv run ruff format; uv run mypy src; uv run pylint src; uv run flake8 src; uv run bandit -r src; uv run black src; uv run vulture src`
