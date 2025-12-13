@@ -146,11 +146,11 @@ class FriendshipsDB:
     ):
         # List friends for a given user_id with pagination.
         query = (
-            "SELECT c.from_user_id, c.to_user_id, c.created_at FROM c "
-            "WHERE c.from_user_id = @user OR c.to_user_id = @user "
+            "SELECT c.from_user_id, c.to_user_id, c.created_at, c.status FROM c "
+            "WHERE c.from_user_id = @user OR c.to_user_id = @user AND c.status = @status "
             "ORDER BY c.created_at DESC"
         )
-        params = [{"name": "@user", "value": user_id}]
+        params = [{"name": "@user", "value": user_id},{"name":"status","value": str(FriendshipStatus.ACCEPTED)}]
 
         try:
             result_iterable = self.container.query_items(
@@ -184,7 +184,7 @@ class FriendshipsDB:
         )
         params = [
             {"name": "@user", "value": user_id},
-            {"name": "@status", "value": str(FriendshipStatus.PENDING)},
+            {"name": "@status", "value": FriendshipStatus.PENDING},
         ]
 
         try:
