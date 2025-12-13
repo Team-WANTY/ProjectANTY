@@ -84,3 +84,11 @@ services:
     expose:
       - "8000"
     restart: unless-stopped
+
+  notifications-service:
+    build:
+      dockerfile: notifications_service/Dockerfile.dev
+    container_name: notifications-service
+    expose:
+      - "8000"
+    restart: unless-stopped

@@ -22,7 +22,7 @@ class Notification(BaseModel):
 
 class NotificationCreate(BaseModel):
     recipient_user_id: str
-    actor_user_id: str | None
+    actor_user_id: str | None = None
 
     detail: str
     entity_type: str

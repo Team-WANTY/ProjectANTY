@@ -34,6 +34,10 @@ http:
     comments:
       rule: "PathPrefix(`/comments`)"
       service: comments-service
+    
+    notifications:
+      rule: "PathPrefix(`/notifications`)"
+      service: notifications-service
 
   services:
     auth-service:
@@ -80,3 +84,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://comments-service:8000"
+
+    notifications-service:
+      loadBalancer:
+        servers:
+          - url: "http://notifications-service:8000"

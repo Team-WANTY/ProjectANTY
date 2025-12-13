@@ -60,7 +60,7 @@ async def create_notification(
 
 
 @notifications_router.get(
-    "/{post_id}", response_model=Notification, tags=["notifications"]
+    "/{notification_id}", response_model=Notification, tags=["notifications"]
 )
 async def get_notification_by_id(
     notification_id: str,
@@ -109,21 +109,21 @@ async def get_users_unread_notification_ids(
         )
     except AuthError as e:
         logger.warning(
-            f"Error getting post of user with ID '{user_id}': authorization error"
+            f"Error getting unread notifications of user with ID '{user_id}': authorization error"
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
     except RecordNotFoundError as e:
-        logger.error(f"Error getting post of user with ID '{user_id}': not found")
+        logger.error(f"Error getting unread notifications of user with ID '{user_id}': not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
     except GeneralQueryError as e:
-        logger.error(f"Error getting post of user with ID '{user_id}': query error")
+        logger.error(f"Error getting unread notifications of user with ID '{user_id}': query error")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     except Exception as e:
-        logger.error(f"Error getting post of user with ID '{user_id}', unexpected: {e}")
+        logger.error(f"Error getting unread notifications of user with ID '{user_id}', unexpected: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
 
 
-@notifications_router.patch("/{notification_id}", tags=["posts"])
+@notifications_router.patch("/{notification_id}", tags=["notifications"])
 async def read_notification(
     notification_id: str,
     service: NotificationsService = Depends(get_service),
