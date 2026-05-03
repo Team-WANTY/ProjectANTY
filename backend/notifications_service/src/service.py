@@ -10,7 +10,7 @@ class NotificationsService:
     def __init__(self, notifications_db: NotificationsDB):
         self.db = notifications_db
 
-    async def create_notification(self, new_notifications: NotificationCreate) -> str:
+    async def create_notification(self, new_notifications: NotificationCreate) -> list[str]:
         logger.debug(
             f"Starting to create notification: {new_notifications.model_dump()}"
         )

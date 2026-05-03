@@ -2,6 +2,7 @@ from datetime import date
 
 from shared.auth import authorize_operation
 from shared.models.users import UserInDB
+from shared.settings import settings as shared_settings
 from shared.simple_logging import logger
 
 from src.database import TaskDB
@@ -60,6 +61,33 @@ class TasksService:
         )
         await authorize_operation(updater, task.user_id)
         await self.task_db.update_task(task_update)
+        # TODO need input validation to prevent spam attacks from users maliciously sending task updates
+        if task_update.completions is not None:
+            async with AsyncClient() as client:
+                resp = await client.get(
+                    f"{shared_settings.FRIENDS_SERVICE_URL}/{task.user_id}",
+                    headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
+                )    
+                if resp.status_code == 404:
+                    return #no friends, no one to notify
+                elif resp.status_code != 200:
+                    raise GeneralQueryError()
+                else:
+                    friend_ids = resp.json()
+
+                response = await client.post(
+                    f"{shared_settings.NOTIFICATIONS_SERVICE_URL}",
+                    headers={"X-Interservice-Key": shared_settings.INTERSERVICE_KEY},
+                    json={
+                        "recipient_user_ids": friend_ids,
+                        "actor_user_id": task.user_id,
+                        "detail": "task.completed",
+                        "entity_type": "task",
+                        "entity_id": task.id,
+                    }
+                )
+                if response.status_code != 201:
+                    raise RecordCreationError()
 
     async def delete_task(self, task_id: str, deleter: UserInDB):
         task = await self.get_task_by_id(task_id, deleter)

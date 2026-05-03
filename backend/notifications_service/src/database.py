@@ -22,17 +22,23 @@ class NotificationsDB:
         self.container = container
         logger.debug("Created NotificationDB")
 
-    async def create_notification(self, notification: NotificationCreate) -> str:
+    async def create_notification(self, notification: NotificationCreate) -> list[str]:
         try:
             logger.debug(f"Trying to create notification: {notification.model_dump()}")
-            new_notif = notification.to_notification()
-            item: CosmosDict = await self.container.create_item(
-                body=new_notif.model_dump(mode="json")
-            )
+            created_items = []
+            for notif in notification.to_notification():
+                created_items.append(
+                    await self.container.create_item(
+                        body=notif.model_dump(mode="json")
+                    )
+                )
             logger.debug(f"Trying to validate created item returned from DB: {item}")
-            created_notif = Notification.model_validate(item, extra="ignore")
-            logger.debug(f"Successfully created post: {created_notif.model_dump()}")
-            return created_notif.id
+            created_notif_ids = []
+            for created_item in created_items:
+                created_notif = Notification.model_validate(created_item, extra="ignore")
+                logger.debug(f"Successfully created notification: {created_notif.model_dump()}")
+                created_notif_ids.append(created_notif.id)
+            return created_notif_ids
         except exceptions.CosmosResourceExistsError as e:
             logger.warning(
                 f"Error while creating notification: {notification.model_dump()}, already exists"

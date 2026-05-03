@@ -24,7 +24,7 @@ notifications_router = APIRouter()
 
 
 @notifications_router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=str, tags=["interservice"]
+    "/", status_code=status.HTTP_201_CREATED, response_model=list[str], tags=["interservice"]
 )
 async def create_notification(
     new_notification: NotificationCreate,
